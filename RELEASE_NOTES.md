@@ -4,6 +4,29 @@ Versioning is per-package (changesets-driven), but every release publishes
 all nine packages in lock-step at the same patch level so users can pin a
 single version across the workspace.
 
+> **Note on labels.** The `v0.1.4` / `v0.1.5` / `v0.1.6` headings below are
+> **rollout milestones** for RFC 0001 (Budget Guard) — each one corresponds
+> to one Changeset that landed in the repo. Because all three milestones
+> shipped in the same publish cycle without an intervening release,
+> Changesets folded the stacked minor bumps into a single semver bump per
+> package. The actual published versions on npm are:
+>
+> | Package | Published |
+> |---|---|
+> | `@ziro-agent/core` | **0.2.0** |
+> | `@ziro-agent/agent` | **0.2.0** |
+> | `@ziro-agent/tools` | **0.2.0** |
+> | `@ziro-agent/tracing` | **0.2.0** |
+> | `@ziro-agent/openai` | **0.2.0** |
+> | `@ziro-agent/anthropic` | **0.2.0** |
+> | `@ziro-agent/memory` | **0.1.4** |
+> | `@ziro-agent/workflow` | **0.1.4** |
+> | `@ziro-agent/cli` | **0.1.4** |
+>
+> Per-package CHANGELOGs (under each `packages/*/CHANGELOG.md`) attribute
+> every entry to its originating milestone, so you can still trace which
+> feature came in with which `v0.1.x` rollout.
+
 ---
 
 ## v0.1.6 — 2026-04-20
