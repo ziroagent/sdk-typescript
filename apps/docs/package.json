@@ -12,7 +12,7 @@
     "api:generate": "typedoc"
   },
   "dependencies": {
-    "fumadocs-core": "^16.7.16",
+    "fumadocs-core": "^16.8.0",
     "fumadocs-mdx": "^14.3.0",
     "fumadocs-ui": "^16.7.16",
     "next": "^16.2.4",
