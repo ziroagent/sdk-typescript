@@ -38,6 +38,32 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter "./packages/*" build
 
+      # Explicitly configure npm auth BEFORE changesets/action runs.
+      # We've seen ~/.npmrc written by changesets/action get rejected with
+      # opaque 404s in CI even though local `changeset publish` against the
+      # same NPM_TOKEN works. Writing the file ourselves with the registry
+      # line included, then verifying with `npm whoami`, gives us a hard
+      # signal whether the auth path is at fault before any publish runs.
+      - name: Configure npm auth + verify
+        run: |
+          set -euo pipefail
+          if [ -z "${NPM_TOKEN:-}" ]; then
+            echo "::error::NPM_TOKEN secret is not set"
+            exit 1
+          fi
+          {
+            echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}"
+            echo "registry=https://registry.npmjs.org/"
+            echo "always-auth=true"
+          } > "${HOME}/.npmrc"
+          chmod 600 "${HOME}/.npmrc"
+          echo "Wrote ~/.npmrc ($(wc -c < "${HOME}/.npmrc") bytes)"
+          echo "--- npm whoami ---"
+          npm whoami
+          echo "--- npm token check OK ---"
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - name: Create Release PR or publish
         id: changesets
         uses: changesets/action@v1
