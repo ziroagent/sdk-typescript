@@ -1,5 +1,7 @@
 import {
   APICallError,
+  type CostEstimate,
+  estimateTokensFromMessages,
   type FinishReason,
   type LanguageModel,
   type ModelCallOptions,
@@ -9,17 +11,22 @@ import {
   type TokenUsage,
   type ToolCallPart,
 } from '@ziro-agent/core';
+import { getPricing } from '@ziro-agent/core/pricing';
 import { parseSSEWithEvent, type SSEEvent } from './util/sse.js';
 
 export type AnthropicMessagesModelId =
+  // Current flagships (verified against anthropic.com/pricing 2026-04-20).
+  | 'claude-opus-4-7'
+  | 'claude-sonnet-4-6'
+  | 'claude-haiku-4-5'
+  // Legacy still served on the API.
+  | 'claude-opus-4-6'
+  | 'claude-opus-4-5'
   | 'claude-opus-4-1'
   | 'claude-opus-4'
   | 'claude-sonnet-4-5'
   | 'claude-sonnet-4'
-  | 'claude-3-7-sonnet-latest'
-  | 'claude-3-5-sonnet-latest'
-  | 'claude-3-5-haiku-latest'
-  | 'claude-3-haiku-20240307'
+  // Open string for any model id we haven't enumerated.
   | (string & {});
 
 interface AnthropicMessagesModelConfig {
@@ -163,6 +170,36 @@ export class AnthropicMessagesModel implements LanguageModel {
     });
   }
 
+  /**
+   * Pre-flight cost estimate. Anthropic's `max_tokens` is required (defaults
+   * to 4096 in `buildBody`), so we use the same default for the upper bound.
+   * Returns `pricingAvailable: false` when the SDK has no row for the model.
+   */
+  estimateCost(options: ModelCallOptions): CostEstimate {
+    const inputTokens = estimateTokensFromMessages(asChatMessages(options.messages));
+    const maxOut = options.maxTokens ?? 4096;
+    const minOut = Math.min(16, maxOut);
+    const pricing = getPricing(this.provider, this.modelId);
+    if (!pricing) {
+      return {
+        minTokens: inputTokens + minOut,
+        maxTokens: inputTokens + maxOut,
+        minUsd: 0,
+        maxUsd: 0,
+        pricingAvailable: false,
+      };
+    }
+    return {
+      minTokens: inputTokens + minOut,
+      maxTokens: inputTokens + maxOut,
+      minUsd:
+        (inputTokens * pricing.inputPer1M) / 1_000_000 + (minOut * pricing.outputPer1M) / 1_000_000,
+      maxUsd:
+        (inputTokens * pricing.inputPer1M) / 1_000_000 + (maxOut * pricing.outputPer1M) / 1_000_000,
+      pricingAvailable: true,
+    };
+  }
+
   private buildBody(options: ModelCallOptions, stream: boolean): Record<string, unknown> {
     const { system, messages } = splitSystem(options.messages);
 
@@ -219,6 +256,17 @@ export class AnthropicMessagesModel implements LanguageModel {
     }
     return res;
   }
+}
+
+/**
+ * Bridge `NormalizedMessage[]` to the public `ChatMessage[]` shape
+ * `estimateTokensFromMessages` accepts. Estimator only inspects role/content,
+ * so a structural cast is safe.
+ */
+function asChatMessages(
+  messages: NormalizedMessage[],
+): Parameters<typeof estimateTokensFromMessages>[0] {
+  return messages as unknown as Parameters<typeof estimateTokensFromMessages>[0];
 }
 
 function splitSystem(messages: NormalizedMessage[]): {

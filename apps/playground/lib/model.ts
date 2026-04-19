@@ -24,6 +24,6 @@ export function resolveModel(): LanguageModel {
 }
 
 function defaultModelFor(provider: string): string {
-  if (provider === 'anthropic') return 'claude-3-5-sonnet-latest';
+  if (provider === 'anthropic') return 'claude-haiku-4-5';
   return 'gpt-4o-mini';
 }

@@ -1,3 +1,4 @@
+import type { CostEstimate } from '../budget/types.js';
 import type { ContentPart, ToolCallPart } from './content.js';
 import type { FinishReason } from './finish-reason.js';
 import type { NormalizedMessage } from './messages.js';
@@ -73,4 +74,16 @@ export interface LanguageModel {
   generate(options: ModelCallOptions): Promise<ModelGenerateResult>;
 
   stream(options: ModelCallOptions): Promise<ReadableStream<ModelStreamPart>>;
+
+  /**
+   * Optional pre-flight cost estimate used by Budget Guard. When implemented,
+   * `generateText({ budget })` consults this before issuing `generate` so the
+   * SDK can throw `BudgetExceededError` BEFORE any network call is made.
+   *
+   * Implementations should return conservative bounds — assume the model
+   * fills `options.maxTokens` (or its default cap) for `maxUsd`/`maxTokens`.
+   * Set `pricingAvailable: false` when the SDK has no pricing row for the
+   * model id; the caller will then fall back to post-call enforcement only.
+   */
+  estimateCost?(options: ModelCallOptions): Promise<CostEstimate> | CostEstimate;
 }

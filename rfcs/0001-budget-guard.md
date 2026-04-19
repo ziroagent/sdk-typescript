@@ -2,8 +2,8 @@
 
 - Start date: 2026-04-19
 - Authors: @ziro-agent/maintainers
-- Status: draft
-- Affected packages: `@ziro-agent/core`, `@ziro-agent/agent`, `@ziro-agent/tools`, `@ziro-agent/gateway`
+- Status: **accepted (v0.1.6)** — layers 1+2+3+4 all shipped 2026-04-20 (`core` + provider `estimateCost`; `agent` loop budget, `tools` per-tool `budget` + `getCurrentBudget`, `tracing` `instrumentBudget()`; streaming mid-call abort + `onExceed` function form + pricing-drift CI). Durable execution + gateway integrations tracked for v0.2/v0.3.
+- Affected packages: `@ziro-agent/core`, `@ziro-agent/agent`, `@ziro-agent/tools`, `@ziro-agent/tracing`, `@ziro-agent/gateway`
 
 ## Summary
 
@@ -217,18 +217,49 @@ Some teams will argue tokens are more stable than USD. **Rejected** as the prima
 
 This is **additive and opt-in**. Existing Ziro v0.0.x users see no behavioral change unless they pass `budget`.
 
-### Rollout plan
+### Rollout plan (revised against actual ship history)
 
-| Stage | Package | What ships |
-| --- | --- | --- |
-| v0.1.0 | `@ziro-agent/core` | `BudgetSpec`, `BudgetExceededError`, `withBudget`, `generateText({ budget })` |
-| v0.1.0 | `@ziro-agent/openai`, `@ziro-agent/anthropic` | `estimateCost()` + pricing tables |
-| v0.1.1 | `@ziro-agent/agent` | `agent.run({ budget, toolBudget })`, AsyncLocalStorage context |
-| v0.1.2 | `@ziro-agent/tools` | `defineTool({ budget })`, `getCurrentBudget()` helper |
-| v0.1.x | `@ziro-agent/tracing` | OTel events `ziro.budget.*` |
-| v0.2.0 | `@ziro-agent/eval` | `cost-budget` grader for eval suite |
-| v0.2.0 | `@ziro-agent/temporal`, `@ziro-agent/inngest` | Budget state persistence on crash/resume |
-| v0.3.0 | `@ziro-agent/gateway` | Per-virtual-key budget enforcement |
+| Stage | Status | Package | What ships |
+| --- | --- | --- | --- |
+| v0.1.4 | ✅ shipped | `@ziro-agent/core` | `BudgetSpec`, `BudgetExceededError`, `withBudget`, `getCurrentBudget`, `generateText({ budget })`, `streamText({ budget })`, `@ziro-agent/core/pricing` subpath |
+| v0.1.4 | ✅ shipped | `@ziro-agent/openai`, `@ziro-agent/anthropic` | optional `estimateCost()` on `LanguageModel`; pricing tables consumed via `@ziro-agent/core/pricing` |
+| v0.1.5 | ✅ shipped | `@ziro-agent/core` | `BudgetObserver` + `setBudgetObserver()` (internal-stable hook for tracing); `intersectSpecs` re-exported for tool layer use |
+| v0.1.5 | ✅ shipped | `@ziro-agent/agent` | `agent.run({ budget, toolBudget })`; AsyncLocalStorage context flows through the loop; `BudgetSpec.onExceed: 'truncate'`; `AgentRunResult.finishReason: 'budgetExceeded'`; `budget-exceeded` step event |
+| v0.1.5 | ✅ shipped | `@ziro-agent/tools` | `defineTool({ budget })`; `executeToolCalls({ toolBudget })`; per-tool `BudgetExceededError` captured as `ToolExecutionResult.budgetExceeded`; `getCurrentBudget()` re-exported for tool authors |
+| v0.1.5 | ✅ shipped | `@ziro-agent/tracing` | `instrumentBudget()` bridges `BudgetObserver` into OTel: `ziro.budget.scope` span + `usage.update`/`warning`/`exceeded` events; new `ziroagent.budget.*` attribute keys |
+| v0.1.6 | ✅ shipped | `@ziro-agent/core` | `streamText({ budget })` mid-call abort via budget-aware reader + chained `AbortController` (resolves §Unresolved Q4); `BudgetSpec.onExceed` function form wired into `generateText`/`streamText`/`agent.run` at the scope-owning layer; `checkMidStream`, `applyResolution`, `resolveOnExceed` primitives; aggregate stream promises (`text()`/`finishReason()`/`usage()`/`toolCalls()`) now reject on stream error instead of hanging |
+| v0.1.6 | ✅ shipped | `@ziro-agent/agent` | `agent.run({ budget: { onExceed: fn } })` returns the resolver's `replacement` (typed as `AgentRunResult`); resolver-thrown errors surface with the original budget error attached as `cause` |
+| v0.1.6 | ✅ shipped | infra | `scripts/check-pricing-drift.ts` + `.github/workflows/pricing-drift.yml`: weekly cron + on-PR run; warn-only annotation on PRs (drift is a reminder, not a blocker); scheduled drift opens / refreshes a `pricing-drift` tracking issue. Live HTML scraping deferred — gated on selecting a strategy that survives provider page restyles. |
+| v0.2.0 | planned | `@ziro-agent/eval` | `cost-budget` grader for eval suite |
+| v0.2.0 | planned | `@ziro-agent/temporal`, `@ziro-agent/inngest` | Budget state persistence on crash/resume |
+| v0.3.0 | planned | `@ziro-agent/gateway` | Per-virtual-key budget enforcement |
+
+#### v0.1.4 ship notes (2026-04-20)
+
+- `LanguageModel.estimateCost` is **optional**. When absent, `generateText({ budget })` falls back to the SDK's `@ziro-agent/core/pricing` table + character-based token heuristic — third-party providers don't need any code change to opt in.
+- `BudgetSpec.onExceed` ships with `'throw'` semantics in v0.1.4. `'truncate'` and the function form land with the agent integration in v0.1.5 (only meaningful at the loop layer).
+- `BudgetSpec.maxSteps` is in the type but ignored by `generateText` (single-call layer). Documented as such; enforced once `agent.run` consumes the same scope.
+- Pricing data is hand-maintained in `packages/core/src/pricing/data.ts`; the scheduled drift-detection Action is tracked as a follow-up issue.
+- Stream mid-call abort on overrun (RFC §Unresolved Q4) is intentionally deferred to v0.1.6; v0.1.4 enforces pre-flight before the stream opens and post-call once `usage()` resolves.
+
+#### v0.1.5 ship notes (2026-04-20)
+
+- **`onExceed: 'truncate'`** at the agent layer returns an `AgentRunResult` with `finishReason: 'budgetExceeded'` and a populated `budgetExceeded` field (`{ kind, limit, observed, scopeId, partialUsage, origin }`). Default is still `'throw'` — existing callers see no behaviour change.
+- **Tool budgets compose via `intersectSpecs(toolBudget, tool.budget)`**, then the resulting spec passes through `withBudget` which intersects again with the surrounding agent scope. Net result: the tightest constraint always wins, matching RFC §"How budgets compose".
+- **`BudgetExceededError` thrown inside a tool is converted to `ToolExecutionResult.budgetExceeded`** rather than re-raised, so a single rogue tool can't crash the agent loop. The agent then promotes the first such tool result back into a budget halt (see `AgentBudgetExceededInfo.origin === 'tool'`).
+- **`maxSteps` enforcement**: when both `CreateAgentOptions.maxSteps` and `BudgetSpec.maxSteps` are set, `agent.run` takes the minimum. `finishReason` is `'maxSteps'` (not `'budgetExceeded'`) when a step cap stops the loop — `'budgetExceeded'` is reserved for hard usage/duration overruns.
+- **Tracing observer is internal-stable**. `setBudgetObserver()` is exported but the docs explicitly mark it as "for instrumentation packages, not end users". Only one observer can be active; `instrumentBudget()` returns the previous observer for chaining.
+- **Mid-tool-execution abort still deferred**. Budget enforcement runs *between* tool calls and *between* nested LLM calls inside a tool — a long-running tool that holds a connection open will not be interrupted mid-call. Tracked for v0.1.6 alongside the stream mid-call abort work.
+- **`process.emitWarning` kept for back-compat**. v0.1.5 fires both `process.emitWarning` AND the observer hook on `warnAt` — users without `instrumentBudget()` still see the same Node warnings as v0.1.4.
+
+#### v0.1.6 ship notes (2026-04-20)
+
+- **Streaming mid-call abort lands.** `streamText({ budget })` wraps the provider stream in a budget-aware reader. Per `text-delta` it accumulates a chars/4 completion-token estimate and runs `checkMidStream(scope, projectedTokens, projectedUsd)` against the projected total (`inputTokensEstimate + accumulatedCompletion`). On overrun it errors the wrapper stream with `BudgetExceededError`, calls `internalAC.abort(err)` (chained into `ModelCallOptions.abortSignal` so providers respecting the signal tear down their socket), and fire-and-forget cancels the source reader. The chars/4 heuristic over-estimates ~5–10% — that's the right direction (false-positive abort costs nothing, false-negative costs real money).
+- **`onExceed` function form is layer-scoped, not call-scoped.** The resolver only fires at the layer that **owns** the scope (the layer that passed `budget`). When `generateText` is invoked inside an outer `withBudget` (e.g. via `agent.run({ budget })`), `BudgetExceededError` propagates up so the agent layer's resolver gets a chance to interpret it — this avoids the footgun where a user's resolver returns an `AgentRunResult` shape but the inner `generateText` tries to use it as a `GenerateTextResult`.
+- **Replacement values are unchecked at runtime.** `BudgetResolution.replacement` is typed as `unknown`; the SDK casts it to the calling function's result type. Type-parameterized `BudgetResolution<T>` is a v0.2 follow-up.
+- **Resolver-thrown errors propagate (with `cause`)**. If the user's resolver itself throws, that error is re-raised with `error.cause = originalBudgetExceededError` — the original budget error is never silently lost.
+- **Aggregate stream-promise hang fix.** Pre-v0.1.6, `r.usage()`/`r.finishReason()`/`r.toolCalls()` would hang forever when the underlying stream errored (only `r.text()` rejected). v0.1.6 rejects all four on stream error and pre-attaches a noop `.catch` to each so an early rejection doesn't show up as an unhandled rejection on Node.
+- **Pricing drift CI is `validFrom`-only for now.** The script parses `packages/core/src/pricing/data.ts` (no `eval`) and warns on entries older than `STALENESS_DAYS` (default 60). Live page scraping is deferred — see "infra" row of the adoption table.
 
 ### Pricing-table format (`@ziro-agent/core/pricing`)
 
@@ -265,7 +296,7 @@ Not applicable — this is a new feature in v0.1. No existing users to migrate.
 1. **Should `budget` be required (not optional) on `agent.run`?** Strong argument for safety-by-default ("if you don't pass budget, you opted in to unlimited spend, here be dragons"). Counter-argument: friction for prototyping. **Tentative answer**: optional in v0.1, but emit a console warning on first uncapped run per process; revisit for v1.0.
 2. **Reasoning-token visibility.** o1 / o3 / claude-thinking models hide reasoning tokens. How should `estimateCost` handle these? **Tentative answer**: pessimistic estimate (assume reasoning tokens = output tokens × 4 for thinking models), document clearly, allow override.
 3. **Multi-currency support.** Some Asian customers want VND/IDR/THB display. **Tentative answer**: USD-only internally; localized display only at presentation layer (CLI, playground). Defer to v0.3.
-4. **Budget for streaming partial results.** When `generateText` is streaming and budget runs out mid-stream, do we abort the connection or finish the current SSE chunk? **Tentative answer**: abort immediately; expose `partialText` on the thrown error.
+4. **Budget for streaming partial results.** When `generateText` is streaming and budget runs out mid-stream, do we abort the connection or finish the current SSE chunk? **Resolved (v0.1.6)**: abort immediately on the chunk that trips the projection. `streamText` errors the wrapper stream with `BudgetExceededError` and aborts the underlying HTTP request via a chained `AbortController`. Consumers that already drained earlier chunks keep them; `r.text()` / `for await` reject on the next read. `partialText` is intentionally NOT attached to the error — partial output is observable by holding onto the chunks the consumer already received (the rejection itself only carries `partialUsage`).
 5. **How to handle MCP-server tools where we can't predict cost?** **Tentative answer**: MCP tools have an implicit `unknown` cost; users must declare `budget` on them explicitly to enforce; otherwise excluded from estimation but counted post-hoc.
 
 ---

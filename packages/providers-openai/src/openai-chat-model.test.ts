@@ -130,6 +130,36 @@ describe('OpenAI chat model — stream (custom fetch)', () => {
   });
 });
 
+describe('OpenAI chat model — estimateCost', () => {
+  it('returns sensible bounds for a known model id', async () => {
+    const openai = createOpenAI({ apiKey: 'test' });
+    const model = openai('gpt-4o-mini');
+    if (!model.estimateCost) throw new Error('estimateCost should be defined');
+    const r = await model.estimateCost({
+      messages: [{ role: 'user', content: [{ type: 'text', text: 'hello world' }] }],
+      maxTokens: 100,
+    });
+    expect(r.pricingAvailable).toBe(true);
+    expect(r.minUsd).toBeGreaterThan(0);
+    expect(r.maxUsd).toBeGreaterThan(r.minUsd);
+    expect(r.minTokens).toBeGreaterThan(0);
+    expect(r.maxTokens).toBeGreaterThan(r.minTokens);
+  });
+
+  it('returns pricingAvailable=false for an unknown model id', async () => {
+    const openai = createOpenAI({ apiKey: 'test' });
+    const model = openai('mystery-model-not-in-table');
+    if (!model.estimateCost) throw new Error('estimateCost should be defined');
+    const r = await model.estimateCost({
+      messages: [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }],
+    });
+    expect(r.pricingAvailable).toBe(false);
+    expect(r.minUsd).toBe(0);
+    expect(r.maxUsd).toBe(0);
+    expect(r.maxTokens).toBeGreaterThan(0);
+  });
+});
+
 function sseBody(events: string[]): ReadableStream<Uint8Array> {
   const enc = new TextEncoder();
   return new ReadableStream({

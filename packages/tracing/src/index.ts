@@ -1,4 +1,5 @@
 export { ATTR, type AttrValue } from './attributes.js';
+export { instrumentBudget } from './instrument-budget.js';
 export { instrumentModel } from './instrument-model.js';
 export { instrumentTool, instrumentTools, type ToolLike } from './instrument-tools.js';
 export {

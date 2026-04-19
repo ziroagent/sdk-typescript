@@ -1,5 +1,7 @@
 import {
   APICallError,
+  type CostEstimate,
+  estimateTokensFromMessages,
   type FinishReason,
   type LanguageModel,
   type ModelCallOptions,
@@ -9,6 +11,7 @@ import {
   type TokenUsage,
   type ToolCallPart,
 } from '@ziro-agent/core';
+import { getPricing } from '@ziro-agent/core/pricing';
 import { parseSSE } from './util/sse.js';
 
 /**
@@ -17,17 +20,16 @@ import { parseSSE } from './util/sse.js';
  * when OpenAI ships a new model before we update the SDK.
  */
 export type OpenAIChatModelId =
+  // Current flagships (verified against openai.com/api/pricing 2026-04-20).
+  | 'gpt-5.4'
+  | 'gpt-5.4-mini'
+  | 'gpt-5.4-nano'
+  // Legacy still served on the API.
   | 'gpt-4o'
   | 'gpt-4o-mini'
-  | 'gpt-4.1'
-  | 'gpt-4.1-mini'
-  | 'gpt-4.1-nano'
-  | 'gpt-4-turbo'
-  | 'gpt-3.5-turbo'
-  | 'o1'
-  | 'o1-mini'
-  | 'o3'
-  | 'o3-mini'
+  // Open string for any model id we haven't enumerated — Budget Guard
+  // pre-flight will return `pricingAvailable: false` for unknown ids and
+  // fall back to post-call enforcement only.
   | (string & {});
 
 interface OpenAIChatModelConfig {
@@ -173,6 +175,37 @@ export class OpenAIChatModel implements LanguageModel {
     });
   }
 
+  /**
+   * Pre-flight cost estimate. Conservative bounds: assumes the model fills
+   * `maxTokens` for the upper bound, and emits ~16 tokens for the lower
+   * bound. Returns `pricingAvailable: false` when the SDK has no row for
+   * this model id — Budget Guard will then skip USD pre-flight enforcement.
+   */
+  estimateCost(options: ModelCallOptions): CostEstimate {
+    const inputTokens = estimateTokensFromMessages(asChatMessages(options.messages));
+    const maxOut = options.maxTokens ?? defaultOutputCap(this.modelId);
+    const minOut = Math.min(16, maxOut);
+    const pricing = getPricing(this.provider, this.modelId);
+    if (!pricing) {
+      return {
+        minTokens: inputTokens + minOut,
+        maxTokens: inputTokens + maxOut,
+        minUsd: 0,
+        maxUsd: 0,
+        pricingAvailable: false,
+      };
+    }
+    return {
+      minTokens: inputTokens + minOut,
+      maxTokens: inputTokens + maxOut,
+      minUsd:
+        (inputTokens * pricing.inputPer1M) / 1_000_000 + (minOut * pricing.outputPer1M) / 1_000_000,
+      maxUsd:
+        (inputTokens * pricing.inputPer1M) / 1_000_000 + (maxOut * pricing.outputPer1M) / 1_000_000,
+      pricingAvailable: true,
+    };
+  }
+
   private buildBody(options: ModelCallOptions, stream: boolean): Record<string, unknown> {
     const body: Record<string, unknown> = {
       model: this.modelId,
@@ -302,6 +335,28 @@ function toOpenAIMessage(m: NormalizedMessage): unknown {
       };
     }
   }
+}
+
+/**
+ * Bridge `NormalizedMessage[]` (always `ContentPart[]`) to the public
+ * `ChatMessage[]` shape `estimateTokensFromMessages` accepts. The estimator
+ * only inspects `role` + `content`, so the structural cast is safe.
+ */
+function asChatMessages(
+  messages: NormalizedMessage[],
+): Parameters<typeof estimateTokensFromMessages>[0] {
+  return messages as unknown as Parameters<typeof estimateTokensFromMessages>[0];
+}
+
+/**
+ * Default output token cap when the caller didn't pass `maxTokens`. Mirrors
+ * OpenAI's typical model defaults; intentionally generous so pre-flight
+ * over- rather than underestimates.
+ */
+function defaultOutputCap(modelId: string): number {
+  if (modelId.startsWith('o1') || modelId.startsWith('o3')) return 100_000;
+  if (modelId.startsWith('gpt-5')) return 32_768;
+  return 16_384;
 }
 
 function uint8ToBase64(arr: Uint8Array): string {

@@ -143,6 +143,42 @@ describe('Anthropic messages model — stream', () => {
   });
 });
 
+describe('Anthropic messages model — estimateCost', () => {
+  it('returns sensible bounds for a known model id', async () => {
+    const anthropic = createAnthropic({ apiKey: 'test' });
+    const model = anthropic('claude-haiku-4-5');
+    if (!model.estimateCost) throw new Error('estimateCost should be defined');
+    const r = await model.estimateCost({
+      messages: [{ role: 'user', content: [{ type: 'text', text: 'hello world' }] }],
+      maxTokens: 200,
+    });
+    expect(r.pricingAvailable).toBe(true);
+    expect(r.minUsd).toBeGreaterThan(0);
+    expect(r.maxUsd).toBeGreaterThan(r.minUsd);
+    expect(r.maxTokens).toBeGreaterThan(r.minTokens);
+  });
+
+  it('resolves date-stamped ids by stripping the date suffix', async () => {
+    const anthropic = createAnthropic({ apiKey: 'test' });
+    const model = anthropic('claude-sonnet-4-6-20260101');
+    if (!model.estimateCost) throw new Error('estimateCost should be defined');
+    const r = await model.estimateCost({
+      messages: [{ role: 'user', content: [{ type: 'text', text: 'x' }] }],
+    });
+    expect(r.pricingAvailable).toBe(true);
+  });
+
+  it('returns pricingAvailable=false for unknown id', async () => {
+    const anthropic = createAnthropic({ apiKey: 'test' });
+    const model = anthropic('claude-not-a-real-model');
+    if (!model.estimateCost) throw new Error('estimateCost should be defined');
+    const r = await model.estimateCost({
+      messages: [{ role: 'user', content: [{ type: 'text', text: 'x' }] }],
+    });
+    expect(r.pricingAvailable).toBe(false);
+  });
+});
+
 function sseBody(events: Array<[string, string]>): ReadableStream<Uint8Array> {
   const enc = new TextEncoder();
   return new ReadableStream({

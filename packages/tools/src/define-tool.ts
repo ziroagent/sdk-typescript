@@ -1,3 +1,4 @@
+import type { BudgetSpec } from '@ziro-agent/core';
 import type { z } from 'zod';
 
 export interface ToolExecutionContext {
@@ -17,6 +18,19 @@ export interface Tool<TInput = unknown, TOutput = unknown> {
   readonly input: z.ZodType<TInput>;
   /** Optional output schema (used for runtime validation of execute()'s return). */
   readonly output?: z.ZodType<TOutput>;
+  /**
+   * Per-invocation budget for this tool. When set, every call to `execute()`
+   * runs inside its own `withBudget` scope intersected with the surrounding
+   * agent / `executeToolCalls` budget — see RFC 0001 §"How budgets compose".
+   *
+   * If the budget is exceeded BEFORE the tool's first LLM call (or before
+   * any LLM call at all in the case of a non-LLM tool), `executeToolCalls`
+   * surfaces the resulting `BudgetExceededError` as a tool result with
+   * `isError: true`, so the agent loop sees a failed step rather than a
+   * crashed run. The agent loop's own budget then decides whether to keep
+   * iterating or terminate.
+   */
+  readonly budget?: BudgetSpec;
   execute(input: TInput, ctx: ToolExecutionContext): Promise<TOutput> | TOutput;
 }
 
@@ -25,6 +39,8 @@ export interface DefineToolOptions<TInput, TOutput> {
   description?: string;
   input: z.ZodType<TInput>;
   output?: z.ZodType<TOutput>;
+  /** See {@link Tool.budget}. */
+  budget?: BudgetSpec;
   execute(input: TInput, ctx: ToolExecutionContext): Promise<TOutput> | TOutput;
 }
 
@@ -41,6 +57,7 @@ export function defineTool<TInput, TOutput>(
     ...(options.description !== undefined ? { description: options.description } : {}),
     input: options.input,
     ...(options.output !== undefined ? { output: options.output } : {}),
+    ...(options.budget !== undefined ? { budget: options.budget } : {}),
     execute: options.execute,
   } as Tool<TInput, TOutput>;
 }

@@ -1,0 +1,94 @@
+name: Pricing drift
+
+on:
+  # Weekly nudge — runs every Monday at 09:00 UTC.
+  schedule:
+    - cron: '0 9 * * 1'
+  # Manual trigger from the Actions tab when you want an ad-hoc check.
+  workflow_dispatch:
+    inputs:
+      staleness_days:
+        description: 'Override the default staleness threshold (days).'
+        required: false
+        default: '60'
+  # Run on PRs that touch the pricing table so reviewers see the staleness
+  # status alongside their diff.
+  pull_request:
+    paths:
+      - 'packages/core/src/pricing/data.ts'
+      - 'scripts/check-pricing-drift.ts'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    name: Check pricing freshness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          # Native --experimental-strip-types lands in Node 22.6+.
+          node-version: '22'
+      - name: Run drift check
+        id: drift
+        env:
+          STALENESS_DAYS: ${{ github.event.inputs.staleness_days || '60' }}
+        run: |
+          set +e
+          node --experimental-strip-types scripts/check-pricing-drift.ts | tee drift.log
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+      - name: Annotate stale entries
+        if: steps.drift.outputs.exit_code == '1'
+        run: |
+          echo "::warning title=Pricing drift detected::One or more entries in packages/core/src/pricing/data.ts are older than the staleness threshold. See logs."
+          # Intentionally do NOT fail the job — drift is a reminder, not a
+          # blocker. The annotation surfaces in the PR Files-changed view.
+      - name: Open / refresh tracking issue (scheduled runs only)
+        if: steps.drift.outputs.exit_code == '1' && github.event_name == 'schedule'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('fs');
+            const body = [
+              '## Pricing drift detected',
+              '',
+              'Weekly drift check found stale entries in `packages/core/src/pricing/data.ts`:',
+              '',
+              '```',
+              fs.readFileSync('drift.log', 'utf8'),
+              '```',
+              '',
+              'Re-verify the listed models against the live provider pricing pages and bump `VALID_FROM`.',
+            ].join('\n');
+            const title = 'pricing: drift detected (weekly check)';
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'pricing-drift',
+              state: 'open',
+            });
+            if (existing.data.length > 0) {
+              const issue = existing.data[0];
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['pricing-drift'],
+              });
+            }
+      - name: Fail the job on script error
+        if: steps.drift.outputs.exit_code == '2'
+        run: |
+          echo '::error::Pricing drift script failed (exit 2). See logs.'
+          exit 1

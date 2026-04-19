@@ -36,6 +36,16 @@
         "default": "./dist/index.cjs"
       }
     },
+    "./pricing": {
+      "import": {
+        "types": "./dist/pricing/index.d.ts",
+        "default": "./dist/pricing/index.js"
+      },
+      "require": {
+        "types": "./dist/pricing/index.d.cts",
+        "default": "./dist/pricing/index.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "files": [

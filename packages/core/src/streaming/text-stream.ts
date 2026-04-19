@@ -36,24 +36,46 @@ interface BuildOptions {
  */
 export function buildStreamTextResult({ source, onError }: BuildOptions): StreamTextResult {
   let resolveText: (v: string) => void = () => {};
+  let rejectText: (err: unknown) => void = () => {};
   let resolveFinish: (v: FinishReason) => void = () => {};
+  let rejectFinish: (err: unknown) => void = () => {};
   let resolveUsage: (v: TokenUsage) => void = () => {};
+  let rejectUsage: (err: unknown) => void = () => {};
   let resolveToolCalls: (v: ToolCallPart[]) => void = () => {};
-  let rejectAggregates: (err: unknown) => void = () => {};
+  let rejectToolCalls: (err: unknown) => void = () => {};
 
   const textPromise = new Promise<string>((res, rej) => {
     resolveText = res;
-    rejectAggregates = rej;
+    rejectText = rej;
   });
-  const finishPromise = new Promise<FinishReason>((res) => {
+  const finishPromise = new Promise<FinishReason>((res, rej) => {
     resolveFinish = res;
+    rejectFinish = rej;
   });
-  const usagePromise = new Promise<TokenUsage>((res) => {
+  const usagePromise = new Promise<TokenUsage>((res, rej) => {
     resolveUsage = res;
+    rejectUsage = rej;
   });
-  const toolCallsPromise = new Promise<ToolCallPart[]>((res) => {
+  const toolCallsPromise = new Promise<ToolCallPart[]>((res, rej) => {
     resolveToolCalls = res;
+    rejectToolCalls = rej;
   });
+  // Pre-attach a noop catch so an early rejection (before any consumer
+  // has touched these promises) doesn't surface as an unhandled rejection
+  // on Node. The real consumer's `.catch` / `await` still observes the
+  // rejection normally.
+  textPromise.catch(() => {});
+  finishPromise.catch(() => {});
+  usagePromise.catch(() => {});
+  toolCallsPromise.catch(() => {});
+
+  /** Reject every aggregate so consumers don't hang on `usage()` etc. */
+  const rejectAggregates = (err: unknown): void => {
+    rejectText(err);
+    rejectFinish(err);
+    rejectUsage(err);
+    rejectToolCalls(err);
+  };
 
   let collectedText = '';
   let collectedUsage: TokenUsage = emptyUsage();

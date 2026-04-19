@@ -1,5 +1,13 @@
-import type { GenerateTextOptions } from './generate-text.js';
+import { checkAfterCall, checkBeforeCall, recordUsage } from './budget/enforce.js';
+import { BudgetExceededError } from './budget/errors.js';
+import { applyResolution } from './budget/resolver.js';
+import { getCurrentScope, withBudget } from './budget/scope.js';
+import { computeActualUsd, type GenerateTextOptions, resolveEstimate } from './generate-text.js';
+import { getPricing } from './pricing/index.js';
+import { chainAbortSignals, wrapStreamWithBudget } from './streaming/budget-stream.js';
 import { buildStreamTextResult, type StreamTextResult } from './streaming/text-stream.js';
+import type { ModelCallOptions } from './types/model.js';
+import { estimateTokensFromMessages } from './util/estimate-tokens.js';
 import { normalizePrompt } from './util/normalize-prompt.js';
 
 export type StreamTextOptions = GenerateTextOptions & {
@@ -11,26 +19,131 @@ export type StreamTextOptions = GenerateTextOptions & {
  * Streaming counterpart of `generateText`. Returns a result object with two
  * `ReadableStream`s (text-only and full event), plus aggregate promises that
  * resolve when the stream completes.
+ *
+ * Budget Guard semantics for streams (v0.1.6 layer 4):
+ *   - **Pre-flight**: enforced before the stream is opened (we never start a
+ *     stream we can't afford to finish).
+ *   - **Mid-stream**: every `text-delta` updates a running completion-token
+ *     estimate (chars/4 heuristic) and runs `checkMidStream` against the
+ *     projected total. On overrun, the underlying provider request is
+ *     aborted via an internal `AbortController` chained with the user's
+ *     `abortSignal`, the source reader is cancelled, and the wrapper stream
+ *     errors with `BudgetExceededError`.
+ *   - **Post-call**: when `finish` arrives normally, `recordUsage` mutates
+ *     the scope with the model's reported actual usage and `checkAfterCall`
+ *     re-validates so the next call within the scope sees the updated total.
+ *
+ * `BudgetSpec.onExceed` function form is honored at the **pre-flight** layer
+ * only — once the stream is open and chunks are flowing, mid-stream overrun
+ * always surfaces the error to the consumer (the resolver semantics don't
+ * fit a streaming API where bytes have already been emitted to the user).
  */
 export async function streamText(options: StreamTextOptions): Promise<StreamTextResult> {
-  const { model, tools, toolChoice, onError, ...rest } = options;
+  const { model, tools, toolChoice, onError, budget, ...rest } = options;
 
   const messages = normalizePrompt(rest);
 
-  const source = await model.stream({
-    messages,
-    ...(tools !== undefined ? { tools } : {}),
-    ...(toolChoice !== undefined ? { toolChoice } : {}),
-    ...(rest.temperature !== undefined ? { temperature: rest.temperature } : {}),
-    ...(rest.topP !== undefined ? { topP: rest.topP } : {}),
-    ...(rest.topK !== undefined ? { topK: rest.topK } : {}),
-    ...(rest.maxTokens !== undefined ? { maxTokens: rest.maxTokens } : {}),
-    ...(rest.stopSequences !== undefined ? { stopSequences: rest.stopSequences } : {}),
-    ...(rest.seed !== undefined ? { seed: rest.seed } : {}),
-    ...(rest.providerOptions !== undefined ? { providerOptions: rest.providerOptions } : {}),
-    ...(rest.abortSignal !== undefined ? { abortSignal: rest.abortSignal } : {}),
-    ...(rest.headers !== undefined ? { headers: rest.headers } : {}),
-  });
+  const exec = async (): Promise<StreamTextResult> => {
+    const scope = getCurrentScope();
 
-  return buildStreamTextResult({ source, ...(onError ? { onError } : {}) });
+    // Internal controller used to abort the provider HTTP request when the
+    // mid-stream check trips. Chained with the user's optional signal so
+    // either source can cancel.
+    const internalAC = new AbortController();
+    const chainedSignal = chainAbortSignals(internalAC.signal, rest.abortSignal);
+
+    const callOptions: ModelCallOptions = {
+      messages,
+      ...(tools !== undefined ? { tools } : {}),
+      ...(toolChoice !== undefined ? { toolChoice } : {}),
+      ...(rest.temperature !== undefined ? { temperature: rest.temperature } : {}),
+      ...(rest.topP !== undefined ? { topP: rest.topP } : {}),
+      ...(rest.topK !== undefined ? { topK: rest.topK } : {}),
+      ...(rest.maxTokens !== undefined ? { maxTokens: rest.maxTokens } : {}),
+      ...(rest.stopSequences !== undefined ? { stopSequences: rest.stopSequences } : {}),
+      ...(rest.seed !== undefined ? { seed: rest.seed } : {}),
+      ...(rest.providerOptions !== undefined ? { providerOptions: rest.providerOptions } : {}),
+      // Always pass the chained signal — when there's no scope this is just
+      // the user's signal (or undefined → noop chain).
+      ...(scope || rest.abortSignal ? { abortSignal: chainedSignal } : {}),
+      ...(rest.headers !== undefined ? { headers: rest.headers } : {}),
+    };
+
+    let inputTokensEstimate = 0;
+    if (scope) {
+      const estimate = await resolveEstimate(model, callOptions);
+      checkBeforeCall(scope, estimate);
+      // Stash the input-token estimate so the mid-stream wrapper can build
+      // the projected total without re-running the heuristic.
+      inputTokensEstimate =
+        estimate?.minTokens ??
+        estimateTokensFromMessages(
+          callOptions.messages as unknown as Parameters<typeof estimateTokensFromMessages>[0],
+        );
+    }
+
+    const rawSource = await model.stream(callOptions);
+    const source = scope
+      ? wrapStreamWithBudget({
+          source: rawSource,
+          scope,
+          model,
+          inputTokensEstimate,
+          pricing: getPricing(model.provider, model.modelId) ?? null,
+          internalAbort: internalAC,
+        })
+      : rawSource;
+
+    const result = buildStreamTextResult({ source, ...(onError ? { onError } : {}) });
+
+    if (scope) {
+      // Post-flight check: once usage resolves we record and re-validate.
+      // If the stream ended via mid-stream abort, `usage()` rejects and we
+      // skip recordUsage — the BudgetExceededError already surfaced to the
+      // consumer.
+      void result
+        .usage()
+        .then((usage) => {
+          const actualUsd = computeActualUsd(model, usage);
+          recordUsage(scope, usage, actualUsd);
+          try {
+            checkAfterCall(scope);
+          } catch {
+            // Swallow — the next checkBeforeCall on this scope will re-throw.
+          }
+        })
+        .catch(() => {
+          // Stream errored out (mid-stream abort or transport error); usage
+          // stays at last known good value and the consumer already saw the
+          // error via `text()` / `for await`.
+        });
+    }
+
+    return result;
+  };
+
+  // The pre-flight `onExceed` function-form resolver runs only at the layer
+  // that **owns** the scope (the call that passed `budget`). When streamText
+  // is invoked inside an outer `withBudget`, propagate the error so the
+  // owner can resolve. Mid-stream overruns always surface to the consumer
+  // via the stream itself (resolver semantics don't fit a partially-emitted
+  // response).
+  if (budget) {
+    try {
+      return await withBudget(budget, exec);
+    } catch (err) {
+      if (err instanceof BudgetExceededError) {
+        const syntheticScope = {
+          id: err.scopeId,
+          spec: budget,
+          used: { ...err.partialUsage, steps: 0 },
+          startedAt: 0,
+          firedWarnings: new Set<string>(),
+        };
+        return await applyResolution<StreamTextResult>(syntheticScope, err);
+      }
+      throw err;
+    }
+  }
+  return await exec();
 }
