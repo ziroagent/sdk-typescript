@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
       # NOTE: intentionally NOT setting `registry-url` on setup-node.
       # When `registry-url` is set, setup-node writes a project .npmrc with a
       # literal `${NODE_AUTH_TOKEN}` placeholder AND points NPM_CONFIG_USERCONFIG
