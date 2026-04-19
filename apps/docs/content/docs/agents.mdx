@@ -3,15 +3,15 @@ title: Agents
 description: Tool-using agent loop with stop conditions and streaming events.
 ---
 
-`@ziro-ai/agent` ships a minimal but production-ready ReAct-style loop. It
+`@ziroagent/agent` ships a minimal but production-ready ReAct-style loop. It
 calls the model, executes any tools it requests, threads the results back
 into the conversation, and repeats until a stop condition is met.
 
 ## Quick start
 
 ```ts
-import { createAgent } from '@ziro-ai/agent';
-import { defineTool } from '@ziro-ai/tools';
+import { createAgent } from '@ziroagent/agent';
+import { defineTool } from '@ziroagent/tools';
 import { z } from 'zod';
 
 const search = defineTool({
@@ -35,10 +35,10 @@ const result = await agent.run({
 
 ## Stop conditions
 
-Combine the helpers from `@ziro-ai/agent` to terminate early:
+Combine the helpers from `@ziroagent/agent` to terminate early:
 
 ```ts
-import { createAgent, anyOf, stepCountIs, totalTokensExceeds } from '@ziro-ai/agent';
+import { createAgent, anyOf, stepCountIs, totalTokensExceeds } from '@ziroagent/agent';
 
 createAgent({
   model,

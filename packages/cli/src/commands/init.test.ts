@@ -23,7 +23,7 @@ afterEach(async () => {
 
 describe('runInit', () => {
   it('scaffolds a fresh directory from the basic template', async () => {
-    tmp = await mkdtemp(join(tmpdir(), 'ziro-init-'));
+    tmp = await mkdtemp(join(tmpdir(), 'ziroagent-init-'));
     const target = join(tmp, 'my-app');
     await runInit({ cwd: target, name: 'my-app', logger: silentLogger });
     const entries = await readdir(target);
@@ -36,13 +36,13 @@ describe('runInit', () => {
   });
 
   it('refuses to overwrite a non-empty directory without --force', async () => {
-    tmp = await mkdtemp(join(tmpdir(), 'ziro-init-'));
+    tmp = await mkdtemp(join(tmpdir(), 'ziroagent-init-'));
     await runInit({ cwd: tmp, logger: silentLogger });
     await expect(runInit({ cwd: tmp, logger: silentLogger })).rejects.toThrow(/not empty/);
   });
 
   it('overwrites with --force', async () => {
-    tmp = await mkdtemp(join(tmpdir(), 'ziro-init-'));
+    tmp = await mkdtemp(join(tmpdir(), 'ziroagent-init-'));
     await runInit({ cwd: tmp, logger: silentLogger });
     await expect(
       runInit({ cwd: tmp, force: true, logger: silentLogger }),
@@ -50,7 +50,7 @@ describe('runInit', () => {
   });
 
   it('rejects unknown templates', async () => {
-    tmp = await mkdtemp(join(tmpdir(), 'ziro-init-'));
+    tmp = await mkdtemp(join(tmpdir(), 'ziroagent-init-'));
     await expect(
       runInit({ cwd: tmp, template: 'wat' as 'basic', logger: silentLogger }),
     ).rejects.toThrow(/Unknown template/);

@@ -3,16 +3,16 @@ title: Tracing
 description: First-class OpenTelemetry instrumentation for LLM calls and tool executions.
 ---
 
-`@ziro-ai/tracing` wraps any model or tool to emit spans following the
+`@ziroagent/tracing` wraps any model or tool to emit spans following the
 [OpenTelemetry GenAI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/).
 
 ## Wire up an OTel tracer
 
 ```ts
 import { trace } from '@opentelemetry/api';
-import { setTracer, createOtelTracer, instrumentModel, instrumentTools } from '@ziro-ai/tracing';
+import { setTracer, createOtelTracer, instrumentModel, instrumentTools } from '@ziroagent/tracing';
 
-setTracer(createOtelTracer(trace.getTracer('ziro')));
+setTracer(createOtelTracer(trace.getTracer('ziroagent')));
 
 const tracedModel = instrumentModel(openai('gpt-4o-mini'));
 const tracedTools = instrumentTools({ getWeather, search });

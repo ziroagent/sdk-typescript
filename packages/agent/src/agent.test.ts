@@ -1,5 +1,5 @@
-import type { LanguageModel, ModelGenerateResult, ToolCallPart } from '@ziro-ai/core';
-import { defineTool } from '@ziro-ai/tools';
+import type { LanguageModel, ModelGenerateResult, ToolCallPart } from '@ziroagent/core';
+import { defineTool } from '@ziroagent/tools';
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { createAgent } from './agent.js';

@@ -1,16 +1,16 @@
 {
-  "name": "@ziro-ai/tools",
+  "name": "@ziroagent/tools",
   "version": "0.1.0",
-  "description": "Type-safe tool definitions, parallel execution, and MCP adapter for Ziro AI SDK.",
+  "description": "Type-safe tool definitions, parallel execution, and MCP adapter for ZiroAgent SDK.",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/ziro-ai/sdk/tree/main/packages/tools",
+  "homepage": "https://github.com/ziroagent/sdk-typescript/tree/main/packages/tools",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ziro-ai/sdk.git",
+    "url": "git+https://github.com/ziroagent/sdk-typescript.git",
     "directory": "packages/tools"
   },
   "bugs": {
-    "url": "https://github.com/ziro-ai/sdk/issues"
+    "url": "https://github.com/ziroagent/sdk-typescript/issues"
   },
   "keywords": [
     "ai",
@@ -18,7 +18,7 @@
     "agent",
     "zod",
     "mcp",
-    "ziro"
+    "ziroagent"
   ],
   "type": "module",
   "sideEffects": false,
@@ -54,7 +54,7 @@
     "attw": "attw --pack ."
   },
   "dependencies": {
-    "@ziro-ai/core": "workspace:*",
+    "@ziroagent/core": "workspace:*",
     "zod": "^4.3.6"
   },
   "peerDependencies": {

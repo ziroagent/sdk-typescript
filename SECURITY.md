@@ -12,7 +12,7 @@ Until v1.0, only the latest minor release receives security updates.
 
 **Please do not open public GitHub issues for security vulnerabilities.**
 
-Use [GitHub Security Advisories](https://github.com/ziro-ai/sdk/security/advisories/new) to report privately, or email **security@ziro-ai.dev**.
+Use [GitHub Security Advisories](https://github.com/ziroagent/sdk-typescript/security/advisories/new) to report privately, or email **security@ziroagent.com**.
 
 Please include:
 

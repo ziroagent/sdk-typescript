@@ -1,4 +1,4 @@
-import type { ToolCallPart } from '@ziro-ai/core';
+import type { ToolCallPart } from '@ziroagent/core';
 import type { Tool } from './define-tool.js';
 
 export interface ToolExecutionResult {

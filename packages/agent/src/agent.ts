@@ -6,12 +6,12 @@ import {
   type TokenUsage,
   type ToolCallPart,
   type ToolResultPart,
-} from '@ziro-ai/core';
+} from '@ziroagent/core';
 import {
   executeToolCalls,
   toolsToModelDefinitions,
   type Tool,
-} from '@ziro-ai/tools';
+} from '@ziroagent/tools';
 import type { StopWhen } from './stop-when.js';
 import type { AgentStep, StepEvent, StepEventListener } from './types.js';
 

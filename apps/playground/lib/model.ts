@@ -1,6 +1,6 @@
-import type { LanguageModel } from '@ziro-ai/core';
-import { createAnthropic } from '@ziro-ai/anthropic';
-import { createOpenAI } from '@ziro-ai/openai';
+import type { LanguageModel } from '@ziroagent/core';
+import { createAnthropic } from '@ziroagent/anthropic';
+import { createOpenAI } from '@ziroagent/openai';
 
 /**
  * Resolve the model from environment variables on every request. The

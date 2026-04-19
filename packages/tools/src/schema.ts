@@ -1,4 +1,4 @@
-import type { ToolDefinitionForModel } from '@ziro-ai/core';
+import type { ToolDefinitionForModel } from '@ziroagent/core';
 import { z } from 'zod';
 import type { Tool } from './define-tool.js';
 

@@ -1,6 +1,6 @@
 # ziro-app
 
-Minimal Ziro AI SDK starter.
+Minimal ZiroAgent SDK starter.
 
 ## Quick start
 

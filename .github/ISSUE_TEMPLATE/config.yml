@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Question / Discussion
-    url: https://github.com/ziro-ai/sdk/discussions
+    url: https://github.com/ziroagent/sdk-typescript/discussions
     about: Ask a question or start a discussion.
   - name: Security vulnerability
-    url: https://github.com/ziro-ai/sdk/security/advisories/new
+    url: https://github.com/ziroagent/sdk-typescript/security/advisories/new
     about: Report a security issue privately.

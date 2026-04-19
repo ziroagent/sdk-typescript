@@ -1,4 +1,4 @@
-import type { LanguageModel } from '@ziro-ai/core';
+import type { LanguageModel } from '@ziroagent/core';
 import { OpenAIChatModel, type OpenAIChatModelId } from './openai-chat-model.js';
 
 export interface OpenAIProviderOptions {

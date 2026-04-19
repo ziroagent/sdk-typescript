@@ -1,16 +1,16 @@
 {
-  "name": "@ziro-ai/core",
+  "name": "@ziroagent/core",
   "version": "0.1.0",
-  "description": "Type-safe core for Ziro AI SDK: language model interface, generateText, streamText, message types.",
+  "description": "Type-safe core for ZiroAgent SDK: language model interface, generateText, streamText, message types.",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/ziro-ai/sdk/tree/main/packages/core",
+  "homepage": "https://github.com/ziroagent/sdk-typescript/tree/main/packages/core",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ziro-ai/sdk.git",
+    "url": "git+https://github.com/ziroagent/sdk-typescript.git",
     "directory": "packages/core"
   },
   "bugs": {
-    "url": "https://github.com/ziro-ai/sdk/issues"
+    "url": "https://github.com/ziroagent/sdk-typescript/issues"
   },
   "keywords": [
     "ai",
@@ -18,7 +18,7 @@
     "agent",
     "openai",
     "anthropic",
-    "ziro"
+    "ziroagent"
   ],
   "type": "module",
   "sideEffects": false,

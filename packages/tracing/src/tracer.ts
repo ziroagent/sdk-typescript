@@ -80,7 +80,7 @@ const STATUS_ERROR = 2 as const;
 /**
  * Build a {@link ZiroTracer} backed by an OpenTelemetry tracer. The signature
  * is loose (`unknown`) because we don't want a hard import on
- * `@opentelemetry/api`; pass `trace.getTracer('ziro')` here.
+ * `@opentelemetry/api`; pass `trace.getTracer('ziroagent')` here.
  */
 export function createOtelTracer(otelTracer: unknown): ZiroTracer {
   const t = otelTracer as {

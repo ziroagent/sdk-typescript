@@ -13,7 +13,7 @@
     "../../packages/cli"
   ],
   "out": "public/api",
-  "name": "Ziro AI SDK",
+  "name": "ZiroAgent SDK",
   "readme": "none",
   "excludePrivate": true,
   "excludeProtected": true,

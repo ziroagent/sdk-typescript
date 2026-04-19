@@ -1,6 +1,6 @@
 # Governance
 
-This document describes how the Ziro AI SDK project is governed.
+This document describes how the ZiroAgent SDK project is governed.
 
 ## Roles
 
@@ -51,9 +51,9 @@ For non-trivial API changes (new packages, breaking changes, new core abstractio
 ## Conflict resolution
 
 1. Discuss in the PR or issue.
-2. If unresolved, escalate to maintainers via `@ziro-ai/maintainers`.
+2. If unresolved, escalate to maintainers via `@ziroagent/maintainers`.
 3. If still unresolved, BDFL decides (pre-v1.0) or majority maintainer vote (post-v1.0).
 
 ## Trademark
 
-"Ziro AI SDK" and the Ziro logo are project marks. They may be used to refer to this project but not in a way that suggests endorsement of derived products without permission.
+"ZiroAgent SDK" and the Ziro logo are project marks. They may be used to refer to this project but not in a way that suggests endorsement of derived products without permission.

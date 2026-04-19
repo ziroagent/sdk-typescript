@@ -73,7 +73,7 @@ We pin exact versions in [`bench/versions.json`](bench/versions.json) for reprod
 ## How to reproduce
 
 ```bash
-git clone https://github.com/ziro-ai/sdk
+git clone https://github.com/ziroagent/sdk
 cd sdk
 pnpm install
 cp bench/.env.example bench/.env       # add OPENAI_API_KEY, ANTHROPIC_API_KEY

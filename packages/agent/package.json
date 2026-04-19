@@ -1,23 +1,23 @@
 {
-  "name": "@ziro-ai/agent",
+  "name": "@ziroagent/agent",
   "version": "0.1.0",
-  "description": "Agent loop (ReAct / tool-use) for Ziro AI SDK.",
+  "description": "Agent loop (ReAct / tool-use) for ZiroAgent SDK.",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/ziro-ai/sdk/tree/main/packages/agent",
+  "homepage": "https://github.com/ziroagent/sdk-typescript/tree/main/packages/agent",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ziro-ai/sdk.git",
+    "url": "git+https://github.com/ziroagent/sdk-typescript.git",
     "directory": "packages/agent"
   },
   "bugs": {
-    "url": "https://github.com/ziro-ai/sdk/issues"
+    "url": "https://github.com/ziroagent/sdk-typescript/issues"
   },
   "keywords": [
     "ai",
     "agent",
     "tool-use",
     "react",
-    "ziro"
+    "ziroagent"
   ],
   "type": "module",
   "sideEffects": false,
@@ -48,8 +48,8 @@
     "attw": "attw --pack ."
   },
   "dependencies": {
-    "@ziro-ai/core": "workspace:*",
-    "@ziro-ai/tools": "workspace:*"
+    "@ziroagent/core": "workspace:*",
+    "@ziroagent/tools": "workspace:*"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",

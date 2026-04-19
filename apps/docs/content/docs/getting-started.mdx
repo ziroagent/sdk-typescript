@@ -8,7 +8,7 @@ description: Scaffold a new app and run your first generation in under a minute.
 Use the Ziro CLI to bootstrap a starter project:
 
 ```bash
-pnpm dlx @ziro-ai/cli init my-agent
+pnpm dlx @ziroagent/cli init my-agent
 cd my-agent
 cp .env.example .env  # add your OPENAI_API_KEY
 pnpm install
@@ -18,8 +18,8 @@ pnpm start
 ## 2. Generate text
 
 ```ts
-import { generateText } from '@ziro-ai/core';
-import { createOpenAI } from '@ziro-ai/openai';
+import { generateText } from '@ziroagent/core';
+import { createOpenAI } from '@ziroagent/openai';
 
 const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -34,7 +34,7 @@ console.log(text, usage);
 ## 3. Stream text
 
 ```ts
-import { streamText } from '@ziro-ai/core';
+import { streamText } from '@ziroagent/core';
 
 const result = await streamText({
   model: openai('gpt-4o-mini'),
@@ -52,8 +52,8 @@ while (true) {
 ## 4. Define a tool and run an agent
 
 ```ts
-import { defineTool } from '@ziro-ai/tools';
-import { createAgent } from '@ziro-ai/agent';
+import { defineTool } from '@ziroagent/tools';
+import { createAgent } from '@ziroagent/agent';
 import { z } from 'zod';
 
 const getWeather = defineTool({

@@ -1,7 +1,7 @@
-import { generateText } from '@ziro-ai/core';
-import { chunkText, createOpenAIEmbedder } from '@ziro-ai/memory';
-import { PgVectorStore } from '@ziro-ai/memory/pgvector';
-import { createOpenAI } from '@ziro-ai/openai';
+import { generateText } from '@ziroagent/core';
+import { chunkText, createOpenAIEmbedder } from '@ziroagent/memory';
+import { PgVectorStore } from '@ziroagent/memory/pgvector';
+import { createOpenAI } from '@ziroagent/openai';
 import pg from 'pg';
 
 const apiKey = process.env.OPENAI_API_KEY;
@@ -19,7 +19,7 @@ const store = new PgVectorStore({ pool, dimensions: embedder.dimensions, embedde
 await store.init();
 
 const KNOWLEDGE = [
-  'Ziro AI SDK is an open-source TypeScript SDK for building LLM-powered apps.',
+  'ZiroAgent SDK is an open-source TypeScript SDK for building LLM-powered apps.',
   'Streams in Ziro are Web Streams (ReadableStream<T>); they back generateText and streamText.',
   'Tools in Ziro are defined with Zod and validated before being passed to a model.',
   'The agent loop terminates when the model returns no tool calls, stopWhen fires, or maxSteps is hit.',

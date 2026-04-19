@@ -1,16 +1,16 @@
 {
-  "name": "@ziro-ai/memory",
+  "name": "@ziroagent/memory",
   "version": "0.1.0",
-  "description": "Vector store interfaces, in-memory & pgvector adapters, chunking and embedding helpers for Ziro AI SDK.",
+  "description": "Vector store interfaces, in-memory & pgvector adapters, chunking and embedding helpers for ZiroAgent SDK.",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/ziro-ai/sdk/tree/main/packages/memory",
+  "homepage": "https://github.com/ziroagent/sdk-typescript/tree/main/packages/memory",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ziro-ai/sdk.git",
+    "url": "git+https://github.com/ziroagent/sdk-typescript.git",
     "directory": "packages/memory"
   },
   "bugs": {
-    "url": "https://github.com/ziro-ai/sdk/issues"
+    "url": "https://github.com/ziroagent/sdk-typescript/issues"
   },
   "keywords": [
     "ai",
@@ -19,7 +19,7 @@
     "vector",
     "pgvector",
     "embeddings",
-    "ziro"
+    "ziroagent"
   ],
   "type": "module",
   "sideEffects": false,
@@ -55,7 +55,7 @@
     "attw": "attw --pack ."
   },
   "dependencies": {
-    "@ziro-ai/core": "workspace:*"
+    "@ziroagent/core": "workspace:*"
   },
   "peerDependencies": {
     "pg": ">=8.10.0"

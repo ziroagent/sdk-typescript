@@ -26,10 +26,10 @@ export const ATTR = {
   ToolError: 'gen_ai.tool.error',
 
   // Agent / workflow attributes — Ziro extensions.
-  AgentStepIndex: 'ziro.agent.step.index',
-  AgentMaxSteps: 'ziro.agent.max_steps',
-  WorkflowNodeId: 'ziro.workflow.node.id',
-  WorkflowFinishReason: 'ziro.workflow.finish_reason',
+  AgentStepIndex: 'ziroagent.agent.step.index',
+  AgentMaxSteps: 'ziroagent.agent.max_steps',
+  WorkflowNodeId: 'ziroagent.workflow.node.id',
+  WorkflowFinishReason: 'ziroagent.workflow.finish_reason',
 } as const;
 
 /** Value type accepted by the span attribute API. */

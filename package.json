@@ -1,17 +1,17 @@
 {
-  "name": "ziro-ai-sdk",
+  "name": "ziroagent-sdk",
   "version": "0.0.0",
   "private": true,
   "description": "The full-stack agent SDK — type-safe core, MCP-native tools, batteries-included devtools.",
   "license": "Apache-2.0",
-  "author": "Ziro AI Contributors",
-  "homepage": "https://github.com/ziro-ai/sdk",
+  "author": "ZiroAgent Contributors",
+  "homepage": "https://github.com/ziroagent/sdk-typescript",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ziro-ai/sdk.git"
+    "url": "git+https://github.com/ziroagent/sdk-typescript.git"
   },
   "bugs": {
-    "url": "https://github.com/ziro-ai/sdk/issues"
+    "url": "https://github.com/ziroagent/sdk-typescript/issues"
   },
   "type": "module",
   "packageManager": "pnpm@10.33.0",

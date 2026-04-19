@@ -1,4 +1,4 @@
-import { streamText, type ChatMessage } from '@ziro-ai/core';
+import { streamText, type ChatMessage } from '@ziroagent/core';
 import { resolveModel } from '@/lib/model';
 import { sessions } from '@/lib/sessions';
 
@@ -80,7 +80,7 @@ export async function POST(req: Request): Promise<Response> {
     headers: {
       'content-type': 'text/event-stream; charset=utf-8',
       'cache-control': 'no-cache, no-transform',
-      'x-ziro-session-id': session.id,
+      'x-ziroagent-session-id': session.id,
     },
   });
 }

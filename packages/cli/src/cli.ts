@@ -7,9 +7,9 @@ import { createLogger } from './util/logger.js';
 
 const VERSION = '0.1.0';
 
-const HELP = `${kleur.bold('ziro')} ${kleur.gray(`v${VERSION}`)}
+const HELP = `${kleur.bold('ziroagent')} ${kleur.gray(`v${VERSION}`)}
 
-${kleur.bold('Usage:')}  ziro <command> [options]
+${kleur.bold('Usage:')}  ziroagent <command> [options]
 
 ${kleur.bold('Commands:')}
   init [dir]               Scaffold a new Ziro app (default template: basic)
@@ -20,9 +20,9 @@ ${kleur.bold('Commands:')}
   version                  Print the CLI version
 
 ${kleur.bold('Examples:')}
-  $ ziro init my-agent
-  $ ziro run basic-chat
-  $ ziro playground --port 4000
+  $ ziroagent init my-agent
+  $ ziroagent run basic-chat
+  $ ziroagent playground --port 4000
 `;
 
 async function main(argv: string[]): Promise<number> {
@@ -60,7 +60,7 @@ async function main(argv: string[]): Promise<number> {
       }
       const example = positional[0];
       if (!example) {
-        logger.error('Missing example name. Try `ziro run --list`.');
+        logger.error('Missing example name. Try `ziroagent run --list`.');
         return 1;
       }
       return await runExample({ example, cwd: process.cwd(), logger });

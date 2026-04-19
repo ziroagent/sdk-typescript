@@ -1,4 +1,4 @@
-import { generateText, streamText } from '@ziro-ai/core';
+import { generateText, streamText } from '@ziroagent/core';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';

@@ -2,7 +2,7 @@ import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
 
 export const baseOptions: BaseLayoutProps = {
   nav: {
-    title: 'Ziro AI SDK',
+    title: 'ZiroAgent SDK',
   },
   links: [
     {
@@ -12,7 +12,7 @@ export const baseOptions: BaseLayoutProps = {
     },
     {
       text: 'GitHub',
-      url: 'https://github.com/ziro-ai/sdk',
+      url: 'https://github.com/ziroagent/sdk-typescript',
       external: true,
     },
   ],

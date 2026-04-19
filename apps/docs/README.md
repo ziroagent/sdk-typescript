@@ -1,13 +1,13 @@
-# @ziro-ai/docs
+# @ziroagent/docs
 
-Documentation site for the Ziro AI SDK, built with
+Documentation site for the ZiroAgent SDK, built with
 [Fumadocs](https://fumadocs.dev/) on top of Next.js 16.
 
 ## Develop
 
 ```bash
 pnpm install
-pnpm --filter @ziro-ai/docs dev
+pnpm --filter @ziroagent/docs dev
 # → http://localhost:4001
 ```
 
@@ -16,5 +16,5 @@ pnpm --filter @ziro-ai/docs dev
 The reference under `/api/*` is produced from TSDoc comments:
 
 ```bash
-pnpm --filter @ziro-ai/docs api:generate
+pnpm --filter @ziroagent/docs api:generate
 ```

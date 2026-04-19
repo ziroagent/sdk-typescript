@@ -1,8 +1,8 @@
 {
-  "name": "@ziro-ai/docs",
+  "name": "@ziroagent/docs",
   "version": "0.1.0",
   "private": true,
-  "description": "Documentation site for the Ziro AI SDK (Fumadocs + Next.js).",
+  "description": "Documentation site for the ZiroAgent SDK (Fumadocs + Next.js).",
   "type": "module",
   "scripts": {
     "dev": "next dev --port 4001",

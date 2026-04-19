@@ -78,22 +78,22 @@ importers:
 
   apps/playground:
     dependencies:
-      '@ziro-ai/agent':
+      '@ziroagent/agent':
         specifier: workspace:*
         version: link:../../packages/agent
-      '@ziro-ai/anthropic':
+      '@ziroagent/anthropic':
         specifier: workspace:*
         version: link:../../packages/providers-anthropic
-      '@ziro-ai/core':
+      '@ziroagent/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@ziro-ai/openai':
+      '@ziroagent/openai':
         specifier: workspace:*
         version: link:../../packages/providers-openai
-      '@ziro-ai/tools':
+      '@ziroagent/tools':
         specifier: workspace:*
         version: link:../../packages/tools
-      '@ziro-ai/tracing':
+      '@ziroagent/tracing':
         specifier: workspace:*
         version: link:../../packages/tracing
       next:
@@ -124,16 +124,16 @@ importers:
 
   examples/agent-with-tools:
     dependencies:
-      '@ziro-ai/agent':
+      '@ziroagent/agent':
         specifier: workspace:*
         version: link:../../packages/agent
-      '@ziro-ai/core':
+      '@ziroagent/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@ziro-ai/openai':
+      '@ziroagent/openai':
         specifier: workspace:*
         version: link:../../packages/providers-openai
-      '@ziro-ai/tools':
+      '@ziroagent/tools':
         specifier: workspace:*
         version: link:../../packages/tools
       zod:
@@ -149,10 +149,10 @@ importers:
 
   examples/basic-chat:
     dependencies:
-      '@ziro-ai/core':
+      '@ziroagent/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@ziro-ai/openai':
+      '@ziroagent/openai':
         specifier: workspace:*
         version: link:../../packages/providers-openai
     devDependencies:
@@ -165,16 +165,16 @@ importers:
 
   examples/multi-agent-workflow:
     dependencies:
-      '@ziro-ai/agent':
+      '@ziroagent/agent':
         specifier: workspace:*
         version: link:../../packages/agent
-      '@ziro-ai/core':
+      '@ziroagent/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@ziro-ai/openai':
+      '@ziroagent/openai':
         specifier: workspace:*
         version: link:../../packages/providers-openai
-      '@ziro-ai/workflow':
+      '@ziroagent/workflow':
         specifier: workspace:*
         version: link:../../packages/workflow
     devDependencies:
@@ -187,13 +187,13 @@ importers:
 
   examples/rag-pgvector:
     dependencies:
-      '@ziro-ai/core':
+      '@ziroagent/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@ziro-ai/memory':
+      '@ziroagent/memory':
         specifier: workspace:*
         version: link:../../packages/memory
-      '@ziro-ai/openai':
+      '@ziroagent/openai':
         specifier: workspace:*
         version: link:../../packages/providers-openai
       pg:
@@ -212,10 +212,10 @@ importers:
 
   packages/agent:
     dependencies:
-      '@ziro-ai/core':
+      '@ziroagent/core':
         specifier: workspace:*
         version: link:../core
-      '@ziro-ai/tools':
+      '@ziroagent/tools':
         specifier: workspace:*
         version: link:../tools
     devDependencies:
@@ -287,7 +287,7 @@ importers:
 
   packages/memory:
     dependencies:
-      '@ziro-ai/core':
+      '@ziroagent/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -315,7 +315,7 @@ importers:
 
   packages/providers-anthropic:
     dependencies:
-      '@ziro-ai/core':
+      '@ziroagent/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -340,7 +340,7 @@ importers:
 
   packages/providers-openai:
     dependencies:
-      '@ziro-ai/core':
+      '@ziroagent/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -365,7 +365,7 @@ importers:
 
   packages/tools:
     dependencies:
-      '@ziro-ai/core':
+      '@ziroagent/core':
         specifier: workspace:*
         version: link:../core
       zod:
@@ -393,7 +393,7 @@ importers:
 
   packages/tracing:
     dependencies:
-      '@ziro-ai/core':
+      '@ziroagent/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -421,7 +421,7 @@ importers:
 
   packages/workflow:
     dependencies:
-      '@ziro-ai/core':
+      '@ziroagent/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:

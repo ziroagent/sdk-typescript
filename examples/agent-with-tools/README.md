@@ -6,5 +6,5 @@ subscriptions, and `maxSteps`.
 
 ```bash
 export OPENAI_API_KEY=sk-...
-pnpm --filter @ziro-ai/example-agent-with-tools start
+pnpm --filter @ziroagent/example-agent-with-tools start
 ```

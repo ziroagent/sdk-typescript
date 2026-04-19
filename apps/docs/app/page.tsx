@@ -13,7 +13,7 @@ export default function HomePage() {
         textAlign: 'center',
       }}
     >
-      <h1 style={{ fontSize: '3rem', margin: 0 }}>Ziro AI SDK</h1>
+      <h1 style={{ fontSize: '3rem', margin: 0 }}>ZiroAgent SDK</h1>
       <p style={{ maxWidth: 600, color: 'var(--color-fd-muted-foreground, #6b7280)' }}>
         Open-source, full-stack TypeScript SDK for building AI agents and workflows.
       </p>
@@ -31,7 +31,7 @@ export default function HomePage() {
           Read the docs
         </Link>
         <a
-          href="https://github.com/ziro-ai/sdk"
+          href="https://github.com/ziroagent/sdk-typescript"
           style={{
             padding: '10px 18px',
             borderRadius: 8,

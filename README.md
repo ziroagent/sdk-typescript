@@ -1,6 +1,6 @@
 <div align="center">
 
-# Ziro AI SDK
+# ZiroAgent SDK
 
 **The TypeScript agent runtime that survives crashes, throttles costs, and keeps audit trails.**
 
@@ -17,7 +17,7 @@
 
 > **Why this exists.** 88% of enterprise AI agent projects never reach production — the median cause is not bad prompts, it's missing infrastructure: no durable execution, no cost guardrails, no audit trail, no replayable traces. Ziro is the agent SDK we wished existed when we got paged at 3am because an agent burned $12,400 in a retry loop.
 
-Ziro AI SDK is an open-source TypeScript toolkit for building **production-safe** AI agents. It bundles a type-safe LLM core, MCP-native tools, an agent loop with durable execution adapters, cost & policy guardrails, evals-as-code, OpenTelemetry tracing, and an AG-UI streaming layer — designed to run anywhere from Vercel Edge to a fully air-gapped on-prem cluster.
+ZiroAgent SDK is an open-source TypeScript toolkit for building **production-safe** AI agents. It bundles a type-safe LLM core, MCP-native tools, an agent loop with durable execution adapters, cost & policy guardrails, evals-as-code, OpenTelemetry tracing, and an AG-UI streaming layer — designed to run anywhere from Vercel Edge to a fully air-gapped on-prem cluster.
 
 ## Who this is for
 
@@ -62,18 +62,18 @@ See [`POSITIONING.md`](POSITIONING.md) for the honest comparison and [`STRATEGY.
 ```bash
 npm create ziro@latest my-agent
 cd my-agent
-ziro chat                      # interactive REPL, asks for API key, persists to ~/.ziro/config.json
+ziro chat                      # interactive REPL, asks for API key, persists to ~/.ziroagent/config.json
 ```
 
 Or use it as a library:
 
 ```bash
-pnpm add @ziro-ai/core @ziro-ai/openai
+pnpm add @ziroagent/core @ziroagent/openai
 ```
 
 ```ts
-import { generateText } from '@ziro-ai/core';
-import { openai } from '@ziro-ai/openai';
+import { generateText } from '@ziroagent/core';
+import { openai } from '@ziroagent/openai';
 
 const { text, usage, costUsd } = await generateText({
   model: openai('gpt-4o-mini'),
@@ -86,10 +86,10 @@ const { text, usage, costUsd } = await generateText({
 ### A real production agent in ~20 lines
 
 ```ts
-import { createAgent } from '@ziro-ai/agent';
-import { defineTool } from '@ziro-ai/tools';
-import { openai } from '@ziro-ai/openai';
-import { temporal } from '@ziro-ai/temporal';
+import { createAgent } from '@ziroagent/agent';
+import { defineTool } from '@ziroagent/tools';
+import { openai } from '@ziroagent/openai';
+import { temporal } from '@ziroagent/temporal';
 import { z } from 'zod';
 
 const refundOrder = defineTool({
@@ -121,7 +121,7 @@ ziro mcp serve ./my-agent.ts          # Claude Desktop / Cursor / Codex see it i
 ### Eval-as-code (ships with v0.2)
 
 ```ts
-import { defineEval } from '@ziro-ai/eval';
+import { defineEval } from '@ziroagent/eval';
 
 export default defineEval({
   agent,
@@ -141,23 +141,23 @@ ziro eval ./evals/*.ts --gate 0.95     # CI gate: fail merge if score < 95%
 
 | Package | Status | Description |
 | --- | --- | --- |
-| [`@ziro-ai/core`](packages/core) | v0.1 | Model interface, `generateText`, `streamText`, budget & cache primitives |
-| [`@ziro-ai/openai`](packages/providers-openai) | v0.1 | OpenAI provider |
-| [`@ziro-ai/anthropic`](packages/providers-anthropic) | v0.1 | Anthropic provider with explicit prompt-cache control |
-| [`@ziro-ai/ollama`](packages/providers-ollama) | v0.1 | Local-first provider (sovereign mode) |
-| [`@ziro-ai/google`](packages/providers-google) | v0.2 | Google Gemini provider |
-| [`@ziro-ai/tools`](packages/tools) | v0.1 | `defineTool` + MCP client |
-| [`@ziro-ai/mcp`](packages/mcp) | v0.1 | MCP **server** — expose your tools/agents to Claude/Cursor |
-| [`@ziro-ai/agent`](packages/agent) | v0.1 | Agent loop, HITL approval, step events |
-| [`@ziro-ai/gateway`](packages/gateway) | v0.2 | Routing, fallback, virtual keys, PII redaction, cost tracking |
-| [`@ziro-ai/temporal`](packages/temporal) | v0.2 | Durable runtime adapter (Temporal) |
-| [`@ziro-ai/inngest`](packages/inngest) | v0.2 | Durable runtime adapter (Inngest) |
-| [`@ziro-ai/eval`](packages/eval) | v0.2 | `defineEval`, LLM-judge, replay-from-trace |
-| [`@ziro-ai/memory`](packages/memory) | v0.1 | Vector store interface, in-memory + pgvector |
-| [`@ziro-ai/workflow`](packages/workflow) | v0.1 | Graph engine for multi-agent flows |
-| [`@ziro-ai/tracing`](packages/tracing) | v0.1 | OpenTelemetry instrumentation |
-| [`@ziro-ai/agui`](packages/agui) | v0.2 | AG-UI event emitter for streaming agent state to frontends |
-| [`@ziro-ai/cli`](packages/cli) | v0.1 | `ziro` CLI: `chat`, `run`, `eval`, `mcp`, `playground` |
+| [`@ziroagent/core`](packages/core) | v0.1 | Model interface, `generateText`, `streamText`, budget & cache primitives |
+| [`@ziroagent/openai`](packages/providers-openai) | v0.1 | OpenAI provider |
+| [`@ziroagent/anthropic`](packages/providers-anthropic) | v0.1 | Anthropic provider with explicit prompt-cache control |
+| [`@ziroagent/ollama`](packages/providers-ollama) | v0.1 | Local-first provider (sovereign mode) |
+| [`@ziroagent/google`](packages/providers-google) | v0.2 | Google Gemini provider |
+| [`@ziroagent/tools`](packages/tools) | v0.1 | `defineTool` + MCP client |
+| [`@ziroagent/mcp`](packages/mcp) | v0.1 | MCP **server** — expose your tools/agents to Claude/Cursor |
+| [`@ziroagent/agent`](packages/agent) | v0.1 | Agent loop, HITL approval, step events |
+| [`@ziroagent/gateway`](packages/gateway) | v0.2 | Routing, fallback, virtual keys, PII redaction, cost tracking |
+| [`@ziroagent/temporal`](packages/temporal) | v0.2 | Durable runtime adapter (Temporal) |
+| [`@ziroagent/inngest`](packages/inngest) | v0.2 | Durable runtime adapter (Inngest) |
+| [`@ziroagent/eval`](packages/eval) | v0.2 | `defineEval`, LLM-judge, replay-from-trace |
+| [`@ziroagent/memory`](packages/memory) | v0.1 | Vector store interface, in-memory + pgvector |
+| [`@ziroagent/workflow`](packages/workflow) | v0.1 | Graph engine for multi-agent flows |
+| [`@ziroagent/tracing`](packages/tracing) | v0.1 | OpenTelemetry instrumentation |
+| [`@ziroagent/agui`](packages/agui) | v0.2 | AG-UI event emitter for streaming agent state to frontends |
+| [`@ziroagent/cli`](packages/cli) | v0.1 | `ziro` CLI: `chat`, `run`, `eval`, `mcp`, `playground` |
 
 ## Apps
 
@@ -200,7 +200,7 @@ Contributions are very welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md), our [Co
 
 ## Ziro Cloud (planned, v1.0)
 
-The OSS SDK will always be fully featured and self-hostable. We are also building **Ziro Cloud** — a managed offering for teams that don't want to operate Temporal + OTel collectors + an eval store themselves. Free tier + usage-based pricing. [Sign up for early access →](https://ziro-ai.dev/cloud)
+The OSS SDK will always be fully featured and self-hostable. We are also building **Ziro Cloud** — a managed offering for teams that don't want to operate Temporal + OTel collectors + an eval store themselves. Free tier + usage-based pricing. [Sign up for early access →](https://ziroagent.com/cloud)
 
 ## License
 

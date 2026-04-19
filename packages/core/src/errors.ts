@@ -1,5 +1,5 @@
 /**
- * Base class for every Ziro AI SDK error. Always check with `isZiroError()` —
+ * Base class for every ZiroAgent SDK error. Always check with `isZiroError()` —
  * never `instanceof` across realms (e.g. workers, vm contexts).
  */
 export class ZiroError extends Error {

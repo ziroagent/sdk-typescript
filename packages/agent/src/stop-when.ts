@@ -1,4 +1,4 @@
-import type { TokenUsage } from '@ziro-ai/core';
+import type { TokenUsage } from '@ziroagent/core';
 import type { AgentStep } from './types.js';
 
 export interface StopWhenContext {

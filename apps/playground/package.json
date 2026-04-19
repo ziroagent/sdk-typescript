@@ -1,8 +1,8 @@
 {
-  "name": "@ziro-ai/playground",
+  "name": "@ziroagent/playground",
   "version": "0.1.0",
   "private": true,
-  "description": "Local dev playground for the Ziro AI SDK — chat UI, trace viewer, tool inspector, session replay.",
+  "description": "Local dev playground for the ZiroAgent SDK — chat UI, trace viewer, tool inspector, session replay.",
   "type": "module",
   "scripts": {
     "dev": "next dev --port 4000",
@@ -12,12 +12,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@ziro-ai/agent": "workspace:*",
-    "@ziro-ai/anthropic": "workspace:*",
-    "@ziro-ai/core": "workspace:*",
-    "@ziro-ai/openai": "workspace:*",
-    "@ziro-ai/tools": "workspace:*",
-    "@ziro-ai/tracing": "workspace:*",
+    "@ziroagent/agent": "workspace:*",
+    "@ziroagent/anthropic": "workspace:*",
+    "@ziroagent/core": "workspace:*",
+    "@ziroagent/openai": "workspace:*",
+    "@ziroagent/tools": "workspace:*",
+    "@ziroagent/tracing": "workspace:*",
     "next": "^16.2.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

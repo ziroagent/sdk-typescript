@@ -1,16 +1,16 @@
 {
-  "name": "@ziro-ai/workflow",
+  "name": "@ziroagent/workflow",
   "version": "0.1.0",
   "description": "Type-safe graph engine for multi-step, multi-agent workflows.",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/ziro-ai/sdk/tree/main/packages/workflow",
+  "homepage": "https://github.com/ziroagent/sdk-typescript/tree/main/packages/workflow",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ziro-ai/sdk.git",
+    "url": "git+https://github.com/ziroagent/sdk-typescript.git",
     "directory": "packages/workflow"
   },
   "bugs": {
-    "url": "https://github.com/ziro-ai/sdk/issues"
+    "url": "https://github.com/ziroagent/sdk-typescript/issues"
   },
   "keywords": [
     "ai",
@@ -18,7 +18,7 @@
     "graph",
     "agent",
     "orchestration",
-    "ziro"
+    "ziroagent"
   ],
   "type": "module",
   "sideEffects": false,
@@ -49,7 +49,7 @@
     "attw": "attw --pack ."
   },
   "dependencies": {
-    "@ziro-ai/core": "workspace:*"
+    "@ziroagent/core": "workspace:*"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",

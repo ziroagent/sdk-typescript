@@ -1,21 +1,21 @@
 {
-  "name": "@ziro-ai/cli",
+  "name": "@ziroagent/cli",
   "version": "0.1.0",
-  "description": "Ziro AI SDK command-line tools — scaffolds, examples runner, and dev playground launcher.",
+  "description": "ZiroAgent SDK command-line tools — scaffolds, examples runner, and dev playground launcher.",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/ziro-ai/sdk/tree/main/packages/cli",
+  "homepage": "https://github.com/ziroagent/sdk-typescript/tree/main/packages/cli",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ziro-ai/sdk.git",
+    "url": "git+https://github.com/ziroagent/sdk-typescript.git",
     "directory": "packages/cli"
   },
   "bugs": {
-    "url": "https://github.com/ziro-ai/sdk/issues"
+    "url": "https://github.com/ziroagent/sdk-typescript/issues"
   },
   "keywords": [
     "ai",
     "cli",
-    "ziro",
+    "ziroagent",
     "scaffold",
     "playground"
   ],
@@ -25,7 +25,7 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "ziro": "./dist/cli.js"
+    "ziroagent": "./dist/cli.js"
   },
   "exports": {
     ".": {

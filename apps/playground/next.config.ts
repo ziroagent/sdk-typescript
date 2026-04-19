@@ -5,12 +5,12 @@ const nextConfig: NextConfig = {
   experimental: { typedRoutes: false },
   // Workspace packages are already TS — let Next.js compile them.
   transpilePackages: [
-    '@ziro-ai/core',
-    '@ziro-ai/openai',
-    '@ziro-ai/anthropic',
-    '@ziro-ai/tools',
-    '@ziro-ai/agent',
-    '@ziro-ai/tracing',
+    '@ziroagent/core',
+    '@ziroagent/openai',
+    '@ziroagent/anthropic',
+    '@ziroagent/tools',
+    '@ziroagent/agent',
+    '@ziroagent/tracing',
   ],
 };
 

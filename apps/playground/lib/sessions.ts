@@ -1,4 +1,4 @@
-import type { ChatMessage } from '@ziro-ai/core';
+import type { ChatMessage } from '@ziroagent/core';
 
 /**
  * In-memory session log. The playground is single-process and dev-only so a
@@ -55,11 +55,11 @@ class SessionStore {
 
 declare global {
   // biome-ignore lint/style/noVar: must be `var` to attach to globalThis.
-  var __ziroPlaygroundStore: SessionStore | undefined;
+  var __ziroAgentPlaygroundStore: SessionStore | undefined;
 }
 
 export const sessions: SessionStore =
-  globalThis.__ziroPlaygroundStore ?? (globalThis.__ziroPlaygroundStore = new SessionStore());
+  globalThis.__ziroAgentPlaygroundStore ?? (globalThis.__ziroAgentPlaygroundStore = new SessionStore());
 
 function randomId(): string {
   const c = (globalThis as unknown as { crypto?: { randomUUID?: () => string } }).crypto;

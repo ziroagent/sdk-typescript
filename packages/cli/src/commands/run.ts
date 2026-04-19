@@ -20,7 +20,7 @@ export async function runExample(options: RunOptions): Promise<number> {
   const exampleDir = resolveExampleDir(options.example);
   if (!exampleDir) {
     throw new Error(
-      `Unknown example "${options.example}". Run \`ziro run --list\` to see available examples.`,
+      `Unknown example "${options.example}". Run \`ziroagent run --list\` to see available examples.`,
     );
   }
 

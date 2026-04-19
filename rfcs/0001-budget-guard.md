@@ -1,9 +1,9 @@
 # RFC 0001: BudgetGuard — first-class cost enforcement
 
 - Start date: 2026-04-19
-- Authors: @ziro-ai/maintainers
+- Authors: @ziroagent/maintainers
 - Status: draft
-- Affected packages: `@ziro-ai/core`, `@ziro-ai/agent`, `@ziro-ai/tools`, `@ziro-ai/gateway`
+- Affected packages: `@ziroagent/core`, `@ziroagent/agent`, `@ziroagent/tools`, `@ziroagent/gateway`
 
 ## Summary
 
@@ -41,7 +41,7 @@ try {
 
 ## Detailed design
 
-### Core types (in `@ziro-ai/core`)
+### Core types (in `@ziroagent/core`)
 
 ```ts
 export interface BudgetSpec {
@@ -114,7 +114,7 @@ interface LanguageModel {
 
 Before sending a request, the SDK calls `estimateCost`. If `currentUsage.usd + estimate.minUsd > budget.maxUsd`, the SDK throws **without making the network call** (the canonical "throw before overspend" guarantee).
 
-This requires per-provider pricing tables, kept in `@ziro-ai/core/pricing` and updated weekly via a scheduled CI job (see also: `pricing-table.json` schema in §Adoption).
+This requires per-provider pricing tables, kept in `@ziroagent/core/pricing` and updated weekly via a scheduled CI job (see also: `pricing-table.json` schema in §Adoption).
 
 ### API surface
 
@@ -155,7 +155,7 @@ A tool's declared budget is **min(tool.budget, parent.toolBudget, parent.budget.
 #### Inspecting budget state from inside a tool
 
 ```ts
-import { getCurrentBudget } from '@ziro-ai/core';
+import { getCurrentBudget } from '@ziroagent/core';
 
 execute: async (input, ctx) => {
   const budget = getCurrentBudget();
@@ -178,7 +178,7 @@ Every budget scope emits the following spans/events:
 | `ziro.budget.exceeded` | Hard limit hit | `kind`, `limit`, `observed`, `partial_usage` |
 | `ziro.budget.scope.end` | Scope exits cleanly or via throw | `final_usage`, `outcome` |
 
-These integrate with the standard `@ziro-ai/tracing` exporter and are visible in the playground's trace timeline.
+These integrate with the standard `@ziroagent/tracing` exporter and are visible in the playground's trace timeline.
 
 ### Interaction with `DurableRuntime` (forward compat with RFC 0002)
 
@@ -221,16 +221,16 @@ This is **additive and opt-in**. Existing Ziro v0.0.x users see no behavioral ch
 
 | Stage | Package | What ships |
 | --- | --- | --- |
-| v0.1.0 | `@ziro-ai/core` | `BudgetSpec`, `BudgetExceededError`, `withBudget`, `generateText({ budget })` |
-| v0.1.0 | `@ziro-ai/openai`, `@ziro-ai/anthropic` | `estimateCost()` + pricing tables |
-| v0.1.1 | `@ziro-ai/agent` | `agent.run({ budget, toolBudget })`, AsyncLocalStorage context |
-| v0.1.2 | `@ziro-ai/tools` | `defineTool({ budget })`, `getCurrentBudget()` helper |
-| v0.1.x | `@ziro-ai/tracing` | OTel events `ziro.budget.*` |
-| v0.2.0 | `@ziro-ai/eval` | `cost-budget` grader for eval suite |
-| v0.2.0 | `@ziro-ai/temporal`, `@ziro-ai/inngest` | Budget state persistence on crash/resume |
-| v0.3.0 | `@ziro-ai/gateway` | Per-virtual-key budget enforcement |
+| v0.1.0 | `@ziroagent/core` | `BudgetSpec`, `BudgetExceededError`, `withBudget`, `generateText({ budget })` |
+| v0.1.0 | `@ziroagent/openai`, `@ziroagent/anthropic` | `estimateCost()` + pricing tables |
+| v0.1.1 | `@ziroagent/agent` | `agent.run({ budget, toolBudget })`, AsyncLocalStorage context |
+| v0.1.2 | `@ziroagent/tools` | `defineTool({ budget })`, `getCurrentBudget()` helper |
+| v0.1.x | `@ziroagent/tracing` | OTel events `ziro.budget.*` |
+| v0.2.0 | `@ziroagent/eval` | `cost-budget` grader for eval suite |
+| v0.2.0 | `@ziroagent/temporal`, `@ziroagent/inngest` | Budget state persistence on crash/resume |
+| v0.3.0 | `@ziroagent/gateway` | Per-virtual-key budget enforcement |
 
-### Pricing-table format (`@ziro-ai/core/pricing`)
+### Pricing-table format (`@ziroagent/core/pricing`)
 
 ```jsonc
 {

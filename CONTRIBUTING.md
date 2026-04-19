@@ -1,4 +1,4 @@
-# Contributing to Ziro AI SDK
+# Contributing to ZiroAgent SDK
 
 Thanks for your interest in contributing! This document explains how to set up the project, our conventions, and the review process.
 
@@ -17,7 +17,7 @@ This project adheres to the [Contributor Covenant](CODE_OF_CONDUCT.md). By parti
 ### Setup
 
 ```bash
-git clone https://github.com/ziro-ai/sdk.git
+git clone https://github.com/ziroagent/sdk-typescript.git
 cd sdk
 pnpm install
 pnpm build
@@ -69,7 +69,7 @@ Use `git commit -s` to add it automatically.
 | `chore` | Tooling, build, CI |
 | `breaking` | Breaking change (also use `!` after type) |
 
-Scope should be the package name without the `@ziro-ai/` prefix, e.g. `feat(core): ...`, `fix(agent): ...`.
+Scope should be the package name without the `@ziroagent/` prefix, e.g. `feat(core): ...`, `fix(agent): ...`.
 
 ## Changesets
 

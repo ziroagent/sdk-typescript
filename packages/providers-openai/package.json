@@ -1,22 +1,22 @@
 {
-  "name": "@ziro-ai/openai",
+  "name": "@ziroagent/openai",
   "version": "0.1.0",
-  "description": "OpenAI provider for Ziro AI SDK.",
+  "description": "OpenAI provider for ZiroAgent SDK.",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/ziro-ai/sdk/tree/main/packages/providers-openai",
+  "homepage": "https://github.com/ziroagent/sdk-typescript/tree/main/packages/providers-openai",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ziro-ai/sdk.git",
+    "url": "git+https://github.com/ziroagent/sdk-typescript.git",
     "directory": "packages/providers-openai"
   },
   "bugs": {
-    "url": "https://github.com/ziro-ai/sdk/issues"
+    "url": "https://github.com/ziroagent/sdk-typescript/issues"
   },
   "keywords": [
     "ai",
     "llm",
     "openai",
-    "ziro",
+    "ziroagent",
     "gpt"
   ],
   "type": "module",
@@ -48,7 +48,7 @@
     "attw": "attw --pack ."
   },
   "dependencies": {
-    "@ziro-ai/core": "workspace:*"
+    "@ziroagent/core": "workspace:*"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",

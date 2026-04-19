@@ -1,5 +1,5 @@
 {
-  "name": "@ziro-ai/example-rag-pgvector",
+  "name": "@ziroagent/example-rag-pgvector",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -7,9 +7,9 @@
     "start": "tsx index.ts"
   },
   "dependencies": {
-    "@ziro-ai/core": "workspace:*",
-    "@ziro-ai/memory": "workspace:*",
-    "@ziro-ai/openai": "workspace:*",
+    "@ziroagent/core": "workspace:*",
+    "@ziroagent/memory": "workspace:*",
+    "@ziroagent/openai": "workspace:*",
     "pg": "^8.13.1"
   },
   "devDependencies": {

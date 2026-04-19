@@ -3,7 +3,7 @@ title: Introduction
 description: Build production-grade AI agents and workflows in TypeScript.
 ---
 
-The **Ziro AI SDK** is an open-source, full-stack toolkit for building
+The **ZiroAgent SDK** is an open-source, full-stack toolkit for building
 LLM-powered applications in TypeScript. It pairs a small, provider-agnostic
 core with batteries-included packages for tools, agents, RAG, workflows, and
 observability.
@@ -24,14 +24,14 @@ observability.
 ## Install
 
 ```bash
-pnpm add @ziro-ai/core @ziro-ai/openai
+pnpm add @ziroagent/core @ziroagent/openai
 ```
 
 ## Hello world
 
 ```ts
-import { generateText } from '@ziro-ai/core';
-import { createOpenAI } from '@ziro-ai/openai';
+import { generateText } from '@ziroagent/core';
+import { createOpenAI } from '@ziroagent/openai';
 
 const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY });
 

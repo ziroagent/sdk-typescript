@@ -1,4 +1,4 @@
-<!-- Thanks for contributing to Ziro AI SDK! -->
+<!-- Thanks for contributing to ZiroAgent SDK! -->
 
 ## Summary
 
