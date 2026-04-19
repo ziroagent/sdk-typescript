@@ -43,8 +43,8 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter "./packages/*" typecheck
       - run: pnpm --filter "./packages/*" build
+      - run: pnpm --filter "./packages/*" typecheck
       - run: pnpm --filter "./packages/*" test
 
   package-quality:
