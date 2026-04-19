@@ -4,8 +4,8 @@
   "private": true,
   "description": "The full-stack agent SDK — type-safe core, MCP-native tools, batteries-included devtools.",
   "license": "Apache-2.0",
-  "author": "ZiroAgent Contributors",
-  "homepage": "https://github.com/ziroagent/sdk-typescript",
+  "author": "ZiroAgent <hello@ziroagent.com> (https://ziroagent.com)",
+  "homepage": "https://ziroagent.com",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ziroagent/sdk-typescript.git"

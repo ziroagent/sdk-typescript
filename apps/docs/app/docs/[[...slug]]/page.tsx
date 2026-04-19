@@ -1,4 +1,5 @@
 import { DocsBody, DocsDescription, DocsPage, DocsTitle } from 'fumadocs-ui/page';
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { source } from '@/lib/source';
 
@@ -23,12 +24,28 @@ export function generateStaticParams() {
   return source.generateParams();
 }
 
-export async function generateMetadata(props: { params: Promise<{ slug?: string[] }> }) {
+export async function generateMetadata(props: {
+  params: Promise<{ slug?: string[] }>;
+}): Promise<Metadata> {
   const { slug } = await props.params;
   const page = source.getPage(slug);
   if (!page) return {};
+  const url = `https://ziroagent.com${page.url}`;
   return {
     title: page.data.title,
     description: page.data.description,
+    alternates: { canonical: url },
+    openGraph: {
+      type: 'article',
+      title: page.data.title,
+      description: page.data.description,
+      url,
+      siteName: 'ZiroAgent SDK',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: page.data.title,
+      description: page.data.description,
+    },
   };
 }

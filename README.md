@@ -6,10 +6,15 @@
 
 *Durable execution · Cost guardrails · Replayable traces · MCP-native · Sovereign-ready*
 
+[![Website](https://img.shields.io/badge/website-ziroagent.com-0ea5e9.svg)](https://ziroagent.com)
+[![npm version](https://img.shields.io/npm/v/@ziro-agent/agent.svg?color=cb3837&label=npm)](https://www.npmjs.com/package/@ziro-agent/agent)
+[![CI](https://github.com/ziroagent/sdk-typescript/actions/workflows/ci.yml/badge.svg)](https://github.com/ziroagent/sdk-typescript/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 [![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178c6.svg)](https://www.typescriptlang.org/)
 [![MCP-native](https://img.shields.io/badge/MCP-server%20%2B%20client-7c3aed.svg)](https://modelcontextprotocol.io/)
+
+[**Website**](https://ziroagent.com) · [**Documentation**](https://ziroagent.com/docs) · [**npm**](https://www.npmjs.com/org/ziro-agent) · [**GitHub**](https://github.com/ziroagent)
 
 </div>
 
