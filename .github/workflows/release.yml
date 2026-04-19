@@ -31,7 +31,7 @@ jobs:
       # changesets/action writes. The placeholder substitution is fragile across
       # pnpm subprocesses and was the cause of the v0.1.2 publish 404 in CI.
       # Letting changesets/action be the single owner of `~/.npmrc` is reliable.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
           cache: pnpm
