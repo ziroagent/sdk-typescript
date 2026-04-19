@@ -44,3 +44,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # Disable npm provenance: the current NPM_TOKEN does not have
+          # OIDC sigstore permissions, and auto-enabling provenance under
+          # `id-token: write` causes PUT to return 404 (auth failure).
+          # Re-enable later by issuing a granular token with write+attest.
+          NPM_CONFIG_PROVENANCE: "false"
