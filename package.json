@@ -30,7 +30,7 @@
     "clean": "turbo run clean && rm -rf node_modules .turbo",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release": "pnpm --filter \"./packages/*\" build && pnpm -r --filter \"./packages/*\" publish --access public --no-git-checks",
+    "release": "pnpm --filter \"./packages/*\" build && changeset publish",
     "publint": "turbo run publint",
     "attw": "turbo run attw",
     "prepare": "husky || true"
