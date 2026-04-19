@@ -1,0 +1,19 @@
+{
+  "name": "@ziro-ai/example-multi-agent-workflow",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx index.ts"
+  },
+  "dependencies": {
+    "@ziro-ai/agent": "workspace:*",
+    "@ziro-ai/core": "workspace:*",
+    "@ziro-ai/openai": "workspace:*",
+    "@ziro-ai/workflow": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.3"
+  }
+}

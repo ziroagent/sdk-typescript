@@ -1,0 +1,13 @@
+{
+  "title": "Documentation",
+  "pages": [
+    "index",
+    "getting-started",
+    "agents",
+    "tools",
+    "memory",
+    "workflow",
+    "tracing",
+    "api-reference"
+  ]
+}

@@ -1,0 +1,75 @@
+---
+title: Getting started
+description: Scaffold a new app and run your first generation in under a minute.
+---
+
+## 1. Scaffold
+
+Use the Ziro CLI to bootstrap a starter project:
+
+```bash
+pnpm dlx @ziro-ai/cli init my-agent
+cd my-agent
+cp .env.example .env  # add your OPENAI_API_KEY
+pnpm install
+pnpm start
+```
+
+## 2. Generate text
+
+```ts
+import { generateText } from '@ziro-ai/core';
+import { createOpenAI } from '@ziro-ai/openai';
+
+const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+const { text, usage } = await generateText({
+  model: openai('gpt-4o-mini'),
+  prompt: 'Explain RAG in one sentence.',
+});
+
+console.log(text, usage);
+```
+
+## 3. Stream text
+
+```ts
+import { streamText } from '@ziro-ai/core';
+
+const result = await streamText({
+  model: openai('gpt-4o-mini'),
+  prompt: 'Stream the alphabet.',
+});
+
+const reader = result.textStream.getReader();
+while (true) {
+  const { value, done } = await reader.read();
+  if (done) break;
+  process.stdout.write(value);
+}
+```
+
+## 4. Define a tool and run an agent
+
+```ts
+import { defineTool } from '@ziro-ai/tools';
+import { createAgent } from '@ziro-ai/agent';
+import { z } from 'zod';
+
+const getWeather = defineTool({
+  name: 'getWeather',
+  description: 'Get current weather for a city.',
+  input: z.object({ city: z.string() }),
+  execute: async ({ city }) => ({ city, tempC: 21, conditions: 'sunny' }),
+});
+
+const agent = createAgent({
+  model: openai('gpt-4o-mini'),
+  tools: { getWeather },
+});
+
+const { text } = await agent.run({ prompt: 'What is the weather in Hanoi?' });
+console.log(text);
+```
+
+Next: [Agents](/docs/agents) · [Tools](/docs/tools) · [RAG with memory](/docs/memory).

@@ -1,0 +1,31 @@
+{
+  "name": "@ziro-ai/docs",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Documentation site for the Ziro AI SDK (Fumadocs + Next.js).",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --port 4001",
+    "build": "next build",
+    "start": "next start --port 4001",
+    "typecheck": "tsc --noEmit",
+    "api:generate": "typedoc"
+  },
+  "dependencies": {
+    "fumadocs-core": "^16.7.16",
+    "fumadocs-mdx": "^14.3.0",
+    "fumadocs-ui": "^16.7.16",
+    "next": "^16.2.4",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/mdx": "^2.0.13",
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "typedoc": "^0.28.19",
+    "typescript": "^5.9.3"
+  },
+  "engines": { "node": ">=20.10.0" }
+}

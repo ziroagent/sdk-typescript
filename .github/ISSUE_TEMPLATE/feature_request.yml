@@ -1,0 +1,48 @@
+name: Feature request
+description: Suggest a new feature or improvement
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What problem are you trying to solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: dropdown
+    id: package
+    attributes:
+      label: Affected package(s)
+      multiple: true
+      options:
+        - "@ziro-ai/core"
+        - "@ziro-ai/openai"
+        - "@ziro-ai/anthropic"
+        - "@ziro-ai/google"
+        - "@ziro-ai/ollama"
+        - "@ziro-ai/tools"
+        - "@ziro-ai/agent"
+        - "@ziro-ai/memory"
+        - "@ziro-ai/workflow"
+        - "@ziro-ai/tracing"
+        - "@ziro-ai/cli"
+        - "playground"
+        - "docs"
+        - "other"
+  - type: checkboxes
+    id: rfc
+    attributes:
+      label: Does this change require an RFC?
+      description: Breaking API changes and new packages require an RFC.
+      options:
+        - label: I think this requires an RFC

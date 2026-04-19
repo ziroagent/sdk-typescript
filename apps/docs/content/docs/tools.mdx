@@ -1,0 +1,46 @@
+---
+title: Tools
+description: Type-safe tool definitions with Zod, parallel execution, and MCP interop.
+---
+
+```ts
+import { defineTool, executeToolCalls, toolToModelDefinition } from '@ziro-ai/tools';
+import { z } from 'zod';
+
+const add = defineTool({
+  name: 'add',
+  description: 'Add two numbers.',
+  input: z.object({ a: z.number(), b: z.number() }),
+  execute: ({ a, b }) => a + b,
+});
+```
+
+## Hand tools to a model
+
+Convert a tool to a JSON-schema model definition the LLM can see:
+
+```ts
+const def = toolToModelDefinition(add);
+// pass `tools: [def]` into generateText / streamText / agent.run
+```
+
+## Execute tool calls in parallel
+
+```ts
+const results = await executeToolCalls({
+  tools: { add },
+  toolCalls: model.toolCalls,
+});
+```
+
+## Adapt MCP servers
+
+Bring tools from any
+[Model Context Protocol](https://modelcontextprotocol.io/) server with the
+`./mcp` entry point:
+
+```ts
+import { mcpToolsFromClient } from '@ziro-ai/tools/mcp';
+
+const tools = await mcpToolsFromClient(mcpClient);
+```

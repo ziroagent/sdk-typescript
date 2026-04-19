@@ -1,0 +1,49 @@
+{
+  "name": "ziro-ai-sdk",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The full-stack agent SDK — type-safe core, MCP-native tools, batteries-included devtools.",
+  "license": "Apache-2.0",
+  "author": "Ziro AI Contributors",
+  "homepage": "https://github.com/ziro-ai/sdk",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ziro-ai/sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ziro-ai/sdk/issues"
+  },
+  "type": "module",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=20.10.0",
+    "pnpm": ">=10.0.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "test": "turbo run test",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean && rm -rf node_modules .turbo",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "turbo run build && changeset publish",
+    "publint": "turbo run publint",
+    "attw": "turbo run attw",
+    "prepare": "husky || true"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.2",
+    "@biomejs/biome": "^2.4.12",
+    "@changesets/cli": "^2.31.0",
+    "@types/node": "^22.10.10",
+    "publint": "^0.3.18",
+    "tsup": "^8.5.1",
+    "turbo": "^2.9.6",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.4"
+  }
+}

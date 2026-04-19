@@ -1,0 +1,79 @@
+{
+  "name": "@ziro-ai/tracing",
+  "version": "0.1.0",
+  "description": "OpenTelemetry instrumentation helpers for LLM calls, tool calls, agent steps, and workflow nodes.",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/ziro-ai/sdk/tree/main/packages/tracing",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ziro-ai/sdk.git",
+    "directory": "packages/tracing"
+  },
+  "bugs": {
+    "url": "https://github.com/ziro-ai/sdk/issues"
+  },
+  "keywords": [
+    "ai",
+    "opentelemetry",
+    "otel",
+    "tracing",
+    "observability",
+    "llm",
+    "ziro"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo",
+    "publint": "publint",
+    "attw": "attw --pack ."
+  },
+  "dependencies": {
+    "@ziro-ai/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": ">=1.7.0 <2.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@opentelemetry/api": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.2",
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/sdk-trace-base": "^2.7.0",
+    "publint": "^0.3.18",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.4"
+  },
+  "engines": {
+    "node": ">=20.10.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

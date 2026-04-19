@@ -1,0 +1,28 @@
+name: RFC pitch
+description: Pitch an RFC for a non-trivial change
+labels: ["rfc", "needs-triage"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One paragraph explanation of the proposal.
+    validations:
+      required: true
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: Why are we doing this? What use cases does it support?
+    validations:
+      required: true
+  - type: textarea
+    id: design
+    attributes:
+      label: High-level design
+    validations:
+      required: true
+  - type: textarea
+    id: drawbacks
+    attributes:
+      label: Drawbacks / unresolved questions

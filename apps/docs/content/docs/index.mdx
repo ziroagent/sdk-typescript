@@ -1,0 +1,46 @@
+---
+title: Introduction
+description: Build production-grade AI agents and workflows in TypeScript.
+---
+
+The **Ziro AI SDK** is an open-source, full-stack toolkit for building
+LLM-powered applications in TypeScript. It pairs a small, provider-agnostic
+core with batteries-included packages for tools, agents, RAG, workflows, and
+observability.
+
+## Why Ziro?
+
+- **Provider-agnostic.** Swap OpenAI for Anthropic (or your own model) with
+  one line. The same `streamText` / `generateText` API works everywhere.
+- **Type-safe end to end.** Tools are defined with Zod and enforced at the
+  type level — both for arguments and results.
+- **Streaming-first.** Every text and event surface uses Web Streams. No
+  ad-hoc emitters, no "buffer everything in memory" anti-patterns.
+- **OpenTelemetry built in.** A single `instrumentModel(model)` wrap gives
+  you spans for every LLM call, tool execution, and workflow node.
+- **Monorepo with batteries.** Agent loop, vector memory, graph workflows,
+  CLI scaffolds, and a local playground all ship from the same release.
+
+## Install
+
+```bash
+pnpm add @ziro-ai/core @ziro-ai/openai
+```
+
+## Hello world
+
+```ts
+import { generateText } from '@ziro-ai/core';
+import { createOpenAI } from '@ziro-ai/openai';
+
+const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+const { text } = await generateText({
+  model: openai('gpt-4o-mini'),
+  prompt: 'Say hello in one short sentence.',
+});
+
+console.log(text);
+```
+
+Continue with [Getting started](/docs/getting-started).

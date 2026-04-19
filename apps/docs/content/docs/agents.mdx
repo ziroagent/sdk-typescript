@@ -1,0 +1,54 @@
+---
+title: Agents
+description: Tool-using agent loop with stop conditions and streaming events.
+---
+
+`@ziro-ai/agent` ships a minimal but production-ready ReAct-style loop. It
+calls the model, executes any tools it requests, threads the results back
+into the conversation, and repeats until a stop condition is met.
+
+## Quick start
+
+```ts
+import { createAgent } from '@ziro-ai/agent';
+import { defineTool } from '@ziro-ai/tools';
+import { z } from 'zod';
+
+const search = defineTool({
+  name: 'search',
+  description: 'Search the knowledge base.',
+  input: z.object({ q: z.string() }),
+  execute: async ({ q }) => ({ hits: [`result for ${q}`] }),
+});
+
+const agent = createAgent({
+  model,
+  tools: { search },
+  maxSteps: 5,
+});
+
+const result = await agent.run({
+  prompt: 'Find docs about streaming.',
+  onEvent: (event) => console.log(event.type),
+});
+```
+
+## Stop conditions
+
+Combine the helpers from `@ziro-ai/agent` to terminate early:
+
+```ts
+import { createAgent, anyOf, stepCountIs, totalTokensExceeds } from '@ziro-ai/agent';
+
+createAgent({
+  model,
+  tools,
+  stopWhen: anyOf(stepCountIs(8), totalTokensExceeds(20_000)),
+});
+```
+
+## Events
+
+Each `AgentRunOptions.onEvent` callback receives a discriminated union:
+`step-start`, `llm-finish`, `tool-result`, `step-finish`, `agent-finish`. Use
+this for live UI updates or shipping to your tracing backend.

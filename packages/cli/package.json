@@ -1,0 +1,72 @@
+{
+  "name": "@ziro-ai/cli",
+  "version": "0.1.0",
+  "description": "Ziro AI SDK command-line tools — scaffolds, examples runner, and dev playground launcher.",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/ziro-ai/sdk/tree/main/packages/cli",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ziro-ai/sdk.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/ziro-ai/sdk/issues"
+  },
+  "keywords": [
+    "ai",
+    "cli",
+    "ziro",
+    "scaffold",
+    "playground"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "ziro": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "templates",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo",
+    "publint": "publint",
+    "attw": "attw --pack ."
+  },
+  "dependencies": {
+    "kleur": "^4.1.5"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.2",
+    "@types/node": "^22.10.5",
+    "publint": "^0.3.18",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.4"
+  },
+  "engines": {
+    "node": ">=20.10.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

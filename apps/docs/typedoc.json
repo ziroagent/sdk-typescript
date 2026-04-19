@@ -1,0 +1,23 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPointStrategy": "packages",
+  "entryPoints": [
+    "../../packages/core",
+    "../../packages/providers-openai",
+    "../../packages/providers-anthropic",
+    "../../packages/tools",
+    "../../packages/agent",
+    "../../packages/memory",
+    "../../packages/workflow",
+    "../../packages/tracing",
+    "../../packages/cli"
+  ],
+  "out": "public/api",
+  "name": "Ziro AI SDK",
+  "readme": "none",
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "excludeInternal": true,
+  "githubPages": false,
+  "hideGenerator": true
+}

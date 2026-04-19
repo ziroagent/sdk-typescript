@@ -1,0 +1,34 @@
+---
+title: Workflows
+description: Compose multi-step, multi-agent graphs with conditional routing and parallel branches.
+---
+
+```ts
+import { defineWorkflow, defineNode, runWorkflow } from '@ziro-ai/workflow';
+
+interface State { topic?: string; outline?: string; draft?: string }
+
+const wf = defineWorkflow<State>({
+  initialState: { topic: 'streaming agents' },
+  nodes: [
+    defineNode<State>({
+      id: 'plan',
+      edges: ['draft'],
+      run: async ({ state }) => ({ state: { outline: `Outline for ${state.topic}` } }),
+    }),
+    defineNode<State>({
+      id: 'draft',
+      run: async ({ state }) => ({ state: { draft: `Draft of ${state.outline}` } }),
+    }),
+  ],
+});
+
+const result = await runWorkflow(wf, {
+  onEvent: (e) => console.log(e.type),
+});
+```
+
+Static `edges` define the graph; nodes can override at runtime by returning
+`{ next: 'someNode' }` or `{ next: ['a', 'b'] }` to fan out. Returning
+`{ next: 'end' }` terminates the branch. State writes from a parallel wave
+are merged in deterministic node-id order.
