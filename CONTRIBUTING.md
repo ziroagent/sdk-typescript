@@ -69,7 +69,7 @@ Use `git commit -s` to add it automatically.
 | `chore` | Tooling, build, CI |
 | `breaking` | Breaking change (also use `!` after type) |
 
-Scope should be the package name without the `@ziroagent/` prefix, e.g. `feat(core): ...`, `fix(agent): ...`.
+Scope should be the package name without the `@ziro-agent/` prefix, e.g. `feat(core): ...`, `fix(agent): ...`.
 
 ## Changesets
 

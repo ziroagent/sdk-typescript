@@ -10,8 +10,8 @@ body:
     id: package
     attributes:
       label: Package
-      description: Which `@ziroagent/*` package is affected?
-      placeholder: "@ziroagent/core"
+      description: Which `@ziro-agent/*` package is affected?
+      placeholder: "@ziro-agent/core"
     validations:
       required: true
   - type: input

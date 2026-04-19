@@ -1,5 +1,5 @@
 {
-  "name": "@ziroagent/tracing",
+  "name": "@ziro-agent/tracing",
   "version": "0.1.0",
   "description": "OpenTelemetry instrumentation helpers for LLM calls, tool calls, agent steps, and workflow nodes.",
   "license": "Apache-2.0",
@@ -50,7 +50,7 @@
     "attw": "attw --pack ."
   },
   "dependencies": {
-    "@ziroagent/core": "workspace:*"
+    "@ziro-agent/core": "workspace:*"
   },
   "peerDependencies": {
     "@opentelemetry/api": ">=1.7.0 <2.0.0"

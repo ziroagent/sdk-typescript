@@ -1,5 +1,5 @@
 {
-  "name": "@ziroagent/example-agent-with-tools",
+  "name": "@ziro-agent/example-agent-with-tools",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -7,10 +7,10 @@
     "start": "tsx index.ts"
   },
   "dependencies": {
-    "@ziroagent/agent": "workspace:*",
-    "@ziroagent/core": "workspace:*",
-    "@ziroagent/openai": "workspace:*",
-    "@ziroagent/tools": "workspace:*",
+    "@ziro-agent/agent": "workspace:*",
+    "@ziro-agent/core": "workspace:*",
+    "@ziro-agent/openai": "workspace:*",
+    "@ziro-agent/tools": "workspace:*",
     "zod": "^4.3.6"
   },
   "devDependencies": {

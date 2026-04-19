@@ -115,7 +115,7 @@ We are **bottoms-up, developer-first**. No SDR-led enterprise sales until v1.0.
 **Tactics**:
 - v0.1.0 npm release with provenance + GitHub Release.
 - **Launch posts**: HackerNews ("Show HN: Ziro — TypeScript agent SDK with built-in durability"), r/LocalLLaMA, r/typescript, X (with code GIFs).
-- **MCP-first distribution**: Ship `@ziroagent/mcp` so Claude Desktop / Cursor users discover Ziro as an MCP server, not as a library.
+- **MCP-first distribution**: Ship `@ziro-agent/mcp` so Claude Desktop / Cursor users discover Ziro as an MCP server, not as a library.
 - **Content**: 4 launch blog posts:
   1. *"Why 88% of AI agents fail in production (with public incident data)"*
   2. *"Building an agent that survives 3 crashes mid-tool-call"*
@@ -129,7 +129,7 @@ We are **bottoms-up, developer-first**. No SDR-led enterprise sales until v1.0.
 
 **Tactics**:
 - Ship Temporal/Inngest/Restate adapters → blog post per adapter, co-marketing with each platform.
-- Ship `@ziroagent/eval` → "Ziro vs Promptfoo" comparison post (honest, see `BENCHMARKS.md`).
+- Ship `@ziro-agent/eval` → "Ziro vs Promptfoo" comparison post (honest, see `BENCHMARKS.md`).
 - **Weekly trace teardown video series** (10-min YouTube): take a real (anonymized) production trace, walk through what went wrong, show how Ziro would have caught it.
 - Conference talks: NodeConf EU, AI Engineer Summit, JSConf VN.
 - Apply to YC / a16z OSS / open-source grant programs.

@@ -1,5 +1,5 @@
 {
-  "name": "@ziroagent/core",
+  "name": "@ziro-agent/core",
   "version": "0.1.0",
   "description": "Type-safe core for ZiroAgent SDK: language model interface, generateText, streamText, message types.",
   "license": "Apache-2.0",

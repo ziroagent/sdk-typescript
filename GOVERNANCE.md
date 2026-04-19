@@ -51,7 +51,7 @@ For non-trivial API changes (new packages, breaking changes, new core abstractio
 ## Conflict resolution
 
 1. Discuss in the PR or issue.
-2. If unresolved, escalate to maintainers via `@ziroagent/maintainers`.
+2. If unresolved, escalate to maintainers via `@ziro-agent/maintainers`.
 3. If still unresolved, BDFL decides (pre-v1.0) or majority maintainer vote (post-v1.0).
 
 ## Trademark

@@ -1,5 +1,5 @@
 {
-  "name": "@ziroagent/anthropic",
+  "name": "@ziro-agent/anthropic",
   "version": "0.1.0",
   "description": "Anthropic (Claude) provider for ZiroAgent SDK.",
   "license": "Apache-2.0",
@@ -48,7 +48,7 @@
     "attw": "attw --pack ."
   },
   "dependencies": {
-    "@ziroagent/core": "workspace:*"
+    "@ziro-agent/core": "workspace:*"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",

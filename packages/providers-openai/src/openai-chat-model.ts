@@ -8,7 +8,7 @@ import {
   type NormalizedMessage,
   type TokenUsage,
   type ToolCallPart,
-} from '@ziroagent/core';
+} from '@ziro-agent/core';
 import { parseSSE } from './util/sse.js';
 
 /**

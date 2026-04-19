@@ -1,5 +1,5 @@
 {
-  "name": "@ziroagent/example-basic-chat",
+  "name": "@ziro-agent/example-basic-chat",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -7,8 +7,8 @@
     "start": "tsx index.ts"
   },
   "dependencies": {
-    "@ziroagent/core": "workspace:*",
-    "@ziroagent/openai": "workspace:*"
+    "@ziro-agent/core": "workspace:*",
+    "@ziro-agent/openai": "workspace:*"
   },
   "devDependencies": {
     "tsx": "^4.20.0",

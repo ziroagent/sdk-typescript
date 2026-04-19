@@ -23,29 +23,29 @@ Our roadmap is shaped by one question: **"What stops 88% of agent projects from 
 ### Week 1 — Core + CLI + Benchmarks scaffold
 - [x] Monorepo (pnpm + Turborepo + Biome + Vitest + Changesets)
 - [x] CI: lint, typecheck, test, build, `attw`, `publint`
-- [ ] `@ziroagent/core` — `LanguageModel` interface, `generateText`, `streamText`, error taxonomy
-- [ ] **`@ziroagent/cli` ships day 1** — `ziroagent chat`, `ziroagent run`, interactive API-key setup → `~/.ziroagent/config.json`
+- [ ] `@ziro-agent/core` — `LanguageModel` interface, `generateText`, `streamText`, error taxonomy
+- [ ] **`@ziro-agent/cli` ships day 1** — `ziroagent chat`, `ziroagent run`, interactive API-key setup → `~/.ziroagent/config.json`
 - [ ] `npm create ziro@latest` — scaffold an agent in <60s
 - [ ] `BENCHMARKS.md` + `pnpm bench` harness (vs. Vercel AI SDK + Mastra)
 
 ### Week 2 — Providers + MCP bidirectional + Tools
-- [ ] `@ziroagent/openai` — with explicit prompt-cache control
-- [ ] `@ziroagent/anthropic` — with cache TTL config (5m / 1h)
-- [ ] `@ziroagent/ollama` — local-first, sovereign mode
-- [ ] `@ziroagent/tools` — `defineTool`, parallel calls, JSON schema from Zod
-- [ ] **`@ziroagent/mcp` — server + client both directions.** `ziro mcp serve ./tools.ts`
+- [ ] `@ziro-agent/openai` — with explicit prompt-cache control
+- [ ] `@ziro-agent/anthropic` — with cache TTL config (5m / 1h)
+- [ ] `@ziro-agent/ollama` — local-first, sovereign mode
+- [ ] `@ziro-agent/tools` — `defineTool`, parallel calls, JSON schema from Zod
+- [ ] **`@ziro-agent/mcp` — server + client both directions.** `ziro mcp serve ./tools.ts`
 - [ ] `examples/mcp-server` — published in Claude Desktop ecosystem
 
 ### Week 3 — Agent loop + Budget guards + HITL
-- [ ] `@ziroagent/agent` — loop, step events, stop conditions, error recovery
+- [ ] `@ziro-agent/agent` — loop, step events, stop conditions, error recovery
 - [ ] **Budget enforcement**: `BudgetExceededError` thrown before overspend, not after
 - [ ] **HITL**: `requiresApproval: true` on tools → suspend / resume primitives
-- [ ] `@ziroagent/memory` — vector store interface, in-memory + pgvector
-- [ ] `@ziroagent/workflow` — minimal graph engine
+- [ ] `@ziro-agent/memory` — vector store interface, in-memory + pgvector
+- [ ] `@ziro-agent/workflow` — minimal graph engine
 - [ ] `examples/agent-with-tools`, `examples/sovereign-ollama`, `examples/rag-pgvector`
 
 ### Week 4 — Tracing + Docs + Release
-- [ ] `@ziroagent/tracing` — OpenTelemetry spans on every LLM call / tool call / agent step
+- [ ] `@ziro-agent/tracing` — OpenTelemetry spans on every LLM call / tool call / agent step
 - [ ] `apps/playground` — chat UI + trace timeline + tool inspector + replay
 - [ ] `apps/docs` — Fumadocs site, getting-started in 4 languages (EN, VI, JA, KO)
 - [ ] **v0.1.0 release** to npm with provenance + GitHub Release + launch post (HN, Reddit, X)
@@ -64,32 +64,32 @@ Our roadmap is shaped by one question: **"What stops 88% of agent projects from 
 **Goal**: cover the remaining "blow up in production" failure modes — cost, durability, evals, gateway primitives.
 
 ### Durable execution (the #1 enterprise gap)
-- [ ] `@ziroagent/temporal` — Temporal worker adapter, agent state as workflow state
-- [ ] `@ziroagent/inngest` — Inngest function adapter
-- [ ] `@ziroagent/restate` — Restate journal adapter
+- [ ] `@ziro-agent/temporal` — Temporal worker adapter, agent state as workflow state
+- [ ] `@ziro-agent/inngest` — Inngest function adapter
+- [ ] `@ziro-agent/restate` — Restate journal adapter
 - [ ] HITL approvals lasting hours/days without losing state
 - [ ] Resume-from-crash with no token re-payment for completed steps
 - [ ] `examples/durable-support-agent`
 
 ### Evals as first-class
-- [ ] `@ziroagent/eval` — `defineEval`, LLM-judge, exact-match, cost-budget grader
+- [ ] `@ziro-agent/eval` — `defineEval`, LLM-judge, exact-match, cost-budget grader
 - [ ] `ziro eval ./evals --gate 0.95` — CI gate
 - [ ] **Replay-from-trace** — capture production failure → convert to eval case automatically
 - [ ] Online eval sampling on production traffic (configurable %)
 
 ### Gateway primitives
-- [ ] `@ziroagent/gateway` — model routing, fallback chains, virtual keys (per-user budgets)
+- [ ] `@ziro-agent/gateway` — model routing, fallback chains, virtual keys (per-user budgets)
 - [ ] PII redaction middleware (pluggable detectors)
 - [ ] Prompt-injection guard (Lakera/PromptGuard adapter)
 - [ ] Cost tracking export (Stripe Billing / Open Meter / OTel metrics)
 - [ ] Tamper-evident audit log (hash-chained, EU-AI-Act-friendly)
 
 ### Frontend layer
-- [ ] `@ziroagent/agui` — AG-UI protocol event emitter (17 standard events)
-- [ ] `@ziroagent/react` — `<Chat>`, `<TraceTimeline>`, `<ToolApproval>` components
+- [ ] `@ziro-agent/agui` — AG-UI protocol event emitter (17 standard events)
+- [ ] `@ziro-agent/react` — `<Chat>`, `<TraceTimeline>`, `<ToolApproval>` components
 
 ### Ecosystem providers / stores
-- [ ] `@ziroagent/google` (Gemini), `@ziroagent/groq`, `@ziroagent/mistral`
+- [ ] `@ziro-agent/google` (Gemini), `@ziro-agent/groq`, `@ziro-agent/mistral`
 - [ ] Memory adapters: Qdrant, Pinecone, Weaviate, Chroma
 - [ ] Tracing exporters: Langfuse, Braintrust, Honeycomb, Datadog
 
@@ -103,7 +103,7 @@ Our roadmap is shaped by one question: **"What stops 88% of agent projects from 
 - [ ] vLLM and LM Studio adapters
 - [ ] Vietnamese-first presets: PhoGPT, VinAI, Viettel AI, FPT.AI tokenizer & RAG presets
 - [ ] Compliance pack: EU AI Act audit log format, SOC 2 control mapping, HIPAA-ready handlers
-- [ ] `@ziroagent/nestjs` integration (most VN/SEA enterprise stacks use Nest)
+- [ ] `@ziro-agent/nestjs` integration (most VN/SEA enterprise stacks use Nest)
 - [ ] Edge deployment recipes: Cloudflare Workers, Vercel Edge, Deno Deploy, Bun
 - [ ] Code Mode (Cloudflare pattern) — generate code instead of 40+ tool calls
 

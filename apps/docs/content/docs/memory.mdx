@@ -3,7 +3,7 @@ title: Memory & RAG
 description: Vector stores, chunking, and embeddings for retrieval-augmented generation.
 ---
 
-`@ziroagent/memory` provides a small but complete set of building blocks:
+`@ziro-agent/memory` provides a small but complete set of building blocks:
 
 - A `VectorStore` interface with two adapters: `MemoryVectorStore` (in-process)
   and `PgVectorStore` (Postgres + pgvector).
@@ -13,7 +13,7 @@ description: Vector stores, chunking, and embeddings for retrieval-augmented gen
 ## Index documents in memory
 
 ```ts
-import { MemoryVectorStore, chunkText, createOpenAIEmbedder } from '@ziroagent/memory';
+import { MemoryVectorStore, chunkText, createOpenAIEmbedder } from '@ziro-agent/memory';
 
 const store = new MemoryVectorStore({
   embedder: createOpenAIEmbedder({ apiKey: process.env.OPENAI_API_KEY }),
@@ -33,7 +33,7 @@ const hits = await store.search({ text: 'streaming with backpressure', topK: 3 }
 
 ```ts
 import { Pool } from 'pg';
-import { PgVectorStore } from '@ziroagent/memory/pgvector';
+import { PgVectorStore } from '@ziro-agent/memory/pgvector';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const store = new PgVectorStore({ pool, dimensions: 1536, embedder });

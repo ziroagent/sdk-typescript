@@ -1,6 +1,6 @@
-import { createAgent } from '@ziroagent/agent';
-import { createOpenAI } from '@ziroagent/openai';
-import { defineTool } from '@ziroagent/tools';
+import { createAgent } from '@ziro-agent/agent';
+import { createOpenAI } from '@ziro-agent/openai';
+import { defineTool } from '@ziro-agent/tools';
 import { z } from 'zod';
 
 const apiKey = process.env.OPENAI_API_KEY;

@@ -1,5 +1,5 @@
-import { generateText, streamText } from '@ziroagent/core';
-import { createOpenAI } from '@ziroagent/openai';
+import { generateText, streamText } from '@ziro-agent/core';
+import { createOpenAI } from '@ziro-agent/openai';
 
 const apiKey = process.env.OPENAI_API_KEY;
 if (!apiKey) {

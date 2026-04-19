@@ -1,4 +1,4 @@
-import { streamText, type ChatMessage } from '@ziroagent/core';
+import { streamText, type ChatMessage } from '@ziro-agent/core';
 import { resolveModel } from '@/lib/model';
 import { sessions } from '@/lib/sessions';
 

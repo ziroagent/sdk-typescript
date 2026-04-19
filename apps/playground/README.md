@@ -1,4 +1,4 @@
-# @ziroagent/playground
+# @ziro-agent/playground
 
 Local development playground for the ZiroAgent SDK. Provides a chat UI, a live
 trace viewer, and a session list for inspecting LLM calls during iteration.
@@ -8,7 +8,7 @@ trace viewer, and a session list for inspecting LLM calls during iteration.
 ```bash
 cp .env.example .env.local  # set OPENAI_API_KEY (or ANTHROPIC_API_KEY)
 pnpm install
-pnpm --filter @ziroagent/playground dev
+pnpm --filter @ziro-agent/playground dev
 # → http://localhost:4000
 ```
 

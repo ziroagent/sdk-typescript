@@ -5,5 +5,5 @@ by one `streamText` call against OpenAI.
 
 ```bash
 export OPENAI_API_KEY=sk-...
-pnpm --filter @ziroagent/example-basic-chat start
+pnpm --filter @ziro-agent/example-basic-chat start
 ```

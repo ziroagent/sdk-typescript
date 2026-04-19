@@ -1,4 +1,4 @@
-import type { ChatMessage } from '@ziroagent/core';
+import type { ChatMessage } from '@ziro-agent/core';
 
 /**
  * In-memory session log. The playground is single-process and dev-only so a

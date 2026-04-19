@@ -7,7 +7,7 @@ import { getTracer } from './tracer.js';
  * before being handed to the agent.
  *
  * The signature is intentionally generic so this works against
- * `@ziroagent/tools`'s `Tool` type without an import cycle.
+ * `@ziro-agent/tools`'s `Tool` type without an import cycle.
  */
 export interface ToolLike<TArgs = unknown, TResult = unknown> {
   name: string;

@@ -1,4 +1,4 @@
-import type { LanguageModel } from '@ziroagent/core';
+import type { LanguageModel } from '@ziro-agent/core';
 import {
   AnthropicMessagesModel,
   type AnthropicMessagesModelId,

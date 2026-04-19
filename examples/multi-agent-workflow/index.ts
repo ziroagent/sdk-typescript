@@ -1,6 +1,6 @@
-import { createAgent } from '@ziroagent/agent';
-import { createOpenAI } from '@ziroagent/openai';
-import { defineNode, defineWorkflow, runWorkflow } from '@ziroagent/workflow';
+import { createAgent } from '@ziro-agent/agent';
+import { createOpenAI } from '@ziro-agent/openai';
+import { defineNode, defineWorkflow, runWorkflow } from '@ziro-agent/workflow';
 
 const apiKey = process.env.OPENAI_API_KEY;
 if (!apiKey) {

@@ -3,7 +3,7 @@
 - Start date: YYYY-MM-DD
 - Authors: @your-handle
 - Status: draft | accepted | rejected | superseded
-- Affected packages: `@ziroagent/...`
+- Affected packages: `@ziro-agent/...`
 
 ## Summary
 

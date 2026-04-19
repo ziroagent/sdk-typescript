@@ -1,5 +1,5 @@
 {
-  "name": "@ziroagent/workflow",
+  "name": "@ziro-agent/workflow",
   "version": "0.1.0",
   "description": "Type-safe graph engine for multi-step, multi-agent workflows.",
   "license": "Apache-2.0",
@@ -49,7 +49,7 @@
     "attw": "attw --pack ."
   },
   "dependencies": {
-    "@ziroagent/core": "workspace:*"
+    "@ziro-agent/core": "workspace:*"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",

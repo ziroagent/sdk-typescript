@@ -7,7 +7,7 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["@ziroagent/playground", "@ziroagent/docs", "@ziroagent/example-*"],
+  "ignore": ["@ziro-agent/playground", "@ziro-agent/docs", "@ziro-agent/example-*"],
   "privatePackages": {
     "version": false,
     "tag": false

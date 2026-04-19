@@ -1,7 +1,7 @@
-import { generateText } from '@ziroagent/core';
-import { chunkText, createOpenAIEmbedder } from '@ziroagent/memory';
-import { PgVectorStore } from '@ziroagent/memory/pgvector';
-import { createOpenAI } from '@ziroagent/openai';
+import { generateText } from '@ziro-agent/core';
+import { chunkText, createOpenAIEmbedder } from '@ziro-agent/memory';
+import { PgVectorStore } from '@ziro-agent/memory/pgvector';
+import { createOpenAI } from '@ziro-agent/openai';
 import pg from 'pg';
 
 const apiKey = process.env.OPENAI_API_KEY;

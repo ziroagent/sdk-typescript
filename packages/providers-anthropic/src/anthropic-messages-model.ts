@@ -8,7 +8,7 @@ import {
   type NormalizedMessage,
   type TokenUsage,
   type ToolCallPart,
-} from '@ziroagent/core';
+} from '@ziro-agent/core';
 import { parseSSEWithEvent, type SSEEvent } from './util/sse.js';
 
 export type AnthropicMessagesModelId =

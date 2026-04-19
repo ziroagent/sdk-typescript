@@ -3,7 +3,7 @@ import type {
   ModelCallOptions,
   ModelGenerateResult,
   ModelStreamPart,
-} from '@ziroagent/core';
+} from '@ziro-agent/core';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ATTR } from './attributes.js';
 import { instrumentModel } from './instrument-model.js';

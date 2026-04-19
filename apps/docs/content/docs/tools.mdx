@@ -4,7 +4,7 @@ description: Type-safe tool definitions with Zod, parallel execution, and MCP in
 ---
 
 ```ts
-import { defineTool, executeToolCalls, toolToModelDefinition } from '@ziroagent/tools';
+import { defineTool, executeToolCalls, toolToModelDefinition } from '@ziro-agent/tools';
 import { z } from 'zod';
 
 const add = defineTool({
@@ -40,7 +40,7 @@ Bring tools from any
 `./mcp` entry point:
 
 ```ts
-import { mcpToolsFromClient } from '@ziroagent/tools/mcp';
+import { mcpToolsFromClient } from '@ziro-agent/tools/mcp';
 
 const tools = await mcpToolsFromClient(mcpClient);
 ```

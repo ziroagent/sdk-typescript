@@ -1,5 +1,5 @@
-import { generateText } from '@ziroagent/core';
-import { createOpenAI } from '@ziroagent/openai';
+import { generateText } from '@ziro-agent/core';
+import { createOpenAI } from '@ziro-agent/openai';
 
 const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY });
 

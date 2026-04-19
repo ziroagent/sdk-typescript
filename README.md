@@ -68,12 +68,12 @@ ziro chat                      # interactive REPL, asks for API key, persists to
 Or use it as a library:
 
 ```bash
-pnpm add @ziroagent/core @ziroagent/openai
+pnpm add @ziro-agent/core @ziro-agent/openai
 ```
 
 ```ts
-import { generateText } from '@ziroagent/core';
-import { openai } from '@ziroagent/openai';
+import { generateText } from '@ziro-agent/core';
+import { openai } from '@ziro-agent/openai';
 
 const { text, usage, costUsd } = await generateText({
   model: openai('gpt-4o-mini'),
@@ -86,10 +86,10 @@ const { text, usage, costUsd } = await generateText({
 ### A real production agent in ~20 lines
 
 ```ts
-import { createAgent } from '@ziroagent/agent';
-import { defineTool } from '@ziroagent/tools';
-import { openai } from '@ziroagent/openai';
-import { temporal } from '@ziroagent/temporal';
+import { createAgent } from '@ziro-agent/agent';
+import { defineTool } from '@ziro-agent/tools';
+import { openai } from '@ziro-agent/openai';
+import { temporal } from '@ziro-agent/temporal';
 import { z } from 'zod';
 
 const refundOrder = defineTool({
@@ -121,7 +121,7 @@ ziro mcp serve ./my-agent.ts          # Claude Desktop / Cursor / Codex see it i
 ### Eval-as-code (ships with v0.2)
 
 ```ts
-import { defineEval } from '@ziroagent/eval';
+import { defineEval } from '@ziro-agent/eval';
 
 export default defineEval({
   agent,
@@ -141,23 +141,23 @@ ziro eval ./evals/*.ts --gate 0.95     # CI gate: fail merge if score < 95%
 
 | Package | Status | Description |
 | --- | --- | --- |
-| [`@ziroagent/core`](packages/core) | v0.1 | Model interface, `generateText`, `streamText`, budget & cache primitives |
-| [`@ziroagent/openai`](packages/providers-openai) | v0.1 | OpenAI provider |
-| [`@ziroagent/anthropic`](packages/providers-anthropic) | v0.1 | Anthropic provider with explicit prompt-cache control |
-| [`@ziroagent/ollama`](packages/providers-ollama) | v0.1 | Local-first provider (sovereign mode) |
-| [`@ziroagent/google`](packages/providers-google) | v0.2 | Google Gemini provider |
-| [`@ziroagent/tools`](packages/tools) | v0.1 | `defineTool` + MCP client |
-| [`@ziroagent/mcp`](packages/mcp) | v0.1 | MCP **server** — expose your tools/agents to Claude/Cursor |
-| [`@ziroagent/agent`](packages/agent) | v0.1 | Agent loop, HITL approval, step events |
-| [`@ziroagent/gateway`](packages/gateway) | v0.2 | Routing, fallback, virtual keys, PII redaction, cost tracking |
-| [`@ziroagent/temporal`](packages/temporal) | v0.2 | Durable runtime adapter (Temporal) |
-| [`@ziroagent/inngest`](packages/inngest) | v0.2 | Durable runtime adapter (Inngest) |
-| [`@ziroagent/eval`](packages/eval) | v0.2 | `defineEval`, LLM-judge, replay-from-trace |
-| [`@ziroagent/memory`](packages/memory) | v0.1 | Vector store interface, in-memory + pgvector |
-| [`@ziroagent/workflow`](packages/workflow) | v0.1 | Graph engine for multi-agent flows |
-| [`@ziroagent/tracing`](packages/tracing) | v0.1 | OpenTelemetry instrumentation |
-| [`@ziroagent/agui`](packages/agui) | v0.2 | AG-UI event emitter for streaming agent state to frontends |
-| [`@ziroagent/cli`](packages/cli) | v0.1 | `ziro` CLI: `chat`, `run`, `eval`, `mcp`, `playground` |
+| [`@ziro-agent/core`](packages/core) | v0.1 | Model interface, `generateText`, `streamText`, budget & cache primitives |
+| [`@ziro-agent/openai`](packages/providers-openai) | v0.1 | OpenAI provider |
+| [`@ziro-agent/anthropic`](packages/providers-anthropic) | v0.1 | Anthropic provider with explicit prompt-cache control |
+| [`@ziro-agent/ollama`](packages/providers-ollama) | v0.1 | Local-first provider (sovereign mode) |
+| [`@ziro-agent/google`](packages/providers-google) | v0.2 | Google Gemini provider |
+| [`@ziro-agent/tools`](packages/tools) | v0.1 | `defineTool` + MCP client |
+| [`@ziro-agent/mcp`](packages/mcp) | v0.1 | MCP **server** — expose your tools/agents to Claude/Cursor |
+| [`@ziro-agent/agent`](packages/agent) | v0.1 | Agent loop, HITL approval, step events |
+| [`@ziro-agent/gateway`](packages/gateway) | v0.2 | Routing, fallback, virtual keys, PII redaction, cost tracking |
+| [`@ziro-agent/temporal`](packages/temporal) | v0.2 | Durable runtime adapter (Temporal) |
+| [`@ziro-agent/inngest`](packages/inngest) | v0.2 | Durable runtime adapter (Inngest) |
+| [`@ziro-agent/eval`](packages/eval) | v0.2 | `defineEval`, LLM-judge, replay-from-trace |
+| [`@ziro-agent/memory`](packages/memory) | v0.1 | Vector store interface, in-memory + pgvector |
+| [`@ziro-agent/workflow`](packages/workflow) | v0.1 | Graph engine for multi-agent flows |
+| [`@ziro-agent/tracing`](packages/tracing) | v0.1 | OpenTelemetry instrumentation |
+| [`@ziro-agent/agui`](packages/agui) | v0.2 | AG-UI event emitter for streaming agent state to frontends |
+| [`@ziro-agent/cli`](packages/cli) | v0.1 | `ziro` CLI: `chat`, `run`, `eval`, `mcp`, `playground` |
 
 ## Apps
 

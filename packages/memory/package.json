@@ -1,5 +1,5 @@
 {
-  "name": "@ziroagent/memory",
+  "name": "@ziro-agent/memory",
   "version": "0.1.0",
   "description": "Vector store interfaces, in-memory & pgvector adapters, chunking and embedding helpers for ZiroAgent SDK.",
   "license": "Apache-2.0",
@@ -55,7 +55,7 @@
     "attw": "attw --pack ."
   },
   "dependencies": {
-    "@ziroagent/core": "workspace:*"
+    "@ziro-agent/core": "workspace:*"
   },
   "peerDependencies": {
     "pg": ">=8.10.0"

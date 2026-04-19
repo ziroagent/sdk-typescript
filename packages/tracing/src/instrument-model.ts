@@ -3,7 +3,7 @@ import type {
   ModelCallOptions,
   ModelGenerateResult,
   ModelStreamPart,
-} from '@ziroagent/core';
+} from '@ziro-agent/core';
 import { ATTR } from './attributes.js';
 import { getTracer } from './tracer.js';
 

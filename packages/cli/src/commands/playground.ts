@@ -23,7 +23,7 @@ export async function runPlayground(options: PlaygroundOptions): Promise<number>
       'apps/playground not found. The dev playground only ships in the monorepo.',
     );
     options.logger.info(
-      'Clone the repo and run `pnpm --filter @ziroagent/playground dev` instead.',
+      'Clone the repo and run `pnpm --filter @ziro-agent/playground dev` instead.',
     );
     return 1;
   }

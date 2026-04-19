@@ -1,5 +1,5 @@
-import type { ChatMessage, ContentPart, FinishReason, TokenUsage, ToolCallPart } from '@ziroagent/core';
-import type { ToolExecutionResult } from '@ziroagent/tools';
+import type { ChatMessage, ContentPart, FinishReason, TokenUsage, ToolCallPart } from '@ziro-agent/core';
+import type { ToolExecutionResult } from '@ziro-agent/tools';
 
 export interface AgentStep {
   /** 1-indexed step number. */

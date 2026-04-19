@@ -9,15 +9,15 @@ provider-agnostic stack for building LLM-powered apps and agents.
 
 | Package                  | Purpose                                                                                |
 | ------------------------ | -------------------------------------------------------------------------------------- |
-| `@ziroagent/core`          | `LanguageModel` interface, `generateText`, `streamText`, Web Streams, error hierarchy. |
-| `@ziroagent/openai`        | OpenAI / OpenAI-compatible provider with full SSE streaming.                           |
-| `@ziroagent/anthropic`     | Anthropic Messages provider with native event-stream parsing.                          |
-| `@ziroagent/tools`         | Type-safe `defineTool` (Zod), JSON schema, parallel execution, MCP adapter.            |
-| `@ziroagent/agent`         | ReAct loop with step events, `stopWhen` predicates, `AbortSignal`.                     |
-| `@ziroagent/memory`        | `VectorStore` interface, in-memory + pgvector adapters, chunker, embedder.             |
-| `@ziroagent/workflow`      | Lightweight graph engine — parallel waves, conditional routing, shared state.          |
-| `@ziroagent/tracing`       | Optional OpenTelemetry instrumentation following the GenAI semantic conventions.       |
-| `@ziroagent/cli`           | `ziroagent init`, `ziroagent run <example>`, `ziroagent playground`.                                  |
+| `@ziro-agent/core`          | `LanguageModel` interface, `generateText`, `streamText`, Web Streams, error hierarchy. |
+| `@ziro-agent/openai`        | OpenAI / OpenAI-compatible provider with full SSE streaming.                           |
+| `@ziro-agent/anthropic`     | Anthropic Messages provider with native event-stream parsing.                          |
+| `@ziro-agent/tools`         | Type-safe `defineTool` (Zod), JSON schema, parallel execution, MCP adapter.            |
+| `@ziro-agent/agent`         | ReAct loop with step events, `stopWhen` predicates, `AbortSignal`.                     |
+| `@ziro-agent/memory`        | `VectorStore` interface, in-memory + pgvector adapters, chunker, embedder.             |
+| `@ziro-agent/workflow`      | Lightweight graph engine — parallel waves, conditional routing, shared state.          |
+| `@ziro-agent/tracing`       | Optional OpenTelemetry instrumentation following the GenAI semantic conventions.       |
+| `@ziro-agent/cli`           | `ziroagent init`, `ziroagent run <example>`, `ziroagent playground`.                                  |
 
 ## Apps shipping in the monorepo (not published to npm)
 
