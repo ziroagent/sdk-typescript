@@ -28,14 +28,24 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     },
     "./pgvector": {
-      "types": "./dist/stores/pgvector.d.ts",
-      "import": "./dist/stores/pgvector.js",
-      "require": "./dist/stores/pgvector.cjs"
+      "import": {
+        "types": "./dist/stores/pgvector.d.ts",
+        "default": "./dist/stores/pgvector.js"
+      },
+      "require": {
+        "types": "./dist/stores/pgvector.d.cts",
+        "default": "./dist/stores/pgvector.cjs"
+      }
     },
     "./package.json": "./package.json"
   },
@@ -52,7 +62,7 @@
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist .turbo *.tsbuildinfo",
     "publint": "publint",
-    "attw": "attw --pack ."
+    "attw": "attw --pack . --profile=node16"
   },
   "dependencies": {
     "@ziro-agent/core": "workspace:*"
