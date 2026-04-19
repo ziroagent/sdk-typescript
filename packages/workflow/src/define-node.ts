@@ -19,7 +19,9 @@ export function defineNode<TState>(def: NodeDefinition<TState>): NodeDefinition<
  */
 export function decisionNode<TState>(opts: {
   id: string;
-  decide: (ctx: NodeContext<TState>) => string | string[] | 'end' | Promise<string | string[] | 'end'>;
+  decide: (
+    ctx: NodeContext<TState>,
+  ) => string | string[] | 'end' | Promise<string | string[] | 'end'>;
 }): NodeDefinition<TState> {
   return {
     id: opts.id,

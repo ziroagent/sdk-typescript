@@ -1,5 +1,5 @@
 import { generateText, streamText } from '@ziro-agent/core';
-import { http, HttpResponse } from 'msw';
+import { HttpResponse, http } from 'msw';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { createAnthropic } from './anthropic-provider.js';
@@ -46,9 +46,7 @@ describe('Anthropic messages model — generate', () => {
     server.use(
       http.post(`${BASE}/messages`, () =>
         HttpResponse.json({
-          content: [
-            { type: 'tool_use', id: 'tu_1', name: 'getWeather', input: { city: 'Hanoi' } },
-          ],
+          content: [{ type: 'tool_use', id: 'tu_1', name: 'getWeather', input: { city: 'Hanoi' } }],
           stop_reason: 'tool_use',
           usage: { input_tokens: 1, output_tokens: 1 },
         }),
@@ -81,11 +79,45 @@ describe('Anthropic messages model — generate', () => {
 describe('Anthropic messages model — stream', () => {
   it('parses event stream into text deltas and finish', async () => {
     const events: Array<[string, string]> = [
-      ['message_start', JSON.stringify({ type: 'message_start', message: { usage: { input_tokens: 4, output_tokens: 0 } } })],
-      ['content_block_start', JSON.stringify({ type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } })],
-      ['content_block_delta', JSON.stringify({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'Hel' } })],
-      ['content_block_delta', JSON.stringify({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'lo' } })],
-      ['message_delta', JSON.stringify({ type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 2 } })],
+      [
+        'message_start',
+        JSON.stringify({
+          type: 'message_start',
+          message: { usage: { input_tokens: 4, output_tokens: 0 } },
+        }),
+      ],
+      [
+        'content_block_start',
+        JSON.stringify({
+          type: 'content_block_start',
+          index: 0,
+          content_block: { type: 'text', text: '' },
+        }),
+      ],
+      [
+        'content_block_delta',
+        JSON.stringify({
+          type: 'content_block_delta',
+          index: 0,
+          delta: { type: 'text_delta', text: 'Hel' },
+        }),
+      ],
+      [
+        'content_block_delta',
+        JSON.stringify({
+          type: 'content_block_delta',
+          index: 0,
+          delta: { type: 'text_delta', text: 'lo' },
+        }),
+      ],
+      [
+        'message_delta',
+        JSON.stringify({
+          type: 'message_delta',
+          delta: { stop_reason: 'end_turn' },
+          usage: { output_tokens: 2 },
+        }),
+      ],
       ['message_stop', JSON.stringify({ type: 'message_stop' })],
     ];
 

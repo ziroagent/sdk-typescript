@@ -29,11 +29,7 @@ const text = (t: string): ModelGenerateResult => ({
   usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
 });
 
-const toolCall = (
-  toolName: string,
-  args: unknown,
-  toolCallId = 'c1',
-): ModelGenerateResult => {
+const toolCall = (toolName: string, args: unknown, toolCallId = 'c1'): ModelGenerateResult => {
   const tc: ToolCallPart = { type: 'tool-call', toolCallId, toolName, args };
   return {
     text: '',
@@ -82,10 +78,7 @@ describe('createAgent', () => {
       execute: ({ city }) => ({ temp: 30, city }),
     });
 
-    const model = scriptedModel([
-      toolCall('getWeather', { city: 'Hanoi' }),
-      text('done'),
-    ]);
+    const model = scriptedModel([toolCall('getWeather', { city: 'Hanoi' }), text('done')]);
     const agent = createAgent({ model, tools: { getWeather } });
     const events: string[] = [];
     await agent.run({

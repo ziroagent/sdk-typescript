@@ -35,8 +35,7 @@ const writer = createAgent({
 
 const critic = createAgent({
   model,
-  system:
-    'You are a critic agent. Suggest at most one concrete improvement, in one sentence.',
+  system: 'You are a critic agent. Suggest at most one concrete improvement, in one sentence.',
 });
 
 const editor = createAgent({
@@ -91,9 +90,9 @@ const result = await runWorkflow(wf, {
   },
 });
 
-console.log('\n--- topic ---\n' + result.state.topic);
-console.log('\n--- outline ---\n' + result.state.outline);
-console.log('\n--- draft ---\n' + result.state.draft);
-console.log('\n--- critique ---\n' + result.state.critique);
-console.log('\n--- final ---\n' + result.state.final);
+console.log(`\n--- topic ---\n${result.state.topic}`);
+console.log(`\n--- outline ---\n${result.state.outline}`);
+console.log(`\n--- draft ---\n${result.state.draft}`);
+console.log(`\n--- critique ---\n${result.state.critique}`);
+console.log(`\n--- final ---\n${result.state.final}`);
 console.log('\nfinishReason:', result.finishReason);

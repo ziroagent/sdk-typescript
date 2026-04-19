@@ -1,5 +1,3 @@
-import { cosineSimilarity } from '../util/cosine.js';
-import { uuid } from '../util/uuid.js';
 import type {
   Document,
   EmbeddedDocument,
@@ -9,6 +7,8 @@ import type {
   VectorQuery,
   VectorStore,
 } from '../types.js';
+import { cosineSimilarity } from '../util/cosine.js';
+import { uuid } from '../util/uuid.js';
 
 export interface MemoryVectorStoreOptions {
   /** Optional embedder enabling `add()` / `search({ text })`. */
@@ -55,7 +55,9 @@ export class MemoryVectorStore implements VectorStore {
 
   async add(docs: Document[]): Promise<void> {
     if (!this.embedder) {
-      throw new Error('MemoryVectorStore.add: no embedder configured. Pass `embedder` to the constructor or call `upsert` with pre-computed embeddings.');
+      throw new Error(
+        'MemoryVectorStore.add: no embedder configured. Pass `embedder` to the constructor or call `upsert` with pre-computed embeddings.',
+      );
     }
     const embeddings = await this.embedder.embed(docs.map((d) => d.text));
     const embedded: EmbeddedDocument[] = docs.map((d, i) => {
@@ -104,7 +106,9 @@ export class MemoryVectorStore implements VectorStore {
     if (query.embedding) return query.embedding;
     if (query.text) {
       if (!this.embedder) {
-        throw new Error('MemoryVectorStore.search: query.text requires an embedder. Pass `embedder` to the constructor or use query.embedding.');
+        throw new Error(
+          'MemoryVectorStore.search: query.text requires an embedder. Pass `embedder` to the constructor or use query.embedding.',
+        );
       }
       const [v] = await this.embedder.embed([query.text]);
       return v as number[];

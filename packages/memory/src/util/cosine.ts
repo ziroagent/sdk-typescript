@@ -5,9 +5,7 @@
  */
 export function cosineSimilarity(a: number[], b: number[]): number {
   if (a.length !== b.length) {
-    throw new Error(
-      `cosineSimilarity: dimensionality mismatch (${a.length} vs ${b.length})`,
-    );
+    throw new Error(`cosineSimilarity: dimensionality mismatch (${a.length} vs ${b.length})`);
   }
   let dot = 0;
   let na = 0;

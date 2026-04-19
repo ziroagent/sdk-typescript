@@ -76,11 +76,7 @@ export function instrumentModel(model: LanguageModel): LanguageModel {
   };
 }
 
-function buildRequestAttrs(
-  model: LanguageModel,
-  options: ModelCallOptions,
-  operation: string,
-) {
+function buildRequestAttrs(model: LanguageModel, options: ModelCallOptions, operation: string) {
   return {
     [ATTR.GenAiSystem]: model.provider,
     [ATTR.GenAiOperationName]: operation,

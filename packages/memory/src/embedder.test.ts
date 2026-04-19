@@ -2,11 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { createOpenAIEmbedder } from './embedder.js';
 
 function fakeFetch(body: unknown, status = 200): typeof fetch {
-  return vi.fn(async () =>
-    new Response(typeof body === 'string' ? body : JSON.stringify(body), {
-      status,
-      headers: { 'content-type': 'application/json' },
-    }),
+  return vi.fn(
+    async () =>
+      new Response(typeof body === 'string' ? body : JSON.stringify(body), {
+        status,
+        headers: { 'content-type': 'application/json' },
+      }),
   ) as unknown as typeof fetch;
 }
 

@@ -1,10 +1,6 @@
 import type { ContentPart, ToolCallPart } from './types/content.js';
 import type { FinishReason } from './types/finish-reason.js';
-import type {
-  LanguageModel,
-  ModelCallOptions,
-  ToolDefinitionForModel,
-} from './types/model.js';
+import type { LanguageModel, ModelCallOptions, ToolDefinitionForModel } from './types/model.js';
 import type { TokenUsage } from './types/usage.js';
 import { normalizePrompt, type PromptInput } from './util/normalize-prompt.js';
 

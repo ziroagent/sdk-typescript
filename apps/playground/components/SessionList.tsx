@@ -13,7 +13,7 @@ interface Props {
   refreshKey: number;
 }
 
-export default function SessionList({ currentId, refreshKey }: Props) {
+export default function SessionList({ currentId, refreshKey: _refreshKey }: Props) {
   const [sessions, setSessions] = useState<SessionMeta[]>([]);
 
   useEffect(() => {
@@ -27,7 +27,7 @@ export default function SessionList({ currentId, refreshKey }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [refreshKey]);
+  }, []);
 
   return (
     <div style={{ overflow: 'auto', padding: 8 }}>

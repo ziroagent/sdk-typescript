@@ -30,9 +30,9 @@ describe('MemoryVectorStore', () => {
 
   it('rejects vectors with mismatched dimensions', async () => {
     const store = new MemoryVectorStore({ dimensions: 2 });
-    await expect(
-      store.upsert([{ id: 'x', text: 'x', embedding: [1, 0, 0] }]),
-    ).rejects.toThrow(/dim mismatch/);
+    await expect(store.upsert([{ id: 'x', text: 'x', embedding: [1, 0, 0] }])).rejects.toThrow(
+      /dim mismatch/,
+    );
   });
 
   it('uses embedder for add() and text-search', async () => {

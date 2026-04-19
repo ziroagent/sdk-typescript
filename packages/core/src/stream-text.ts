@@ -1,5 +1,5 @@
-import { buildStreamTextResult, type StreamTextResult } from './streaming/text-stream.js';
 import type { GenerateTextOptions } from './generate-text.js';
+import { buildStreamTextResult, type StreamTextResult } from './streaming/text-stream.js';
 import { normalizePrompt } from './util/normalize-prompt.js';
 
 export type StreamTextOptions = GenerateTextOptions & {

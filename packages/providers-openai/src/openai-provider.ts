@@ -30,7 +30,7 @@ export function createOpenAI(options: OpenAIProviderOptions = {}): OpenAIProvide
     'Content-Type': 'application/json',
     ...options.headers,
   };
-  if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+  if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
   if (options.organization) headers['OpenAI-Organization'] = options.organization;
   if (options.project) headers['OpenAI-Project'] = options.project;
 

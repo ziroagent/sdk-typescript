@@ -8,12 +8,16 @@
   "files": {
     "includes": [
       "**",
-      "!**/dist/**",
-      "!**/.turbo/**",
-      "!**/.next/**",
-      "!**/node_modules/**",
-      "!**/coverage/**",
-      "!**/*.min.js"
+      "!**/dist",
+      "!**/.turbo",
+      "!**/.next",
+      "!**/.source",
+      "!**/node_modules",
+      "!**/coverage",
+      "!**/*.min.js",
+      "!apps/docs/public/api",
+      "!**/pnpm-lock.yaml",
+      "!**/CHANGELOG.md"
     ]
   },
   "formatter": {

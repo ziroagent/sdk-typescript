@@ -43,9 +43,7 @@ export function defineWorkflow<TState>(
   for (const n of def.nodes) {
     for (const e of n.edges ?? []) {
       if (!ids.has(e)) {
-        throw new Error(
-          `defineWorkflow: node "${n.id}" has edge to unknown node "${e}"`,
-        );
+        throw new Error(`defineWorkflow: node "${n.id}" has edge to unknown node "${e}"`);
       }
     }
   }
@@ -117,14 +115,15 @@ export async function runWorkflow<TState>(
           visited.push(nodeId);
           await emit({ type: 'node-start', nodeId, state });
           try {
-            const out = (await node.run({
-              state,
-              signal: internalAbort.signal,
-              nodeId,
-              emit: (ev) => {
-                void emit(ev);
-              },
-            })) ?? {};
+            const out =
+              (await node.run({
+                state,
+                signal: internalAbort.signal,
+                nodeId,
+                emit: (ev) => {
+                  void emit(ev);
+                },
+              })) ?? {};
             await emit({ type: 'node-finish', nodeId, state, result: out });
             return { nodeId, out: out as NodeResult<TState> };
           } catch (err) {

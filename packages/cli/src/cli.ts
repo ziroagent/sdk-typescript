@@ -1,7 +1,7 @@
 import kleur from 'kleur';
 import { runInit } from './commands/init.js';
-import { listExamples, runExample } from './commands/run.js';
 import { runPlayground } from './commands/playground.js';
+import { listExamples, runExample } from './commands/run.js';
 import { parseArgs } from './util/args.js';
 import { createLogger } from './util/logger.js';
 

@@ -58,10 +58,7 @@ export class AnthropicMessagesModel implements LanguageModel {
 
     return {
       text,
-      content: [
-        ...(text.length > 0 ? [{ type: 'text' as const, text }] : []),
-        ...toolCalls,
-      ],
+      content: [...(text.length > 0 ? [{ type: 'text' as const, text }] : []), ...toolCalls],
       toolCalls,
       finishReason: mapFinishReason(json.stop_reason),
       usage: mapUsage(json.usage),
@@ -174,37 +171,33 @@ export class AnthropicMessagesModel implements LanguageModel {
       messages: messages.map(toAnthropicMessage),
       max_tokens: options.maxTokens ?? 4096,
     };
-    if (system) body['system'] = system;
-    if (stream) body['stream'] = true;
+    if (system) body.system = system;
+    if (stream) body.stream = true;
     if (options.tools?.length) {
-      body['tools'] = options.tools.map((t) => ({
+      body.tools = options.tools.map((t) => ({
         name: t.name,
         ...(t.description !== undefined ? { description: t.description } : {}),
         input_schema: t.parameters,
       }));
     }
     if (options.toolChoice !== undefined) {
-      if (options.toolChoice === 'required') body['tool_choice'] = { type: 'any' };
-      else if (options.toolChoice === 'auto') body['tool_choice'] = { type: 'auto' };
+      if (options.toolChoice === 'required') body.tool_choice = { type: 'any' };
+      else if (options.toolChoice === 'auto') body.tool_choice = { type: 'auto' };
       else if (options.toolChoice === 'none') {
         // Anthropic has no explicit "none" — skip.
       } else if (typeof options.toolChoice === 'object') {
-        body['tool_choice'] = { type: 'tool', name: options.toolChoice.toolName };
+        body.tool_choice = { type: 'tool', name: options.toolChoice.toolName };
       }
     }
-    if (options.temperature !== undefined) body['temperature'] = options.temperature;
-    if (options.topP !== undefined) body['top_p'] = options.topP;
-    if (options.topK !== undefined) body['top_k'] = options.topK;
-    if (options.stopSequences !== undefined) body['stop_sequences'] = options.stopSequences;
+    if (options.temperature !== undefined) body.temperature = options.temperature;
+    if (options.topP !== undefined) body.top_p = options.topP;
+    if (options.topK !== undefined) body.top_k = options.topK;
+    if (options.stopSequences !== undefined) body.stop_sequences = options.stopSequences;
     if (options.providerOptions) Object.assign(body, options.providerOptions);
     return body;
   }
 
-  private async fetch(
-    path: string,
-    body: unknown,
-    options: ModelCallOptions,
-  ): Promise<Response> {
+  private async fetch(path: string, body: unknown, options: ModelCallOptions): Promise<Response> {
     const url = `${this.config.baseURL}${path}`;
     const headers = { ...this.config.headers, ...options.headers };
     const init: RequestInit = {
@@ -342,9 +335,7 @@ interface AnthropicUsage {
 function mapUsage(u: AnthropicUsage | undefined): TokenUsage {
   if (!u) return {};
   const promptTokens =
-    (u.input_tokens ?? 0) +
-    (u.cache_read_input_tokens ?? 0) +
-    (u.cache_creation_input_tokens ?? 0);
+    (u.input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0);
   const out: TokenUsage = {
     promptTokens: u.input_tokens !== undefined ? promptTokens : undefined,
     completionTokens: u.output_tokens,
@@ -370,15 +361,12 @@ function mergeUsage(a: TokenUsage, b: TokenUsage): TokenUsage {
 function uint8ToBase64(arr: Uint8Array): string {
   let s = '';
   for (let i = 0; i < arr.byteLength; i++) s += String.fromCharCode(arr[i] as number);
-  return typeof btoa !== 'undefined'
-    ? btoa(s)
-    : Buffer.from(s, 'binary').toString('base64');
+  return typeof btoa !== 'undefined' ? btoa(s) : Buffer.from(s, 'binary').toString('base64');
 }
 
 interface AnthropicMessageResponse {
   content?: Array<
-    | { type: 'text'; text: string }
-    | { type: 'tool_use'; id: string; name: string; input: unknown }
+    { type: 'text'; text: string } | { type: 'tool_use'; id: string; name: string; input: unknown }
   >;
   stop_reason?: string;
   usage?: AnthropicUsage;

@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -44,9 +44,7 @@ describe('runInit', () => {
   it('overwrites with --force', async () => {
     tmp = await mkdtemp(join(tmpdir(), 'ziroagent-init-'));
     await runInit({ cwd: tmp, logger: silentLogger });
-    await expect(
-      runInit({ cwd: tmp, force: true, logger: silentLogger }),
-    ).resolves.toBeUndefined();
+    await expect(runInit({ cwd: tmp, force: true, logger: silentLogger })).resolves.toBeUndefined();
   });
 
   it('rejects unknown templates', async () => {

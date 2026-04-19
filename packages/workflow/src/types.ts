@@ -28,7 +28,9 @@ export interface NodeDefinition<TState> {
   id: string;
   /** Static outgoing edges. Ignored if `run` returns `next`. */
   edges?: string[];
-  run(ctx: NodeContext<TState>): Promise<NodeResult<TState> | void> | NodeResult<TState> | void;
+  run(
+    ctx: NodeContext<TState>,
+  ): Promise<NodeResult<TState> | undefined> | NodeResult<TState> | undefined;
 }
 
 /** Fired throughout a workflow run; subscribe via `runWorkflow({ onEvent })`. */
@@ -42,9 +44,7 @@ export type WorkflowEvent<TState> =
 
 export type WorkflowFinishReason = 'completed' | 'aborted' | 'error' | 'maxNodes';
 
-export type WorkflowEventListener<TState> = (
-  event: WorkflowEvent<TState>,
-) => void | Promise<void>;
+export type WorkflowEventListener<TState> = (event: WorkflowEvent<TState>) => void | Promise<void>;
 
 export interface RunWorkflowResult<TState> {
   state: TState;

@@ -1,17 +1,13 @@
 import {
-  generateText,
   type ChatMessage,
+  generateText,
   type LanguageModel,
   type TextPart,
   type TokenUsage,
   type ToolCallPart,
   type ToolResultPart,
 } from '@ziro-agent/core';
-import {
-  executeToolCalls,
-  toolsToModelDefinitions,
-  type Tool,
-} from '@ziro-agent/tools';
+import { executeToolCalls, type Tool, toolsToModelDefinitions } from '@ziro-agent/tools';
 import type { StopWhen } from './stop-when.js';
 import type { AgentStep, StepEvent, StepEventListener } from './types.js';
 

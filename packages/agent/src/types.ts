@@ -1,4 +1,10 @@
-import type { ChatMessage, ContentPart, FinishReason, TokenUsage, ToolCallPart } from '@ziro-agent/core';
+import type {
+  ChatMessage,
+  ContentPart,
+  FinishReason,
+  TokenUsage,
+  ToolCallPart,
+} from '@ziro-agent/core';
 import type { ToolExecutionResult } from '@ziro-agent/tools';
 
 export interface AgentStep {
@@ -23,9 +29,7 @@ export type StepEvent =
   | { type: 'step-finish'; step: AgentStep }
   | { type: 'agent-finish'; reason: 'completed' | 'stopWhen' | 'maxSteps' | 'aborted' };
 
-export interface StepEventListener {
-  (event: StepEvent): void | Promise<void>;
-}
+export type StepEventListener = (event: StepEvent) => void | Promise<void>;
 
 /** Internal: full conversation including the seeded prompt and accumulated turns. */
 export type ConversationMessages = ChatMessage[];

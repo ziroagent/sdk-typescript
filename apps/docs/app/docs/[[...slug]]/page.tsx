@@ -1,5 +1,5 @@
-import { notFound } from 'next/navigation';
 import { DocsBody, DocsDescription, DocsPage, DocsTitle } from 'fumadocs-ui/page';
+import { notFound } from 'next/navigation';
 import { source } from '@/lib/source';
 
 export default async function Page(props: { params: Promise<{ slug?: string[] }> }) {
@@ -11,9 +11,7 @@ export default async function Page(props: { params: Promise<{ slug?: string[] }>
   return (
     <DocsPage toc={page.data.toc} full={page.data.full ?? false}>
       <DocsTitle>{page.data.title}</DocsTitle>
-      {page.data.description ? (
-        <DocsDescription>{page.data.description}</DocsDescription>
-      ) : null}
+      {page.data.description ? <DocsDescription>{page.data.description}</DocsDescription> : null}
       <DocsBody>
         <MDX />
       </DocsBody>

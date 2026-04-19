@@ -1,5 +1,5 @@
 import { generateText, streamText } from '@ziro-agent/core';
-import { http, HttpResponse } from 'msw';
+import { HttpResponse, http } from 'msw';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { createOpenAI } from './openai-provider.js';
@@ -98,9 +98,9 @@ describe('OpenAI chat model — generate (msw)', () => {
     );
 
     const openai = createOpenAI({ apiKey: 'wrong' });
-    await expect(
-      generateText({ model: openai('gpt-4o-mini'), prompt: 'x' }),
-    ).rejects.toMatchObject({ name: 'APICallError', statusCode: 401 });
+    await expect(generateText({ model: openai('gpt-4o-mini'), prompt: 'x' })).rejects.toMatchObject(
+      { name: 'APICallError', statusCode: 401 },
+    );
   });
 });
 

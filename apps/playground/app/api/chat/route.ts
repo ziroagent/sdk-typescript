@@ -1,4 +1,4 @@
-import { streamText, type ChatMessage } from '@ziro-agent/core';
+import { type ChatMessage, streamText } from '@ziro-agent/core';
 import { resolveModel } from '@/lib/model';
 import { sessions } from '@/lib/sessions';
 
@@ -21,11 +21,17 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: '`messages` is required' }, { status: 400 });
   }
 
-  const session = body.sessionId ? sessions.get(body.sessionId) ?? sessions.create() : sessions.create();
+  const session = body.sessionId
+    ? (sessions.get(body.sessionId) ?? sessions.create())
+    : sessions.create();
   session.messages = body.messages;
-  session.trace.push({ type: 'llm-start', at: Date.now(), data: { messages: body.messages.length } });
+  session.trace.push({
+    type: 'llm-start',
+    at: Date.now(),
+    data: { messages: body.messages.length },
+  });
 
-  let model;
+  let model: ReturnType<typeof resolveModel>;
   try {
     model = resolveModel();
   } catch (err) {
@@ -53,7 +59,11 @@ export async function POST(req: Request): Promise<Response> {
           const { done, value: part } = await reader.read();
           if (done) break;
           if (part.type === 'text-delta') {
-            session.trace.push({ type: 'llm-text-delta', at: Date.now(), data: { textDelta: part.textDelta } });
+            session.trace.push({
+              type: 'llm-text-delta',
+              at: Date.now(),
+              data: { textDelta: part.textDelta },
+            });
             send({ type: 'text-delta', textDelta: part.textDelta });
           } else if (part.type === 'finish') {
             session.trace.push({ type: 'llm-finish', at: Date.now(), data: part });

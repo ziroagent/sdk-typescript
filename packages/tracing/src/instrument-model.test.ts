@@ -7,7 +7,7 @@ import type {
 import { afterEach, describe, expect, it } from 'vitest';
 import { ATTR } from './attributes.js';
 import { instrumentModel } from './instrument-model.js';
-import { setTracer, type SpanLike, type ZiroTracer } from './tracer.js';
+import { type SpanLike, setTracer, type ZiroTracer } from './tracer.js';
 
 interface RecordedSpan {
   name: string;
@@ -47,7 +47,8 @@ function recordingTracer(): ZiroTracer & { spans: RecordedSpan[] } {
     spans,
     startSpan(name, options) {
       const s = make(name, options?.kind);
-      if (options?.attributes) Object.assign(spans[spans.length - 1]?.attributes ?? {}, options.attributes);
+      if (options?.attributes)
+        Object.assign(spans[spans.length - 1]?.attributes ?? {}, options.attributes);
       return s;
     },
     async withSpan(name, fn, options) {

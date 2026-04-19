@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Logger } from '../util/logger.js';
 
@@ -66,11 +66,7 @@ function findExamplesRoot(): string | undefined {
   return undefined;
 }
 
-function spawnAndWait(
-  cmd: string,
-  args: string[],
-  opts: { cwd: string },
-): Promise<number> {
+function spawnAndWait(cmd: string, args: string[], opts: { cwd: string }): Promise<number> {
   return new Promise((resolvePromise, rejectPromise) => {
     const child = spawn(cmd, args, { cwd: opts.cwd, stdio: 'inherit' });
     child.on('error', rejectPromise);

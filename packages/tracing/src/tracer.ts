@@ -84,7 +84,10 @@ const STATUS_ERROR = 2 as const;
  */
 export function createOtelTracer(otelTracer: unknown): ZiroTracer {
   const t = otelTracer as {
-    startSpan(name: string, options?: { kind?: number; attributes?: Record<string, AttrValue> }): SpanLike;
+    startSpan(
+      name: string,
+      options?: { kind?: number; attributes?: Record<string, AttrValue> },
+    ): SpanLike;
   };
   return {
     startSpan(name, options) {

@@ -6,14 +6,25 @@ import type { TraceEvent } from './Chat';
 export default function TraceViewer({ events }: { events: TraceEvent[] }) {
   const grouped = useMemo(() => events.slice().reverse(), [events]);
   return (
-    <div style={{ overflow: 'auto', padding: 8, fontFamily: 'ui-monospace, SFMono-Regular, monospace', fontSize: 12 }}>
+    <div
+      style={{
+        overflow: 'auto',
+        padding: 8,
+        fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+        fontSize: 12,
+      }}
+    >
       {grouped.length === 0 ? (
         <div style={{ color: 'var(--text-dim)' }}>No trace events yet.</div>
       ) : (
         grouped.map((ev, i) => (
-          <details key={i} style={{ marginBottom: 4, borderBottom: '1px solid var(--border)', paddingBottom: 4 }}>
+          <details
+            // biome-ignore lint/suspicious/noArrayIndexKey: trace events are append-only and ordered
+            key={i}
+            style={{ marginBottom: 4, borderBottom: '1px solid var(--border)', paddingBottom: 4 }}
+          >
             <summary style={{ cursor: 'pointer', color: colorFor(ev.type) }}>
-              {fmtTime(ev.at)}  <strong>{ev.type}</strong>
+              {fmtTime(ev.at)} <strong>{ev.type}</strong>
             </summary>
             <pre style={{ margin: '6px 0', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
               {JSON.stringify(ev.data ?? {}, null, 2)}

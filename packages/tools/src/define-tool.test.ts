@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { defineTool, isTool } from './define-tool.js';
 import { executeToolCalls } from './execute.js';
-import { toolToModelDefinition, toolsToModelDefinitions } from './schema.js';
+import { toolsToModelDefinitions, toolToModelDefinition } from './schema.js';
 
 describe('defineTool', () => {
   it('produces a branded tool object', () => {
@@ -27,8 +27,8 @@ describe('toolToModelDefinition', () => {
     });
     const def = toolToModelDefinition(t);
     expect(def.name).toBe('getWeather');
-    expect(def.parameters['type']).toBe('object');
-    expect((def.parameters['properties'] as Record<string, unknown>)['city']).toBeDefined();
+    expect(def.parameters.type).toBe('object');
+    expect((def.parameters.properties as Record<string, unknown>).city).toBeDefined();
   });
 
   it('handles record input from object form', () => {

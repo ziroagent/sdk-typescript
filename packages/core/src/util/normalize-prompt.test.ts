@@ -10,7 +10,10 @@ describe('normalizePrompt', () => {
 
   it('prepends the system message when provided', () => {
     const out = normalizePrompt({ system: 'You are helpful', prompt: 'Hi' });
-    expect(out[0]).toEqual({ role: 'system', content: [{ type: 'text', text: 'You are helpful' }] });
+    expect(out[0]).toEqual({
+      role: 'system',
+      content: [{ type: 'text', text: 'You are helpful' }],
+    });
     expect(out[1]).toEqual({ role: 'user', content: [{ type: 'text', text: 'Hi' }] });
   });
 

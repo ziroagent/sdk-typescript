@@ -1,5 +1,5 @@
-import { mkdir, readdir, copyFile, readFile, writeFile, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import { copyFile, mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Logger } from '../util/logger.js';
@@ -50,9 +50,7 @@ export async function runInit(options: InitOptions): Promise<void> {
     const entries = await readdir(target);
     const visible = entries.filter((e) => !e.startsWith('.'));
     if (visible.length > 0 && !options.force) {
-      throw new Error(
-        `Target directory ${target} is not empty. Pass --force to overwrite.`,
-      );
+      throw new Error(`Target directory ${target} is not empty. Pass --force to overwrite.`);
     }
   } else {
     await mkdir(target, { recursive: true });

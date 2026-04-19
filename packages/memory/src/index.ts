@@ -1,3 +1,6 @@
+export { type ChunkOptions, chunkText } from './chunker.js';
+export { createOpenAIEmbedder, type OpenAIEmbeddingOptions } from './embedder.js';
+export { MemoryVectorStore, type MemoryVectorStoreOptions } from './stores/memory.js';
 export type {
   Document,
   EmbeddedDocument,
@@ -7,8 +10,4 @@ export type {
   VectorQuery,
   VectorStore,
 } from './types.js';
-
-export { chunkText, type ChunkOptions } from './chunker.js';
-export { createOpenAIEmbedder, type OpenAIEmbeddingOptions } from './embedder.js';
-export { MemoryVectorStore, type MemoryVectorStoreOptions } from './stores/memory.js';
 export { cosineSimilarity, normalize } from './util/cosine.js';

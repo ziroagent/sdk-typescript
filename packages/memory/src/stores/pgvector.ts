@@ -1,4 +1,3 @@
-import { uuid } from '../util/uuid.js';
 import type {
   Document,
   EmbeddedDocument,
@@ -8,6 +7,7 @@ import type {
   VectorQuery,
   VectorStore,
 } from '../types.js';
+import { uuid } from '../util/uuid.js';
 
 /**
  * Minimal subset of `node-postgres` we rely on. Declared inline so we don't

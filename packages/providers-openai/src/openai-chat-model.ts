@@ -73,10 +73,7 @@ export class OpenAIChatModel implements LanguageModel {
 
     return {
       text,
-      content: [
-        ...(text.length > 0 ? [{ type: 'text' as const, text }] : []),
-        ...toolCalls,
-      ],
+      content: [...(text.length > 0 ? [{ type: 'text' as const, text }] : []), ...toolCalls],
       toolCalls,
       finishReason: mapFinishReason(choice.finish_reason),
       usage: mapUsage(json.usage),
@@ -182,11 +179,11 @@ export class OpenAIChatModel implements LanguageModel {
       messages: options.messages.map(toOpenAIMessage),
     };
     if (stream) {
-      body['stream'] = true;
-      body['stream_options'] = { include_usage: true };
+      body.stream = true;
+      body.stream_options = { include_usage: true };
     }
     if (options.tools?.length) {
-      body['tools'] = options.tools.map((t) => ({
+      body.tools = options.tools.map((t) => ({
         type: 'function',
         function: {
           name: t.name,
@@ -197,28 +194,24 @@ export class OpenAIChatModel implements LanguageModel {
     }
     if (options.toolChoice !== undefined) {
       if (typeof options.toolChoice === 'string') {
-        body['tool_choice'] = options.toolChoice;
+        body.tool_choice = options.toolChoice;
       } else {
-        body['tool_choice'] = {
+        body.tool_choice = {
           type: 'function',
           function: { name: options.toolChoice.toolName },
         };
       }
     }
-    if (options.temperature !== undefined) body['temperature'] = options.temperature;
-    if (options.topP !== undefined) body['top_p'] = options.topP;
-    if (options.maxTokens !== undefined) body['max_tokens'] = options.maxTokens;
-    if (options.stopSequences !== undefined) body['stop'] = options.stopSequences;
-    if (options.seed !== undefined) body['seed'] = options.seed;
+    if (options.temperature !== undefined) body.temperature = options.temperature;
+    if (options.topP !== undefined) body.top_p = options.topP;
+    if (options.maxTokens !== undefined) body.max_tokens = options.maxTokens;
+    if (options.stopSequences !== undefined) body.stop = options.stopSequences;
+    if (options.seed !== undefined) body.seed = options.seed;
     if (options.providerOptions) Object.assign(body, options.providerOptions);
     return body;
   }
 
-  private async fetch(
-    path: string,
-    body: unknown,
-    options: ModelCallOptions,
-  ): Promise<Response> {
+  private async fetch(path: string, body: unknown, options: ModelCallOptions): Promise<Response> {
     const url = `${this.config.baseURL}${path}`;
     const headers = { ...this.config.headers, ...options.headers };
     const init: RequestInit = {
@@ -284,7 +277,7 @@ function toOpenAIMessage(m: NormalizedMessage): unknown {
         .join('');
       const out: Record<string, unknown> = { role: 'assistant', content: text || null };
       if (toolCalls.length > 0) {
-        out['tool_calls'] = toolCalls.map((tc) => ({
+        out.tool_calls = toolCalls.map((tc) => ({
           id: (tc as ToolCallPart).toolCallId,
           type: 'function',
           function: {
@@ -304,8 +297,7 @@ function toOpenAIMessage(m: NormalizedMessage): unknown {
       }
       return {
         role: 'tool',
-        content:
-          typeof first.result === 'string' ? first.result : JSON.stringify(first.result),
+        content: typeof first.result === 'string' ? first.result : JSON.stringify(first.result),
         tool_call_id: first.toolCallId,
       };
     }
@@ -315,9 +307,7 @@ function toOpenAIMessage(m: NormalizedMessage): unknown {
 function uint8ToBase64(arr: Uint8Array): string {
   let s = '';
   for (let i = 0; i < arr.byteLength; i++) s += String.fromCharCode(arr[i] as number);
-  return typeof btoa !== 'undefined'
-    ? btoa(s)
-    : Buffer.from(s, 'binary').toString('base64');
+  return typeof btoa !== 'undefined' ? btoa(s) : Buffer.from(s, 'binary').toString('base64');
 }
 
 function safeParseJSON(text: string): unknown {

@@ -24,9 +24,9 @@ function fakePool(): PgPoolLike & { calls: Array<{ text: string; values?: unknow
 
 describe('PgVectorStore', () => {
   it('rejects invalid table identifiers', () => {
-    expect(
-      () => new PgVectorStore({ pool: fakePool(), table: 'bad name', dimensions: 3 }),
-    ).toThrow(/Invalid identifier/);
+    expect(() => new PgVectorStore({ pool: fakePool(), table: 'bad name', dimensions: 3 })).toThrow(
+      /Invalid identifier/,
+    );
   });
 
   it('init() creates extension, table, and index', async () => {
@@ -47,9 +47,9 @@ describe('PgVectorStore', () => {
     expect(insert).toBeTruthy();
     expect(insert?.values?.[2]).toBe('[0.1,0.2,0.3]');
 
-    await expect(
-      store.upsert([{ id: 'y', text: 'oops', embedding: [0.1] }]),
-    ).rejects.toThrow(/dim mismatch/);
+    await expect(store.upsert([{ id: 'y', text: 'oops', embedding: [0.1] }])).rejects.toThrow(
+      /dim mismatch/,
+    );
   });
 
   it('search returns parsed scores and metadata', async () => {

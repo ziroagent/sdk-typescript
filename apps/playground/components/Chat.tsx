@@ -121,13 +121,21 @@ export default function Chat({ onTraceEvent, onSession, onClear }: ChatProps) {
       <div style={listWrap}>
         {messages.length === 0 ? (
           <div style={emptyState}>
-            <p>Start by sending a message. Configure the model in <code>.env.local</code>.</p>
+            <p>
+              Start by sending a message. Configure the model in <code>.env.local</code>.
+            </p>
           </div>
         ) : (
           messages.map((m, i) => (
-            <div key={i} style={msgRow(m.role)}>
+            <div
+              // biome-ignore lint/suspicious/noArrayIndexKey: messages list is append-only and ordered
+              key={i}
+              style={msgRow(m.role)}
+            >
               <div style={roleBadge(m.role)}>{m.role}</div>
-              <div style={msgBody}>{m.content || (streaming && i === messages.length - 1 ? '…' : '')}</div>
+              <div style={msgBody}>
+                {m.content || (streaming && i === messages.length - 1 ? '…' : '')}
+              </div>
             </div>
           ))
         )}

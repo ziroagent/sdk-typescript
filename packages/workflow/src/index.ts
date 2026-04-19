@@ -1,3 +1,4 @@
+export { decisionNode, defineNode } from './define-node.js';
 export type {
   NodeContext,
   NodeDefinition,
@@ -7,10 +8,9 @@ export type {
   WorkflowEventListener,
   WorkflowFinishReason,
 } from './types.js';
-export { defineNode, decisionNode } from './define-node.js';
 export {
   defineWorkflow,
+  type RunWorkflowOptions,
   runWorkflow,
   type WorkflowDefinition,
-  type RunWorkflowOptions,
 } from './workflow.js';

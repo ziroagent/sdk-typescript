@@ -30,9 +30,9 @@ describe('defineWorkflow', () => {
   });
 
   it('rejects unknown start node', () => {
-    expect(() =>
-      defineWorkflow<S>({ nodes: [{ id: 'x', run: () => {} }], start: 'y' }),
-    ).toThrow(/start node/);
+    expect(() => defineWorkflow<S>({ nodes: [{ id: 'x', run: () => {} }], start: 'y' })).toThrow(
+      /start node/,
+    );
   });
 
   it('requires at least one node', () => {
@@ -136,12 +136,7 @@ describe('runWorkflow', () => {
       nodes: [defineNode<S>({ id: 'a', run: () => ({}) })],
     });
     await runWorkflow(wf, { onEvent: (e) => void events.push(e.type) });
-    expect(events).toEqual([
-      'workflow-start',
-      'node-start',
-      'node-finish',
-      'workflow-finish',
-    ]);
+    expect(events).toEqual(['workflow-start', 'node-start', 'node-finish', 'workflow-finish']);
   });
 
   it('captures node errors and stops with finishReason "error"', async () => {

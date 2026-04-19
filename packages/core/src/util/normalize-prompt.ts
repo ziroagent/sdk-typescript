@@ -1,6 +1,6 @@
 import { InvalidPromptError } from '../errors.js';
-import type { ChatMessage, NormalizedMessage } from '../types/messages.js';
 import type { ContentPart } from '../types/content.js';
+import type { ChatMessage, NormalizedMessage } from '../types/messages.js';
 
 /**
  * Either a single user prompt or a full message list. Both forms are normalized

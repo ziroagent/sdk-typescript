@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { ATTR } from './attributes.js';
 import { instrumentTool, instrumentTools } from './instrument-tools.js';
-import { setTracer, type SpanLike, type ZiroTracer } from './tracer.js';
+import { type SpanLike, setTracer, type ZiroTracer } from './tracer.js';
 
 interface RecordedSpan {
   name: string;

@@ -2,8 +2,8 @@
 
 import { useCallback, useState } from 'react';
 import Chat, { type TraceEvent } from '@/components/Chat';
-import TraceViewer from '@/components/TraceViewer';
 import SessionList from '@/components/SessionList';
+import TraceViewer from '@/components/TraceViewer';
 
 export default function HomePage() {
   const [trace, setTrace] = useState<TraceEvent[]>([]);

@@ -7,9 +7,7 @@ describe('chunkText', () => {
   });
 
   it('keeps short text as a single chunk', () => {
-    expect(chunkText('hello world', { chunkSize: 100, chunkOverlap: 10 })).toEqual([
-      'hello world',
-    ]);
+    expect(chunkText('hello world', { chunkSize: 100, chunkOverlap: 10 })).toEqual(['hello world']);
   });
 
   it('splits long text into chunks under the limit', () => {

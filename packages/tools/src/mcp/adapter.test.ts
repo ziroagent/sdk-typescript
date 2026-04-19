@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mcpToolsFromClient, type McpClientLike } from './adapter.js';
+import { type McpClientLike, mcpToolsFromClient } from './adapter.js';
 
 const fakeClient = (): McpClientLike => {
   const calls: Array<{ name: string; args?: Record<string, unknown> }> = [];
@@ -31,7 +31,7 @@ describe('mcpToolsFromClient', () => {
     const tools = await mcpToolsFromClient({ client: fakeClient() });
     expect(Object.keys(tools).sort()).toEqual(['echo', 'fail']);
 
-    const out = await tools['echo']?.execute({ msg: 'hi' }, { toolCallId: 't1' });
+    const out = await tools.echo?.execute({ msg: 'hi' }, { toolCallId: 't1' });
     expect(out).toBe('echo:hi');
   });
 
@@ -46,6 +46,6 @@ describe('mcpToolsFromClient', () => {
 
   it('throws when MCP returns an error', async () => {
     const tools = await mcpToolsFromClient({ client: fakeClient() });
-    await expect(tools['fail']?.execute({}, { toolCallId: 't' })).rejects.toThrow('nope');
+    await expect(tools.fail?.execute({}, { toolCallId: 't' })).rejects.toThrow('nope');
   });
 });

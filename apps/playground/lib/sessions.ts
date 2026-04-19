@@ -54,12 +54,17 @@ class SessionStore {
 }
 
 declare global {
-  // biome-ignore lint/style/noVar: must be `var` to attach to globalThis.
   var __ziroAgentPlaygroundStore: SessionStore | undefined;
 }
 
-export const sessions: SessionStore =
-  globalThis.__ziroAgentPlaygroundStore ?? (globalThis.__ziroAgentPlaygroundStore = new SessionStore());
+function getOrCreateStore(): SessionStore {
+  if (!globalThis.__ziroAgentPlaygroundStore) {
+    globalThis.__ziroAgentPlaygroundStore = new SessionStore();
+  }
+  return globalThis.__ziroAgentPlaygroundStore;
+}
+
+export const sessions: SessionStore = getOrCreateStore();
 
 function randomId(): string {
   const c = (globalThis as unknown as { crypto?: { randomUUID?: () => string } }).crypto;
