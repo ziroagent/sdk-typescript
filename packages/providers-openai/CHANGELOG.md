@@ -1,5 +1,12 @@
 # @ziro-agent/openai
 
+## 0.2.3
+
+### Patch Changes
+
+- Updated dependencies [[`16d80c8`](https://github.com/ziroagent/sdk-typescript/commit/16d80c8a829b7ccfec977058ab0f08a828cca468), [`bba9d98`](https://github.com/ziroagent/sdk-typescript/commit/bba9d9813d8375b7bfad3bef37d93531d14c4b2d)]:
+  - @ziro-agent/core@0.5.0
+
 ## 0.2.2
 
 ### Patch Changes

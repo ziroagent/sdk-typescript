@@ -1,5 +1,29 @@
 # @ziro-agent/tracing
 
+## 0.4.0
+
+### Minor Changes
+
+- [`ec901c8`](https://github.com/ziroagent/sdk-typescript/commit/ec901c8554bc0f4e1577eeff8a5ab1b386c9097a) - Emit `ziro.agent.handoff` spans on every multi-agent handoff (RFC 0007 §Tracing).
+
+  `@ziro-agent/agent` now opens a span around each `transfer_to_<name>` tool
+  invocation with attributes `ziroagent.handoff.{parent.name,target.name,depth,
+max_depth,chain,messages.count,input_filter.applied,reason}` — denormalised
+  so a query like `parent="triage" AND target="billing"` works without joining
+  spans. `@ziro-agent/tracing` exports the new attribute keys (`ATTR.Handoff*`,
+  `ATTR.AgentName`).
+
+  The span is opened via `getTracer()` so it remains a no-op until the user
+  calls `setTracer(...)`. No behavioural change for non-traced runs.
+
+  See `examples/multi-agent-handoff` for an end-to-end demo (triage → billing /
+  tech_support) plus a console-tracer harness (`otel.ts`).
+
+### Patch Changes
+
+- Updated dependencies [[`16d80c8`](https://github.com/ziroagent/sdk-typescript/commit/16d80c8a829b7ccfec977058ab0f08a828cca468), [`bba9d98`](https://github.com/ziroagent/sdk-typescript/commit/bba9d9813d8375b7bfad3bef37d93531d14c4b2d)]:
+  - @ziro-agent/core@0.5.0
+
 ## 0.3.1
 
 ### Patch Changes
