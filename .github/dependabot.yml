@@ -67,6 +67,12 @@ updates:
       # us once on a node:sqlite import (see comment in setup composite).
       - dependency-name: "pnpm"
         update-types: ["version-update:semver-major"]
+      # Toolchain majors: land via an explicit RFC + matrix burn-in, not
+      # a solo Dependabot PR (see closed PRs #22 / #23).
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   # ----------------------------------------------------------------------
   # GitHub Actions — bumps SHA pin + version comment in lockstep.
