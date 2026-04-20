@@ -1,6 +1,6 @@
 {
   "name": "@ziro-agent/google",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Google Gemini provider for ZiroAgent SDK.",
   "license": "Apache-2.0",
   "homepage": "https://ziroagent.com",
