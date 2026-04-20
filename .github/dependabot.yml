@@ -26,8 +26,13 @@ updates:
       - dependencies
       - npm
     commit-message:
-      prefix: chore(deps)
-      prefix-development: chore(deps-dev)
+      # NOTE: `include: scope` makes Dependabot append its own scope
+      # (e.g. `(deps)` / `(deps-dev)`) to the prefix. If `prefix` ALSO
+      # contains `(...)` we end up with double-scope titles like
+      # `chore(deps)(deps): ...` which commitlint rejects. Keep the
+      # prefix as a bare type and let `include: scope` do the scoping.
+      prefix: chore
+      prefix-development: chore
       include: scope
     groups:
       types:
@@ -78,7 +83,11 @@ updates:
       - dependencies
       - github-actions
     commit-message:
-      prefix: chore(actions)
+      # Same bare-type rule as the npm block above. Ecosystem is
+      # already signalled by the `github-actions` label — reviewers
+      # can filter on that. Produces e.g.
+      #   chore(deps): bump actions/checkout from A to B
+      prefix: chore
       include: scope
     groups:
       actions-minor:
