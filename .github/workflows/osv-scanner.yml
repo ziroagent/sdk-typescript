@@ -1,0 +1,81 @@
+name: OSV-Scanner
+
+# Scans the lockfile + repo for known vulnerabilities using Google's
+# OSV-Scanner against the OSV.dev database. Runs:
+#   - on push/PR to main: incremental scan (PR view shows new findings only)
+#   - weekly: full scan to catch advisories published since the last PR
+#
+# Why OSV in addition to Dependabot:
+#   Dependabot alerts are great for direct deps + GH advisory DB. OSV
+#   covers a broader corpus (PyPI, npm, Go, RubyGems, Maven, ...) and
+#   crucially picks up GitHub-malware advisories the moment they hit
+#   OSV.dev — typically faster than Dependabot.
+#
+# Findings appear in Security → Code scanning (SARIF upload).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '11 5 * * 1'   # Mon 05:11 UTC (off-peak)
+  workflow_dispatch:
+
+concurrency:
+  group: osv-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    name: Vulnerability scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write   # SARIF upload
+      actions: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2
+        with:
+          egress-policy: audit
+
+      # OSV-Scanner action checks out internally, but we pre-checkout so
+      # SARIF upload paths resolve to our repo files (not the action's).
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - name: Run OSV-Scanner
+        uses: google/osv-scanner-action/osv-scanner-action@c51854704019a247608d928f370c98740469d4b5 # v2.3.5
+        with:
+          scan-args: |-
+            --recursive
+            --skip-git
+            --format=sarif
+            --output=osv-results.sarif
+            ./
+        # Don't fail the build on vulnerabilities — surface in the security
+        # tab and let humans triage. The PR file-changes view annotates
+        # newly-introduced findings inline, which is the actual signal.
+        continue-on-error: true
+
+      - name: Upload SARIF to code-scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a # v3
+        with:
+          sarif_file: osv-results.sarif
+          category: osv-scanner
+
+      - name: Upload SARIF artifact
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: osv-results
+          path: osv-results.sarif
+          retention-days: 14
+          if-no-files-found: warn

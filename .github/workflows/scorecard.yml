@@ -1,0 +1,65 @@
+name: OSSF Scorecard
+
+# Runs the OpenSSF Scorecard against this repo and uploads results to:
+#   - GitHub code-scanning (Security → Code scanning)
+#   - The public Scorecard API (https://securityscorecards.dev) — this is
+#     what powers the "OpenSSF Scorecard" badge on the README.
+#
+# Scorecard checks ~20 supply-chain hygiene signals (token-perms, pinned
+# deps, SAST, branch protection, signed releases, etc). Drops in score
+# typically correlate with a regressing security posture.
+#
+# This workflow is INTENTIONALLY in its own file (not folded into ci.yml)
+# because it requires `id-token: write` for the public publish step and
+# `security-events: write` for SARIF upload — both broader than what
+# `ci.yml` should ever need.
+
+on:
+  branch_protection_rule:
+  schedule:
+    - cron: '23 4 * * 2'   # Tue 04:23 UTC
+  push:
+    branches: [main]
+
+# Top-level read-only; the analysis job escalates only what's needed.
+permissions:
+  contents: read
+
+jobs:
+  analysis:
+    name: Scorecard analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write   # SARIF upload to code-scanning
+      id-token: write          # publish results to public scorecard API
+      actions: read            # token-permissions check needs to read workflows
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - name: Run analysis
+        uses: ossf/scorecard-action@4eaacf0543bb3f2c246792bd56e8cdeffafb205a # v2.4.3
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+
+      - name: Upload SARIF artifact (debug + audit)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: scorecard-results
+          path: results.sarif
+          retention-days: 14
+
+      - name: Upload SARIF to code-scanning
+        uses: github/codeql-action/upload-sarif@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a # v3
+        with:
+          sarif_file: results.sarif

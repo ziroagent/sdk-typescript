@@ -1,0 +1,78 @@
+name: CodeQL
+
+# Static analysis for TypeScript / JavaScript. Findings appear in
+# Security → Code scanning. We use the security-and-quality query suite
+# instead of the default to catch more issues at the cost of some noise.
+#
+# Triggers:
+#   - PR to main: incremental scan, fails the PR on new high-severity findings
+#   - push to main: baseline rebuild
+#   - schedule: weekly full scan (catches new queries shipped by GitHub)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Off-peak Sunday — keeps weekday Actions queue free.
+    - cron: '17 3 * * 0'
+
+concurrency:
+  group: codeql-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript]
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      # Init the CodeQL DB before any build/install runs so it can
+      # auto-instrument the install + build for indirect-flow tracking.
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a # v3
+        with:
+          languages: ${{ matrix.language }}
+          # security-and-quality > security-extended > security (default).
+          # We accept the noise budget for a public SDK.
+          queries: security-and-quality
+          # Exclude generated files / vendored code / docs to keep noise down.
+          config: |
+            paths-ignore:
+              - '**/dist/**'
+              - '**/.next/**'
+              - '**/.source/**'
+              - '**/coverage/**'
+              - '**/node_modules/**'
+              - 'apps/docs/**'
+
+      # CodeQL needs to observe the build to extract type info accurately.
+      # We do a packages-only build so apps/* don't bloat the DB.
+      - uses: ./.github/actions/setup-pnpm-node
+      - run: pnpm --filter "./packages/*" build
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a # v3
+        with:
+          category: '/language:${{ matrix.language }}'
