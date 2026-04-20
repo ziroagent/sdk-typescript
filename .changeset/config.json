@@ -1,9 +1,6 @@
 {
   "$schema": "https://unpkg.com/@changesets/config@3.0.0/schema.json",
-  "changelog": [
-    "@changesets/changelog-github",
-    { "repo": "ziroagent/sdk-typescript" }
-  ],
+  "changelog": ["@changesets/changelog-github", { "repo": "ziroagent/sdk-typescript" }],
   "commit": false,
   "fixed": [],
   "linked": [],
