@@ -4,20 +4,52 @@ on:
   push:
     branches: [main]
 
+# Only one Release run can be in flight per ref. We do NOT cancel-in-progress
+# here — interrupting a publish that already wrote half the npm tarballs would
+# leave the registry in an inconsistent state.
 concurrency:
   group: release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 permissions:
-  contents: write
-  pull-requests: write
-  id-token: write
+  contents: write       # version-packages PR + git tags + GitHub Releases
+  pull-requests: write  # open / update the "Version Packages" PR
+  id-token: write       # required for npm provenance (OIDC sigstore)
 
 env:
   TURBO_TELEMETRY_DISABLED: 1
 
 jobs:
+  # --------------------------------------------------------------------------
+  # Gate: replicates the *exact* checks from CI on the same commit. We rerun
+  # them here (instead of waiting on the CI workflow) so a single workflow file
+  # owns the full release contract — easier to reason about, no cross-workflow
+  # status-coupling, and Releases never publish from a green commit whose
+  # CI got skipped (e.g. doc-only ignore filters in CI later on).
+  # --------------------------------------------------------------------------
+  gate:
+    name: Pre-release validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm --filter "./packages/*" build
+      - run: pnpm --filter "./packages/*" typecheck
+      - run: pnpm --filter "./packages/*" test
+      - run: pnpm --filter "./packages/*" publint
+      - run: pnpm --filter "./packages/*" attw
+
   release:
-    name: Release
+    name: Version PR or publish
+    needs: gate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -72,13 +104,47 @@ jobs:
           publish: pnpm release
           commit: "chore(release): version packages"
           title: "chore(release): version packages"
+          # Auto-create a GitHub Release per published package, with the
+          # changelog body extracted from the package's CHANGELOG.md.
+          # Tag format: `<package-name>@<version>` (matches changesets default).
+          createGithubReleases: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # changesets/action reads NPM_TOKEN and writes ~/.npmrc with the
           # actual token value (not a placeholder), then runs `pnpm release`.
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          # Disable npm provenance: the current NPM_TOKEN does not have
-          # OIDC sigstore permissions, and auto-enabling provenance under
-          # `id-token: write` causes PUT to return 404 (auth failure).
-          # Re-enable later by issuing a granular token with write+attest.
+          # ----------------------------------------------------------------
+          # PROVENANCE STATUS
+          # ----------------------------------------------------------------
+          # Currently disabled because the active NPM_TOKEN is a classic
+          # automation token without `id-token: write` -> sigstore mapping,
+          # and auto-enabling provenance under `id-token: write` causes PUT
+          # to return 404 (auth failure). To re-enable:
+          #
+          #   1. Migrate to npm "Trusted Publishers" (OIDC) — bind this repo
+          #      + workflow file in the npm package settings.
+          #   2. Remove NPM_TOKEN from secrets (no longer needed).
+          #   3. Set NPM_CONFIG_PROVENANCE: "true" below.
+          #
+          # See RELEASING.md > "Enabling provenance" for the migration steps.
           NPM_CONFIG_PROVENANCE: "false"
+
+      # Surface the published packages in the workflow summary so the run page
+      # is useful at a glance (otherwise you have to dig into the changesets
+      # action log to see what got published).
+      - name: Summarize publish
+        if: steps.changesets.outputs.published == 'true'
+        run: |
+          {
+            echo "### Published packages"
+            echo ""
+            echo '```json'
+            echo '${{ steps.changesets.outputs.publishedPackages }}'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Note version PR
+        if: steps.changesets.outputs.hasChangesets == 'true' && steps.changesets.outputs.published != 'true'
+        run: |
+          echo "### Version PR opened/updated" >> "$GITHUB_STEP_SUMMARY"
+          echo "Merge the \`chore(release): version packages\` PR to publish." >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,120 @@
+name: Snapshot release
+
+# Publish an ephemeral preview build of every package touched by the PR's
+# changesets. Useful for downstream consumers who want to test a fix before
+# it lands on `main`. Triggered by labeling the PR with `release:snapshot`.
+#
+# Resulting versions look like:   0.5.0-pr-123-20260420T1530.0
+# Resulting npm dist-tag:         pr-<number>
+# Install with:                   pnpm add @ziro-agent/agent@pr-123
+
+on:
+  pull_request:
+    types: [labeled, synchronize]
+    branches: [main]
+
+concurrency:
+  group: snapshot-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+
+jobs:
+  snapshot:
+    name: Publish PR snapshot
+    if: |
+      contains(github.event.pull_request.labels.*.name, 'release:snapshot')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # Need full history so `changeset version --snapshot` can resolve
+          # the diff against the base branch when computing which packages
+          # to bump.
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Verify a changeset exists
+        run: |
+          set -euo pipefail
+          STATUS_JSON="$(pnpm exec changeset status --since=origin/main --output=/dev/stdout || true)"
+          if ! echo "${STATUS_JSON}" | grep -q '"releases"'; then
+            echo "::error::No changeset found on this PR — add one with \`pnpm changeset\` before requesting a snapshot."
+            exit 1
+          fi
+
+      - run: pnpm --filter "./packages/*" build
+
+      - name: Configure npm auth
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${NPM_TOKEN:-}" ]; then
+            echo "::error::NPM_TOKEN secret is not set"
+            exit 1
+          fi
+          {
+            echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}"
+            echo "registry=https://registry.npmjs.org/"
+            echo "always-auth=true"
+          } > "${HOME}/.npmrc"
+          chmod 600 "${HOME}/.npmrc"
+          npm whoami
+
+      - name: Bump versions to snapshot
+        id: bump
+        run: |
+          set -euo pipefail
+          TAG="pr-${{ github.event.pull_request.number }}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          # `--snapshot <tag>` rewrites every consumed changeset's version into
+          # `<base>-<tag>-<utc-timestamp>.<n>` and skips git tagging / changelog
+          # writes — perfect for ephemeral previews.
+          pnpm exec changeset version --snapshot "${TAG}"
+
+      - name: Publish snapshot to npm
+        env:
+          NPM_CONFIG_PROVENANCE: "false"
+        run: |
+          set -euo pipefail
+          # `--no-git-tag` stops changesets from trying to push tags from a
+          # detached PR-head checkout (would fail anyway without write perm).
+          # `--tag <tag>` controls the dist-tag — install via @<tag>.
+          pnpm exec changeset publish --no-git-tag --tag "${{ steps.bump.outputs.tag }}"
+
+      - name: Comment on PR with install instructions
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const tag = `pr-${context.payload.pull_request.number}`;
+            const body = [
+              `### Snapshot release published`,
+              ``,
+              `Install with:`,
+              ``,
+              '```bash',
+              `pnpm add @ziro-agent/<package>@${tag}`,
+              '```',
+              ``,
+              `Versions are visible under the \`${tag}\` dist-tag on npm.`,
+              `These builds are ephemeral and will be superseded on every push.`,
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body,
+            });

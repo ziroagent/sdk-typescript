@@ -1,0 +1,51 @@
+name: Changeset status
+
+# Soft signal on PRs that touch packages but have no changeset.
+# Does NOT fail the build — some PRs (docs, infra, internal refactors) are
+# legitimately changeset-less. The annotation just nudges contributors.
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+
+jobs:
+  status:
+    name: Check for changeset
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Detect missing changeset
+        run: |
+          set -euo pipefail
+          # Lists which packages this PR will release. Empty exit-code 0 means
+          # no consumed changesets, which is fine if the PR is non-publishing.
+          STATUS_JSON="$(pnpm exec changeset status --since=origin/main --output=/dev/stdout || true)"
+          # Did this PR touch any package source?
+          CHANGED_PKGS=$(git diff --name-only origin/main...HEAD -- 'packages/*/src/**' 'packages/*/package.json' || true)
+          if [ -n "${CHANGED_PKGS}" ] && ! echo "${STATUS_JSON}" | grep -q '"releases"'; then
+            echo "::warning::PR touches packages/* but has no changeset — run \`pnpm changeset\` if this should be released."
+            {
+              echo "### Changeset reminder"
+              echo ""
+              echo "This PR modifies package source but does not contain a changeset."
+              echo "If the change should be released, run \`pnpm changeset\` and commit the resulting file."
+              echo "If not (docs, infra, internal refactor), ignore this warning."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Changeset state OK."
+          fi
