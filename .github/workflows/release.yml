@@ -30,11 +30,14 @@ jobs:
   gate:
     name: Pre-release validation
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - uses: pnpm/action-setup@v6
+        with:
+          version: 10.33.0
       - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
@@ -51,11 +54,14 @@ jobs:
     name: Version PR or publish
     needs: gate
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - uses: pnpm/action-setup@v6
+        with:
+          version: 10.33.0
       # NOTE: intentionally NOT setting `registry-url` on setup-node.
       # When `registry-url` is set, setup-node writes a project .npmrc with a
       # literal `${NODE_AUTH_TOKEN}` placeholder AND points NPM_CONFIG_USERCONFIG

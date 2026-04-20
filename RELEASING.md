@@ -248,8 +248,82 @@ half-publishes.
 ## What we deliberately do **not** automate
 
 - **Cross-publishing to JSR / Deno.** Out of scope until v0.3.
-- **Auto-merging the version PR.** A human must approve so release notes
-  get a sanity-check before they hit users.
 - **Regenerating `apps/docs` on every release.** Docs deploy independently
   via Vercel on push to `main` (or whatever provider we settle on). The
   release pipeline never blocks on a docs build.
+
+> Auto-merging the version PR USED to be on this list. As of `0.2.x` we
+> opt in to GitHub native auto-merge via `auto-merge-release.yml` (see
+> the "Auto-publish" section above). The CHANGELOG/Release-body sanity
+> check now happens on the changeset PR itself before merge to `main`.
+
+---
+
+## Known gotcha: CI does not run on the changesets bot's version PR
+
+GitHub Actions has a hard policy: **workflow runs created via
+`GITHUB_TOKEN` do not trigger downstream workflows** (the "cascade"
+rule, see [GitHub docs](https://docs.github.com/en/actions/security-guides/automatic-token-authentication#using-the-github_token-in-a-workflow)).
+`changesets/action` opens the version PR with `GITHUB_TOKEN`, so the
+`pull_request` event on that PR comes back as `action_required` and CI
+never auto-runs.
+
+This breaks auto-merge — branch protection's "Required status checks"
+will never be satisfied because the checks never started.
+
+### Two ways to fix it
+
+**Option A — Personal Access Token (fastest, lower trust):**
+
+1. Generate a [classic PAT](https://github.com/settings/tokens) for a
+   service account (NOT a human maintainer's account) with `repo` +
+   `workflow` scopes. Expiration: 90 days max.
+2. Add it as repo secret `RELEASE_BOT_TOKEN`.
+3. In `release.yml`, swap the `changesets/action` env block:
+
+   ```yaml
+   env:
+     GITHUB_TOKEN: ${{ secrets.RELEASE_BOT_TOKEN }}  # was: secrets.GITHUB_TOKEN
+     NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+   ```
+
+4. The version PR is now authored by the service account → triggers CI
+   → branch protection passes → auto-merge fires.
+
+**Option B — GitHub App (recommended, higher trust):**
+
+1. Create a small GitHub App (one-time, ~5 min). Permissions:
+   - Repository: contents `read+write`, pull-requests `read+write`,
+     metadata `read`.
+   - No subscriptions to events.
+2. Install the App on this repo and grab its App ID + private key.
+3. Add as repo secrets: `RELEASE_APP_ID`, `RELEASE_APP_PRIVATE_KEY`.
+4. In `release.yml` *before* the changesets step, mint an installation
+   token:
+
+   ```yaml
+   - id: app-token
+     uses: actions/create-github-app-token@v1
+     with:
+       app-id: ${{ secrets.RELEASE_APP_ID }}
+       private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+   - uses: changesets/action@v1
+     env:
+       GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+     # ... rest unchanged
+   ```
+
+5. Same effect as Option A but tokens are short-lived (1h) and scoped
+   to the App's permissions only.
+
+### Workaround if you can't add a PAT/App
+
+Click **Approve and run** on the bot's PR Actions tab once per version
+PR. CI then runs normally and auto-merge proceeds. The `chore(release):
+version packages` PR title makes these easy to spot in the Actions
+queue.
+
+This repo currently relies on the workaround pending a PAT or App
+decision — track in [#TODO-release-bot-token](https://github.com/ziroagent/sdk-typescript/issues).

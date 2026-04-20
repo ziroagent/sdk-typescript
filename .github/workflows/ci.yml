@@ -17,9 +17,17 @@ jobs:
   lint:
     name: Lint & format
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
+      # Pin pnpm to the exact version declared in package.json#packageManager.
+      # Without `version`, action-setup@v6 resolves "latest" which currently
+      # picks pnpm 11.x — and pnpm 11 imports `node:sqlite` for its store
+      # implementation, breaking on Node 20 AND on Node 22 minor releases
+      # without `--experimental-sqlite` (see CI failure run 24668062535).
       - uses: pnpm/action-setup@v6
+        with:
+          version: 10.33.0
       - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
@@ -30,6 +38,7 @@ jobs:
   build-test:
     name: Build & test (${{ matrix.os }} / Node ${{ matrix.node }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -38,6 +47,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6
+        with:
+          version: 10.33.0
       - uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node }}
@@ -50,10 +61,13 @@ jobs:
   package-quality:
     name: Package quality (attw + publint)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: build-test
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6
+        with:
+          version: 10.33.0
       - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
