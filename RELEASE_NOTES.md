@@ -29,6 +29,59 @@ single version across the workspace.
 
 ---
 
+## v0.1.8 — 2026-04-20
+
+**Theme**: Evals as first-class — RFC 0003 lands. `defineEval` + 7 graders + `ziroagent eval` CI gate.
+
+`agent.run` now has a third production-safety primitive paired with Budget Guard (RFC 0001) and HITL (RFC 0002): a typed answer to "did it actually do the right thing?". Authors call `defineEval({ dataset, run, graders })` once per behaviour they care about, then either drive it from their own test runner (`runEval` returns a typed `EvalRun`) or from `ziroagent eval ./evals --gate 0.95` in CI. Every case runs inside its own `withBudget` scope so the existing `BudgetObserver` instrumentation captures spend per case for free; `AgentSuspendedError` is surfaced to graders as `error.kind = 'suspended'` with the captured `AgentSnapshot` attached, so a suspended run is still gradable on cost / latency without crashing the runner.
+
+### `@ziro-agent/eval` (new — `0.1.0`)
+
+- **`defineEval` / `runEval`** — runner with worker-pool concurrency (default 4), per-case `AbortController` honouring caller signals + `timeoutMs`, JSON-serialisable `EvalRun` output by construction. Per-case lifecycle: build budget = `intersectSpecs(spec.budget, case.budget)` → `withBudget(budget, () => spec.run(input, ctx))` → snapshot `BudgetUsage` → run every grader sequentially → aggregate weighted `meanScore` → compute `passed`. Reporter / runner errors are isolated; a thrown grader records `result.passed = false` and continues.
+- **7 built-in graders.** `exactMatch` (case + trim options), `contains` (substring + negate), `regex` (RegExp or string + negate), `costBudget` (caps on usd / tokens / llmCalls), `latency` (`maxMs` hard ceiling, plus `p50Ms` / `p95Ms` reported in `details`), `noToolErrors` (introspects `AgentRunResult.steps[].toolResults`), `llmJudge` (LanguageModel-as-judge: rubric is string OR `(input, output, expected) => string`, fences are stripped, JSON object is extracted from chatty replies, scores clamped to [0,1], own optional `budget`).
+- **`EvalGate` variants.** `meanScore` (weighted mean ≥ min), `passRate` (fraction of cases where every contributing grader passed), `every` (per-grader threshold), `custom` (user-supplied check). Default gate is `{ kind: 'meanScore', min: 0.95 }`.
+- **Reporters.** `formatTextReport(run)` (terminal-ready, stable format) + `toJSONReport(run)` (pretty-printed JSON for PR comments / archival). `evaluateGate(run, gate)` is exported as the canonical gate evaluator so CLI and library share one implementation.
+- **Grader composition.** Every grader carries `weight` (default 1) and `contributes` (default true). `contributes: false` lets you report e.g. latency without affecting the case's `meanScore` — useful for soft diagnostics.
+
+### `@ziro-agent/cli` (minor)
+
+- **`ziroagent eval <path-or-glob>...`** new subcommand. Resolves glob patterns via Node's built-in `fs.glob` and walks directories for `.js` / `.mjs` modules; loads each via dynamic `import()`; collects every export that duck-types as `EvalSpec` (`{ name, dataset, run, graders }`); runs them sequentially while their cases run in parallel. Exit codes per RFC 0003: `0` all gates pass, `1` at least one gate fails, `2` loader / configuration error.
+- **Flags.** `--gate <number|json>` (number → `meanScore` min; JSON → arbitrary `EvalGate`), `--concurrency <n>`, `--reporter text|json`, `--out <file>` (writes a full JSON report alongside terminal output), `--fail-fast` (aborts after first failing case via `AbortController`), `--grep <pattern>` (filters cases by id / name regex).
+- **TypeScript loaders.** Native `import()` is used; for `.ts` evals the recommended invocation is `pnpm tsx ./node_modules/.bin/ziroagent eval ./evals.eval.ts ...` until Node's `--experimental-strip-types` ships in stable.
+
+### Tracing
+
+- `runEval` opens a parent OTel span `ziro.eval.run` (attributes `ziroagent.eval.name`, `ziroagent.eval.case.count`, `ziroagent.eval.gate.passed`, `ziroagent.eval.mean_score`) with one child span per case (`ziro.eval.case`, attributes `ziroagent.eval.case.id`, etc.). No new exporter is required — the existing `instrumentBudget()` from RFC 0001 already reports per-case budget spend through the nested `withBudget`.
+
+### Examples
+
+- **`examples/agent-with-evals/`** — offline support-intent classifier dataset (8 cases, no API keys required) wired through `exactMatch + costBudget + latency`, plus a second `noPiiLeaks` spec demoing `passRate` + negated `contains`. Three entry points: `pnpm start` (single-spec quickstart), `pnpm eval` (programmatic, full text report), `pnpm eval:cli` (drives both specs through `ziroagent eval --gate 0.95`).
+
+### Tests
+
+- **47 new tests in `@ziro-agent/eval`** across all 7 graders + runner (concurrency, timeout → `kind: 'timeout'`, thrown error capture, suspended-run capture, non-contributing graders, gate override via `RunEvalOptions`) + gate evaluator + reporters.
+- **5 new CLI tests in `@ziro-agent/cli`** covering happy-path gate pass / fail, `--gate` override, `--out` JSON file, `--reporter json` stdout payload, no-spec / no-pattern error paths. Fixtures live inside the package so workspace symlinks resolve `@ziro-agent/eval`.
+
+### Validation
+
+- `pnpm lint`: clean (10 warnings — all pre-existing).
+- `pnpm typecheck` + `pnpm build`: 19 / 19 tasks succeed.
+- `pnpm test`: every package green (counts unchanged for existing packages).
+- `pnpm --filter @ziro-agent/eval publint`: **All good!**
+- `pnpm --filter @ziro-agent/eval attw --profile=node16`: 🟢 across CJS / ESM / bundler / node10.
+
+### Compatibility
+
+- **Pure addition.** New `@ziro-agent/eval` package + new `eval` subcommand on `@ziro-agent/cli`. No breaking changes to `@ziro-agent/core`, `@ziro-agent/agent`, `@ziro-agent/tools`, `@ziro-agent/tracing`, providers, `@ziro-agent/memory`, `@ziro-agent/workflow`. Existing CLI behaviour (`init`, `run`, `playground`) untouched.
+
+### Known limitations / next steps
+
+- **Replay-from-trace** is intentionally deferred (RFC 0003 §Unresolved Q4) — needs a stable OTel attribute schema before it lands. Tracked for v0.1.9.
+- **JSON / YAML datasets** for `ziroagent eval` are not yet supported (TS modules only). Promptfoo-style data files land if design partners ask.
+- `instrumentEval()` separate from `instrumentBudget()` is not shipped — span emission is built into the runner. Trivial to add later if more than one subscriber needs it.
+
+---
+
 ## v0.1.7 — 2026-04-20
 
 **Theme**: Human-in-the-Loop — RFC 0002 lands. Approval gates + suspend/resume.

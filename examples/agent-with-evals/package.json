@@ -1,0 +1,21 @@
+{
+  "name": "@ziro-agent/example-agent-with-evals",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx index.ts",
+    "eval": "tsx ./eval-runner.ts",
+    "eval:cli": "tsx ../../packages/cli/dist/cli.js eval ./evals.eval.ts --gate 0.95"
+  },
+  "dependencies": {
+    "@ziro-agent/agent": "workspace:*",
+    "@ziro-agent/core": "workspace:*",
+    "@ziro-agent/eval": "workspace:*",
+    "@ziro-agent/tools": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.3"
+  }
+}

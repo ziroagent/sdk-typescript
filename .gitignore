@@ -45,3 +45,6 @@ lerna-debug.log*
 .cache/
 tmp/
 temp/
+
+# Test fixtures
+__eval_fixtures_*/
