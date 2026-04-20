@@ -68,15 +68,45 @@ model, and required repo configuration. Quick map of the publish path:
 
 ---
 
-## Adding a changeset
+## Versioning policy
+
+Every PR is gated by `Changeset gate / Validate changeset bump` (see
+`scripts/validate-changeset.ts`) which enforces a strict mapping between
+the PR's Conventional Commit type and the changeset bump:
+
+| PR commit type | Required changeset bump | Notes |
+| --- | --- | --- |
+| `feat:` / `feat(scope):` | `minor` (or higher) | Adds public API surface |
+| `fix:` / `perf:` | `patch` (or higher) | No API change, behaviour fix |
+| `feat!:` / `feat(scope)!:` / `BREAKING CHANGE:` footer | `major` | **Strict pre-1.0** — see rationale below |
+| `chore`, `docs`, `ci`, `build`, `test`, `refactor`, `style`, `revert` | _none required_ | Non-release types; gate exits OK with no changeset |
+
+### Why strict pre-1.0?
+
+Strict SemVer permits breaking changes at the minor level while a
+package is `0.x.x`. We deliberately **opt into stricter behaviour**
+(breaking ⇒ major) for two reasons:
+
+1. **No policy switch on the way to 1.0.** Once any package crosses
+   1.0 (`0.x.x → 1.0.0`), strict SemVer requires major-on-breaking.
+   Following that rule from day one means the contract for consumers
+   never changes — they can pin `^0.x` with the same semantics they
+   would pin `^1.x` post-1.0.
+2. **Forces explicit RFC discussion.** Bumping a `0.x.0 → 0.(x+1).0`
+   feels cheap to merge; bumping `0.x.0 → 1.0.0 → 2.0.0` does not.
+   The friction is the point: it forces breaking-change PRs to
+   include an RFC + Migration section.
+
+### Adding a changeset
 
 ```bash
 pnpm changeset
 ```
 
-Pick the affected packages, choose `patch` / `minor` / `major`, and write a
-**user-facing** summary (it lands directly in `CHANGELOG.md` and the GitHub
-Release body). Commit the generated `.changeset/*.md` file with your code.
+Pick the affected packages, choose `patch` / `minor` / `major` per the
+table above, and write a **user-facing** summary (it lands directly in
+`CHANGELOG.md` and the GitHub Release body). Commit the generated
+`.changeset/*.md` file with your code.
 
 Conventions:
 
@@ -85,8 +115,16 @@ Conventions:
 - For breaking changes (`major`), add a "Migration" section explaining the
   upgrade path. The richer the better — these end up in the GitHub Release.
 
-For a doc-only / infra-only / internal refactor PR, skip the changeset. The
-`Changeset status` workflow will warn rather than fail.
+### Bypass
+
+If you genuinely need to skip the gate (emergency revert, doc-only fix
+that nonetheless got typed as `fix:`), apply the label
+`skip-changeset-gate` on the PR. The bypass is **logged in the workflow
+summary and visible in the audit trail** — use sparingly.
+
+For a doc-only / infra-only / internal refactor PR, just type the commit
+appropriately (`docs:`, `chore:`, `refactor:`, etc.) — the gate exits OK
+without any bypass needed.
 
 ---
 

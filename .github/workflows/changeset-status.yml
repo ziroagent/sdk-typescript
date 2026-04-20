@@ -1,11 +1,31 @@
-name: Changeset status
+name: Changeset gate
 
-# Soft signal on PRs that touch packages but have no changeset.
-# Does NOT fail the build — some PRs (docs, infra, internal refactors) are
-# legitimately changeset-less. The annotation just nudges contributors.
+# Hard gate on every PR to `main`. Two checks, both blocking:
+#
+#   1. commitlint  — every commit + the PR title must match Conventional
+#      Commits as defined in `commitlint.config.cjs`.
+#
+#   2. validate-changeset — for `feat`/`fix`/`perf` PRs, a changeset MUST
+#      exist with a bump type that matches the conventional-commit type:
+#        feat       → minor (or higher)
+#        fix / perf → patch (or higher)
+#        feat!  / "BREAKING CHANGE:" footer → major (strict pre-1.0)
+#      For non-release types (chore/docs/ci/build/test/refactor/style/
+#      revert) a changeset is OPTIONAL.
+#
+# This workflow used to be a SOFT warning. We promoted it to a hard gate
+# because the previous policy let `feat:` PRs slip through with no
+# changeset (or a `patch` changeset), causing features to ship inside
+# patch releases and breaking consumer SemVer expectations.
+#
+# Bypass — for the rare PR that legitimately needs to skip:
+#   Add the label `skip-changeset-gate` and a maintainer review approving
+#   the bypass. The `validate-changeset` job will skip and a notice is
+#   posted to the run summary so the bypass is auditable.
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
     branches: [main]
 
 permissions:
@@ -15,10 +35,54 @@ env:
   TURBO_TELEMETRY_DISABLED: 1
 
 jobs:
-  status:
-    name: Check for changeset
+  # --------------------------------------------------------------------------
+  # Lint commit messages + PR title against Conventional Commits.
+  # Action handles install, parsing, and PR-title-as-squash-commit checking.
+  # --------------------------------------------------------------------------
+  commitlint:
+    name: Lint commits + PR title
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          # Need PR's full commit history so commitlint can check every
+          # commit (not just the merge SHA which is bot-generated).
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Run commitlint
+        uses: wagoid/commitlint-github-action@b948419dd99f3fd78a6548d48f94e3df7f6bf3ed # v6.2.1
+        with:
+          # Validate the PR title too — important because we use squash-
+          # merge, so the PR title BECOMES the commit on `main` and is
+          # what changesets/changelog parses.
+          configFile: commitlint.config.cjs
+          firstParent: false
+          failOnWarnings: false
+          failOnErrors: true
+          helpURL: https://github.com/${{ github.repository }}/blob/main/CONTRIBUTING.md#conventional-commits
+
+  # --------------------------------------------------------------------------
+  # Verify the changeset matches the PR's conventional-commit type.
+  # Skipped only when the PR carries the `skip-changeset-gate` label —
+  # gives maintainers an explicit, auditable bypass.
+  # --------------------------------------------------------------------------
+  validate-changeset:
+    name: Validate changeset bump
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: commitlint
+    if: |
+      !contains(github.event.pull_request.labels.*.name, 'skip-changeset-gate')
     permissions:
       contents: read
       pull-requests: read
@@ -33,26 +97,49 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      # Centralized setup keeps this in sync with the rest of the matrix.
       - uses: ./.github/actions/setup-pnpm-node
+        with:
+          install: 'false'
 
-      - name: Detect missing changeset
+      - name: Setup Node 22 (for --experimental-strip-types)
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          # Drift script + this validator both rely on Node 22.6+ to
+          # execute TypeScript directly without a build step.
+          node-version: '22'
+
+      - name: Run changeset gate
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: node --experimental-strip-types scripts/validate-changeset.ts
+
+  # --------------------------------------------------------------------------
+  # When the bypass label is applied, log it loudly so the audit trail
+  # exists in the workflow summary. The actual gate is still skipped
+  # (controlled by the `if:` on validate-changeset).
+  # --------------------------------------------------------------------------
+  bypass-notice:
+    name: Bypass acknowledgement
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    if: contains(github.event.pull_request.labels.*.name, 'skip-changeset-gate')
+    permissions:
+      contents: read
+    steps:
+      - name: Log bypass
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          ACTOR: ${{ github.event.sender.login }}
         run: |
-          set -euo pipefail
-          # Lists which packages this PR will release. Empty exit-code 0 means
-          # no consumed changesets, which is fine if the PR is non-publishing.
-          STATUS_JSON="$(pnpm exec changeset status --since=origin/main --output=/dev/stdout || true)"
-          # Did this PR touch any package source?
-          CHANGED_PKGS=$(git diff --name-only origin/main...HEAD -- 'packages/*/src/**' 'packages/*/package.json' || true)
-          if [ -n "${CHANGED_PKGS}" ] && ! echo "${STATUS_JSON}" | grep -q '"releases"'; then
-            echo "::warning::PR touches packages/* but has no changeset — run \`pnpm changeset\` if this should be released."
-            {
-              echo "### Changeset reminder"
-              echo ""
-              echo "This PR modifies package source but does not contain a changeset."
-              echo "If the change should be released, run \`pnpm changeset\` and commit the resulting file."
-              echo "If not (docs, infra, internal refactor), ignore this warning."
-            } >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "Changeset state OK."
-          fi
+          {
+            echo "### Changeset gate BYPASSED"
+            echo ""
+            echo "PR #${PR_NUMBER} carries the \`skip-changeset-gate\` label."
+            echo "Bypass triggered by: \`${ACTOR}\`"
+            echo ""
+            echo "This bypass is auditable in this run's logs. The PR can"
+            echo "still be required to pass other checks before merge."
+          } >> "${GITHUB_STEP_SUMMARY}"
+          echo "::warning title=Changeset gate bypassed::PR #${PR_NUMBER} skipped the changeset gate via label."

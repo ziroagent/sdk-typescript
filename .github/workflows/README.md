@@ -36,7 +36,7 @@ isn't duplicated and the security posture stays auditable:
 | `release.yml`              | push `main`                              | Pre-release gate (full matrix via `_validate`) → changesets version PR or publish | ❌ |
 | `auto-merge-release.yml`   | PR `main` (open/synchronize/...)         | Enables GitHub native auto-merge on the changesets version PR | ❌ |
 | `snapshot.yml`             | PR labeled `release:snapshot`            | Publishes ephemeral preview to npm dist-tag `pr-<n>` (auth: maintainer permission gate) | ❌ |
-| `changeset-status.yml`     | PR `main`                                | Soft warning when packages change without a changeset | ❌ |
+| `changeset-status.yml`     | PR `main`                                | **Hard gate**: commitlint (Conventional Commits) + changeset bump matches PR type (feat→minor, fix/perf→patch, breaking→major). Bypass via label `skip-changeset-gate`. | ✅ `Lint commits + PR title`, `Validate changeset bump` |
 | `sync-main-to-dev.yml`     | push `main` / dispatch                   | Fast-forward `dev` to `main`, or open back-merge PR if diverged | ❌ |
 | `pricing-drift.yml`        | cron Mon / PR pricing data / dispatch    | Open / refresh tracking issue when LLM pricing entries are stale | ❌ |
 | `nightly.yml`              | cron 04:30 UTC daily / dispatch          | Full 3 OS × 2 Node matrix + provider integration + signature audit + outdated report | ❌ |
@@ -94,6 +94,8 @@ aren't.
 - ✅ Require a pull request before merging
 - ✅ Require status checks to pass:
   - `Validate / Validation summary` (the aggregate from `_validate.yml`)
+  - `Lint commits + PR title` (commitlint — enforces Conventional Commits)
+  - `Validate changeset bump` (enforces feat→minor / fix→patch / breaking→major)
   - `Analyze (javascript-typescript)` (CodeQL — recommended)
   - `Vulnerability scan` (OSV — recommended)
 - ✅ Require branches to be up to date before merging (recommended)
