@@ -1,0 +1,153 @@
+---
+title: "Roadmap v2 — what we keep, what we reject from 12 other agent SDKs"
+description: How RFC 0004 restructures the ZiroAgent SDK roadmap with an explicit adoption matrix, a v0.1.9 trust-recovery milestone, and a reordered v0.2 that leads with middleware + checkpointer instead of durable adapters.
+date: 2026-04-22
+authors:
+  - "@ziro-agent/maintainers"
+tags: ["roadmap", "rfc", "governance"]
+---
+
+> **TL;DR.** We read the source of 12 dominant agent SDKs over a week, kept the
+> primitives that survive contact with production, and added every pattern we
+> rejected to our anti-roadmap with a citation. Net result: v0.2 ships
+> middleware + checkpointer first (2-week wins), v0.1.9 closes documentation
+> debt before any new feature lands, and the new roadmap carries an *adoption
+> matrix* per milestone so contributors can audit "why this and not that".
+> Read the full proposal in [RFC 0004](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0004-roadmap-v2.md).
+
+## Why we did this
+
+ZiroAgent SDK ships from a single thesis: **production-safety > feature
+breadth**. The original `ROADMAP.md` was authored before any competitive review.
+After landing RFC 0001 (Budget Guard), RFC 0002 (HITL), and RFC 0003 (Evals), we
+took a step back and asked: *what are the other agent SDKs doing that we don't
+do, and which of those things actually move the needle for the 88% of projects
+that never reach production?*
+
+The answer turned out to be small, and noisy. Twelve SDKs, ~30 patterns to
+evaluate. Twelve survived as adoptions; eighteen entered the anti-roadmap. The
+new `ROADMAP.md` is the executable summary.
+
+## The three structural changes
+
+### 1. Adoption matrix per milestone
+
+Every milestone v0.2+ now opens with a 3-column table:
+
+| Inspired by                | Keep                                      | Reject                                    |
+| -------------------------- | ----------------------------------------- | ----------------------------------------- |
+| `competitor / pattern`     | one-line specific feature we adopt        | one-line anti-feature, with the failure mode it prevents |
+
+The discipline: **Inspired-by must name a specific concept** ("LangGraph /
+`interrupt()`", not "LangGraph"). **Keep must be a primitive, not a feature.**
+**Reject must cite the failure mode** the rejection prevents.
+
+Why this matters: contributors — especially LLM-driven contributors — keep
+re-proposing the same features every quarter. Documenting the rejection inline,
+with a real-world source, ends the loop.
+
+### 2. Reorder v0.2 — middleware + checkpointer first, durable adapters last
+
+The original v0.2 led with three durable-execution adapters (Temporal, Inngest,
+Restate). Each realistically needs 2-3 weeks of integration testing against a
+real server (we don't ship mocks, per `STRATEGY.md` §4.4). That's 6-9 weeks
+before users see *any* v0.2 value beyond patches.
+
+Two primitives we missed in the original ordering unlock most of the same value
+in 2 weeks each:
+
+- **`LanguageModelMiddleware`** (Vercel AI SDK v3-spec pattern) — a single
+  interface that subsumes PII redaction, prompt-injection guards, retry/backoff,
+  semantic cache, and cost-tracking middleware. Four separate v0.2 tasks
+  collapse into one primitive.
+- **`Checkpointer`** (LangGraph pattern) — `get` / `put` / `list` / `delete`
+  with `threadId`. Combined with the existing `AgentSnapshot` from RFC 0002,
+  this gives 80% of the durable story in 2 weeks: any agent run is now
+  resumable across process restarts. Temporal / Inngest / Restate become the
+  *long-running* adapters (cross-day waits) instead of the *only* path to
+  durability.
+
+The new v0.2 ordering: middleware → checkpointer → provider depth → durable
+adapters → evals polish.
+
+### 3. v0.1.9 — trust recovery, no new primitives
+
+Before v0.2 ships any new surface area, we close eight gaps surfaced by the
+review where shipped code lags shipped marketing:
+
+- Three production-safety primitives (Budget Guard, HITL, Evals) ship with full
+  RFCs but **no docs site pages**. We add `budget-guard.mdx`, `hitl.mdx`,
+  `evals.mdx`, plus an `errors.mdx`, a `comparison.mdx` from `POSITIONING.md`,
+  and five cookbook recipes.
+- The `README.md` packages table lists 17 packages; npm publishes 10. Every row
+  gets a `shipped (v0.1.x)` or `planned (v0.x)` tag.
+- The Sovereign pillar — the entire VN/SEA wedge — currently maps to zero
+  shipped packages. **`@ziro-agent/ollama` v0.1.0** ships in v0.1.9.
+- `AgentSnapshot.resolvedSiblings[]` loses `parsedArgs` for already-executed
+  siblings — fixed, snapshot version bumped to 2 with a `migrateSnapshot(v1 → v2)`
+  helper.
+- The pricing data in `packages/core/src/pricing/data.ts` carries speculative
+  2026 model IDs whose `validFrom` cannot be cross-referenced. They get an
+  `unverified: true` flag and `getPricing()` returns `undefined` for them
+  unless `{ allowUnverified: true }` is passed.
+
+## What we kept from each SDK
+
+| Source                          | One-line keep                                                                       |
+| ------------------------------- | ----------------------------------------------------------------------------------- |
+| Vercel AI SDK v3-spec           | `LanguageModelMiddleware` interface + `prepareStep` per-step model swap             |
+| LangGraph JS                    | 4-method `Checkpointer` interface + `threadId` row-locking                          |
+| Strands Agents                  | 3 save strategies (`invocation` / `message` / `trigger`) + UUID v7 snapshot ids     |
+| Mastra                          | Resumable streams via cached event log + `WorkingMemory` scopes                     |
+| Inngest Agent Kit               | TS-first durable adapter shipped *first*, function-form deterministic router        |
+| OpenAI Agents JS                | `repairToolCall(call, error, ctx)` hook + `handoffs: Agent[]` field                 |
+| Strands / LangGraph             | Per-thread row-locked checkpoints (no race conditions)                              |
+| AG-UI spec                      | 17 standard event types in `@ziro-agent/agui`                                       |
+| EU AI Act                       | Hash-chained audit log (`prevHash` + `eventHash` per record)                        |
+
+## What we rejected (and why)
+
+The new anti-roadmap grew from 9 bullets to 23. Highlights:
+
+- **Visual no-code agent builder.** Mastra Playground exists; outside our ICP.
+- **Standalone gateway daemon.** Kong / LiteLLM territory; we ship a middleware
+  library only.
+- **LLM-based routing agent.** Inngest's `createRoutingAgent` adds an opaque LLM
+  call per step. Deterministic function router only.
+- **Self-editing memory tools** (`core_memory_append`). Letta-style. Security
+  nightmare; agents should not mutate their own system prompt.
+- **Synthetic npm aliases** (`@ai-sdk/provider-utils-v5` style). Breaks pnpm
+  strict symlinks and Vercel deploys (cf. Mastra issue #15248).
+- **Cloud-only durability.** Checkpointer + adapters are always self-hostable.
+- **Default-on tracing to a single hosted backend.** OTel-first; Langfuse,
+  Braintrust, Honeycomb, Datadog all equal.
+- **`experimental_*` API prefix as a long-term escape hatch.** Promote or
+  remove within 2 minor versions.
+- **Recursive type-introspection on every message payload.** Bench every
+  release; reject any code path costing >1% CPU on 100KB payloads.
+- **Cross-language interop** (.NET / Python bridge à la AutoGen v0.4).
+  TypeScript-native is the value prop.
+
+Full list with sources in `ROADMAP.md` §Anti-roadmap.
+
+## What this doesn't change
+
+- **The thesis.** Production-safety primitives (budget, HITL, evals, audit) are
+  still the why.
+- **The pricing model.** OSS core, optional managed Ziro Cloud at v1.0. No
+  feature is cloud-only.
+- **The release cadence.** v0.1 still ships first. v0.1.9 is a 2-week bridge,
+  not a delay.
+- **v0.1 work.** The v0.1 section of `ROADMAP.md` is byte-identical.
+
+## How to engage
+
+- **Read RFC 0004.** Drop comments inline on the PR — the 7-day comment window
+  per `GOVERNANCE.md` is open until 2026-04-29.
+- **Three companion RFCs land alongside:** RFC 0005 (`LanguageModelMiddleware`),
+  RFC 0006 (`Checkpointer`), RFC 0007 (Handoffs + Router). They're stubs today;
+  comment to shape the detailed design.
+- **Disagree?** Open an issue with the `roadmap` label and a competitor source
+  link. Counter-evidence is the fastest way to flip a "Reject" entry.
+
+The roadmap is a living document; this is just the second draft.
