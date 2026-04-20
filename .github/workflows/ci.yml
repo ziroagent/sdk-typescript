@@ -2,10 +2,14 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
-    branches: [main]
+    branches: [main, dev]
 
+# Cancel in-progress CI runs on the same ref when a new commit lands.
+# `github.ref` covers both pushes (refs/heads/dev) and PRs (refs/pull/N/merge),
+# so feature-branch PR retriggers don't pile up while `dev` and `main` runs
+# stay independent.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true

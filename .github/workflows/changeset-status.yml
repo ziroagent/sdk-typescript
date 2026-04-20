@@ -6,7 +6,11 @@ name: Changeset status
 
 on:
   pull_request:
-    branches: [main]
+    # Reminder fires on PRs targeting either the integration branch (`dev`)
+    # or the release branch (`main`). Catching missing changesets at the
+    # `dev` PR stage is preferable — by the time a `dev → main` PR opens,
+    # the squash + version-bump trail should already be clean.
+    branches: [main, dev]
 
 permissions:
   contents: read
@@ -33,22 +37,27 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Detect missing changeset
+        env:
+          # The PR base ref — `main` for release PRs, `dev` for feature PRs.
+          # `changeset status` and `git diff` both compare against this so the
+          # reminder is accurate regardless of target branch.
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           set -euo pipefail
           # Lists which packages this PR will release. Empty exit-code 0 means
           # no consumed changesets, which is fine if the PR is non-publishing.
-          STATUS_JSON="$(pnpm exec changeset status --since=origin/main --output=/dev/stdout || true)"
+          STATUS_JSON="$(pnpm exec changeset status --since="origin/${BASE_REF}" --output=/dev/stdout || true)"
           # Did this PR touch any package source?
-          CHANGED_PKGS=$(git diff --name-only origin/main...HEAD -- 'packages/*/src/**' 'packages/*/package.json' || true)
+          CHANGED_PKGS=$(git diff --name-only "origin/${BASE_REF}...HEAD" -- 'packages/*/src/**' 'packages/*/package.json' || true)
           if [ -n "${CHANGED_PKGS}" ] && ! echo "${STATUS_JSON}" | grep -q '"releases"'; then
             echo "::warning::PR touches packages/* but has no changeset — run \`pnpm changeset\` if this should be released."
             {
               echo "### Changeset reminder"
               echo ""
-              echo "This PR modifies package source but does not contain a changeset."
+              echo "This PR (target: \`${BASE_REF}\`) modifies package source but does not contain a changeset."
               echo "If the change should be released, run \`pnpm changeset\` and commit the resulting file."
               echo "If not (docs, infra, internal refactor), ignore this warning."
             } >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "Changeset state OK."
+            echo "Changeset state OK (base: ${BASE_REF})."
           fi

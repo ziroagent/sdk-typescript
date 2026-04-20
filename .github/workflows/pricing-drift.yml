@@ -12,8 +12,11 @@ on:
         required: false
         default: '60'
   # Run on PRs that touch the pricing table so reviewers see the staleness
-  # status alongside their diff.
+  # status alongside their diff. Targets both `dev` (where pricing edits
+  # land first via feature PRs) and `main` (where the dev -> main release
+  # PR re-runs the check before publish).
   pull_request:
+    branches: [main, dev]
     paths:
       - 'packages/core/src/pricing/data.ts'
       - 'scripts/check-pricing-drift.ts'

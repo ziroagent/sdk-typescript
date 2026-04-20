@@ -7,16 +7,26 @@ public package on a single, fully-automated pipeline.
 There is **no manual `npm publish` step**. If you find yourself reaching for
 one, stop and read this file first.
 
+> **Branching model:** see [`BRANCHING.md`](./BRANCHING.md) for the full
+> `dev → main → npm` flow. This file documents the publish pipeline
+> assuming you already understand the branching contract.
+
 ---
 
 ## TL;DR — the happy path
 
 ```text
-contributor opens PR
+contributor opens PR (target: dev)
    └─ adds a changeset:        pnpm changeset
    └─ CI runs (lint+test+build+publint+attw)
    └─ "Changeset status" workflow nudges if missing
-maintainer merges PR to main
+maintainer merges PR to dev
+   └─ CI re-runs on the dev tip
+   ⋮  (more feature PRs accumulate on dev)
+maintainer opens release PR: dev -> main
+   └─ CI runs the full matrix against the merge commit
+   └─ Optional: label `release:snapshot` to publish a preview to dist-tag pr-N
+maintainer merges the dev -> main PR (squash)
    └─ Release workflow re-runs the full gate on `main`
    └─ Opens (or updates) "chore(release): version packages" PR
    └─ Auto-merge workflow enables GitHub native auto-merge on that PR
@@ -26,12 +36,13 @@ maintainer merges PR to main
    └─ Publishes every bumped package to npm
    └─ Creates a GitHub Release per package, tagged `<name>@<version>`
    └─ Pushes git tags
+   └─ Sync workflow fast-forwards `dev` to the new `main` tip
 ```
 
-End-to-end latency from "merge feature PR" to "available on npm" is
+End-to-end latency from "merge `dev → main` PR" to "available on npm" is
 typically 8–12 minutes (gate → version PR → CI on version PR →
 auto-merge → publish), with no human intervention after the initial
-feature merge.
+release PR merge.
 
 ---
 
@@ -39,12 +50,13 @@ feature merge.
 
 | File                                             | Trigger                              | What it does                                                                                                |
 | ------------------------------------------------ | ------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| `.github/workflows/ci.yml`                       | push/PR to `main`                    | Lint + matrix build/test/typecheck + publint + attw                                                         |
-| `.github/workflows/changeset-status.yml`         | PR                                   | Soft warning if PR touches `packages/*` without a changeset                                                 |
+| `.github/workflows/ci.yml`                       | push/PR to `main` or `dev`           | Lint + matrix build/test/typecheck + publint + attw                                                         |
+| `.github/workflows/changeset-status.yml`         | PR to `main` or `dev`                | Soft warning if PR touches `packages/*` without a changeset                                                 |
 | `.github/workflows/release.yml`                  | push to `main`                       | **Gate** (re-runs full CI suite) → opens version PR or publishes + creates GitHub Releases                  |
-| `.github/workflows/auto-merge-release.yml`       | PR opened/updated                    | Detects the changesets `chore(release): version packages` PR and enables GitHub native auto-merge on it     |
-| `.github/workflows/snapshot.yml`                 | PR labeled `release:snapshot`        | Publishes ephemeral preview build under dist-tag `pr-<number>`; comments install instructions on the PR    |
-| `.github/workflows/pricing-drift.yml`            | scheduled                            | Detects unverified pricing entries (unrelated to publishing)                                                |
+| `.github/workflows/auto-merge-release.yml`       | PR opened/updated to `main`          | Detects the changesets `chore(release): version packages` PR and enables GitHub native auto-merge on it     |
+| `.github/workflows/snapshot.yml`                 | PR labeled `release:snapshot` (→ `main`) | Publishes ephemeral preview build under dist-tag `pr-<number>`; comments install instructions on the PR  |
+| `.github/workflows/sync-main-to-dev.yml`         | push to `main`                       | Fast-forwards `dev` to `main`, or opens a back-merge PR if the branches diverged                            |
+| `.github/workflows/pricing-drift.yml`            | scheduled / PR touching pricing data | Detects unverified pricing entries (unrelated to publishing)                                                |
 
 ---
 
