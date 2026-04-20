@@ -28,7 +28,7 @@
  */
 
 export interface ModelPricing {
-  provider: 'openai' | 'anthropic';
+  provider: 'openai' | 'anthropic' | 'google';
   modelId: string;
   /** USD per 1,000,000 input tokens. */
   inputPer1M: number;
@@ -198,6 +198,61 @@ const ENTRIES: ModelPricing[] = [
     cachedInputPer1M: 1.5,
     validFrom: VALID_FROM,
     notes: 'legacy-stable',
+  },
+
+  // --- Google Gemini: speculative 2026 ids (unverified — pre-release) ----
+  // Same trust-recovery convention as the other providers: marked
+  // `unverified` because the rate cards for 2.5-series models have not
+  // been cross-referenced against https://ai.google.dev/pricing on the
+  // day of merge. Budget Guard falls back to the chars/4 heuristic until
+  // verified.
+  {
+    provider: 'google',
+    modelId: 'gemini-2.5-pro',
+    inputPer1M: 1.25,
+    outputPer1M: 10.0,
+    cachedInputPer1M: 0.125,
+    validFrom: VALID_FROM,
+    unverified: true,
+    notes: 'speculative — flagship placeholder',
+  },
+  {
+    provider: 'google',
+    modelId: 'gemini-2.5-flash',
+    inputPer1M: 0.3,
+    outputPer1M: 2.5,
+    cachedInputPer1M: 0.075,
+    validFrom: VALID_FROM,
+    unverified: true,
+    notes: 'speculative — mid-tier placeholder',
+  },
+  {
+    provider: 'google',
+    modelId: 'gemini-2.5-flash-lite',
+    inputPer1M: 0.075,
+    outputPer1M: 0.3,
+    cachedInputPer1M: 0.019,
+    validFrom: VALID_FROM,
+    unverified: true,
+    notes: 'speculative — small-tier placeholder',
+  },
+  // --- Google Gemini: verified against https://ai.google.dev/pricing ----
+  {
+    provider: 'google',
+    modelId: 'gemini-2.0-flash',
+    inputPer1M: 0.1,
+    outputPer1M: 0.4,
+    cachedInputPer1M: 0.025,
+    validFrom: VALID_FROM,
+    notes: 'mid-tier-stable',
+  },
+  {
+    provider: 'google',
+    modelId: 'gemini-2.0-flash-lite',
+    inputPer1M: 0.075,
+    outputPer1M: 0.3,
+    validFrom: VALID_FROM,
+    notes: 'small-tier-stable',
   },
 ];
 
