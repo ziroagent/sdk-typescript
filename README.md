@@ -159,7 +159,7 @@ ziro eval ./evals/*.ts --gate 0.95     # CI gate: fail merge if score < 95%
 | `@ziro-agent/groq` | planned (v0.2) | Groq provider (fastest inference benchmark) |
 | [`@ziro-agent/tools`](packages/tools) | shipped (v0.1.x) | `defineTool`, parallel calls, JSON schema from Zod |
 | `@ziro-agent/mcp` | planned (v0.2) | MCP **server** — expose your tools/agents to Claude/Cursor |
-| [`@ziro-agent/agent`](packages/agent) | shipped (v0.1.x) | Agent loop, HITL approval, suspend/resume, step events |
+| [`@ziro-agent/agent`](packages/agent) | shipped (v0.1.x) | Agent loop, HITL approval, suspend/resume, step events, multi-agent `handoffs[]` + `createNetwork` (v0.2, [RFC 0007](rfcs/0007-handoffs-and-router.md)) |
 | [`@ziro-agent/eval`](packages/eval) | shipped (v0.1.x) | `defineEval`, graders (exact/contains/regex/cost/latency/llm-judge), CI gate |
 | [`@ziro-agent/memory`](packages/memory) | shipped (v0.1.x) | Vector store interface, in-memory + pgvector |
 | [`@ziro-agent/workflow`](packages/workflow) | shipped (v0.1.x) | Graph engine for multi-agent flows |

@@ -312,6 +312,9 @@ importers:
       '@ziro-agent/tools':
         specifier: workspace:*
         version: link:../tools
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: ^0.18.2
@@ -328,9 +331,6 @@ importers:
       vitest:
         specifier: ^4.1.4
         version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@22.19.17)(msw@2.13.4(@types/node@22.19.17)(typescript@5.9.3))(vite@8.0.8(@types/node@22.19.17)(esbuild@0.27.7)(tsx@4.21.0)(yaml@2.8.3))
-      zod:
-        specifier: ^4.3.6
-        version: 4.3.6
 
   packages/checkpoint-memory:
     dependencies:

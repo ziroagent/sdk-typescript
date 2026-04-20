@@ -5,10 +5,11 @@
   "description": "Documentation site for the ZiroAgent SDK (Fumadocs + Next.js).",
   "type": "module",
   "scripts": {
-    "dev": "next dev --port 4001",
+    "dev": "fumadocs-mdx && next dev --port 4001",
+    "prebuild": "fumadocs-mdx",
     "build": "next build",
     "start": "next start --port 4001",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "fumadocs-mdx && tsc --noEmit",
     "api:generate": "typedoc"
   },
   "dependencies": {

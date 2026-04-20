@@ -4,8 +4,25 @@ export {
   type AgentRunResult,
   type CreateAgentOptions,
   createAgent,
+  type ResumeFromCheckpointOptions,
 } from './agent.js';
 export type { Checkpointer, CheckpointId, CheckpointMeta } from './checkpointer.js';
+export {
+  type Handoff,
+  HandoffLoopError,
+  type HandoffSpec,
+  handoffToolName,
+} from './handoff.js';
+export {
+  type AgentRouter,
+  type AgentRouterContext,
+  type CreateNetworkOptions,
+  createNetwork,
+  type Network,
+  type NetworkRunOptions,
+  type NetworkRunResult,
+  type NetworkStepRecord,
+} from './network.js';
 export {
   type AgentResumeOptions,
   type AgentSnapshot,

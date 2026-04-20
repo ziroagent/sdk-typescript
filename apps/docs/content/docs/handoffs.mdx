@@ -1,0 +1,152 @@
+---
+title: Handoffs & networks
+description: Multi-agent coordination via handoff tools and a deterministic state-based router (RFC 0007).
+---
+
+ZiroAgent's multi-agent story is deliberately small: two primitives, no
+graph engine, no LLM-as-router. They cover the 80% case (specialist
+sub-agents + state-driven routing) without the failure modes that make
+"agent frameworks" notorious for runaway cost and unauditable control
+flow.
+
+If you need something richer, fall back to `@ziro-agent/workflow` for
+fixed DAGs.
+
+> **Why so minimal?** See [RFC 0007](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0007-handoffs-and-router.md)
+> and the [`comparison.mdx`](/docs/comparison) decision tree —
+> "do I want handoff, router, or workflow?"
+
+---
+
+## `handoffs[]` — let the LLM pick the next agent
+
+Pass an array of specialist agents on `CreateAgentOptions.handoffs`.
+ZiroAgent auto-exposes each as a tool named `transfer_to_<name>`; the
+LLM calls it like any other tool, the sub-agent runs with the parent's
+message history, and its final text becomes the tool result.
+
+```ts
+import { createAgent } from '@ziro-agent/agent';
+
+const billing = createAgent({
+  name: 'billing',
+  model,
+  system: 'You are an expert in billing, refunds, and subscriptions.',
+});
+
+const tech = createAgent({
+  name: 'tech_support',
+  model,
+  system: 'You are an expert in API debugging and integration issues.',
+});
+
+const triage = createAgent({
+  name: 'triage',
+  model,
+  system: 'You triage customer messages to the right specialist.',
+  handoffs: [billing, tech],
+});
+
+const result = await triage.run({ input: 'I was double-charged last month' });
+// → triage's LLM picks transfer_to_billing → billing runs → its text bubbles up
+```
+
+### `inputFilter` — control what the sub-agent sees
+
+The default forwards the parent's full conversation. Pass a
+`HandoffSpec` with `inputFilter` to narrow it — the documented
+mitigation for **context pollution** (a common production failure
+mode where irrelevant earlier turns derail the specialist).
+
+```ts
+const triage = createAgent({
+  name: 'triage',
+  model,
+  handoffs: [
+    {
+      agent: billing,
+      inputFilter: (messages) =>
+        messages.filter((m) => m.role !== 'system').slice(-10),
+    },
+  ],
+});
+```
+
+### Loop detection
+
+Recursive handoffs ("triage hands off to triage") are a configuration
+bug, not a recoverable state. ZiroAgent throws `HandoffLoopError` when
+nested handoffs exceed `maxHandoffDepth` (default `5`):
+
+```ts
+import { HandoffLoopError } from '@ziro-agent/agent';
+
+try {
+  await triage.run({ input: '...' });
+} catch (err) {
+  if (err instanceof HandoffLoopError) {
+    console.error(`Handoff chain: ${err.chain.join(' → ')}`);
+  }
+}
+```
+
+---
+
+## `createNetwork` — deterministic state-based routing
+
+Handoffs let the LLM pick. Sometimes you want **deterministic, auditable**
+routing: step 1 always runs `intake`, then `processing` while
+`!state.processed`, then `finalizer`. That's `createNetwork`:
+
+```ts
+import { createNetwork } from '@ziro-agent/agent';
+
+const network = createNetwork({
+  agents: [intakeAgent, processingAgent, finalizerAgent],
+  router: ({ stepIndex, state, lastResult }) => {
+    if (stepIndex === 0) return intakeAgent;
+    if (state.intakeComplete && !state.processed) return processingAgent;
+    if (state.processed) return finalizerAgent;
+    return undefined; // halt
+  },
+});
+
+const result = await network.run({
+  input: 'process this order',
+  initialState: { phase: 'first' },
+});
+```
+
+The router is a **pure function** — no LLM call. That's the contract:
+returning `Agent` runs it, `Agent[]` runs in parallel, `undefined` (or
+`[]`) halts. We explicitly chose not to ship Inngest's
+`createRoutingAgent` (LLM-as-router) because it adds opaque per-step
+LLM cost and breaks the production-safety thesis (see [RFC 0007
+§"Explicitly NOT shipping"](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0007-handoffs-and-router.md)).
+
+### Mutable state
+
+`router` receives a `state` object that survives across steps. Mutate
+it, read it, branch on it — it's your scratchpad. ZiroAgent never
+inspects it.
+
+### When to use which
+
+| You want…                                                  | Use                          |
+| ---------------------------------------------------------- | ---------------------------- |
+| LLM picks the next specialist mid-conversation             | `handoffs[]`                 |
+| State / step counter determines next agent (deterministic) | `createNetwork({ router })`  |
+| A fixed DAG of steps with conditional branches             | `@ziro-agent/workflow`       |
+| Anything that smells like a graph framework                | **Stop.** Reconsider scope.  |
+
+---
+
+## What we explicitly *don't* ship
+
+- **LLM-as-router.** Per-step LLM call to pick the next agent ⇒ opaque
+  cost + non-auditable control flow. Reject.
+- **Handoff graph visualisation as a 1st-class primitive.** Premature
+  complexity; the trace timeline in `apps/playground` already shows
+  handoff transitions.
+- **Cross-language sub-agents** (Python sub-agents, .NET sub-agents).
+  TypeScript-native is the value prop.

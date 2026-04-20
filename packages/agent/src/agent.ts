@@ -25,6 +25,7 @@ import {
   toolsToModelDefinitions,
 } from '@ziro-agent/tools';
 import type { Checkpointer, CheckpointId } from './checkpointer.js';
+import { buildHandoffTool, type Handoff, handoffStore } from './handoff.js';
 import {
   type AgentResumeOptions,
   type AgentSnapshot,
@@ -44,6 +45,31 @@ import type {
 export interface CreateAgentOptions {
   model: LanguageModel;
   tools?: Record<string, Tool>;
+  /**
+   * Stable, human-readable agent name. Used for:
+   *  - Auto-generating handoff tool names (`transfer_to_<name>`).
+   *  - Tracing / log correlation (`ziro.agent.name` attribute).
+   *
+   * Recommended convention: short, snake_case-ish (e.g. `triage`,
+   * `billing`, `tech_support`). Defaults to `agent` when omitted; this
+   * is fine for single-agent setups but causes tool-name collisions
+   * when used in `handoffs[]` — supply a unique name in that case.
+   */
+  name?: string;
+  /**
+   * Specialised sub-agents the LLM may delegate the conversation to
+   * via auto-generated `transfer_to_<name>` tools. Pass either a bare
+   * `Agent` (full message-history passthrough) or a {@link HandoffSpec}
+   * for `inputFilter` / custom description. See RFC 0007.
+   *
+   * Available since v0.2.0.
+   */
+  handoffs?: Handoff[];
+  /**
+   * Hard cap on the depth of nested handoffs in a single run. Throws
+   * `HandoffLoopError` if exceeded. Default `5`.
+   */
+  maxHandoffDepth?: number;
   /** System message passed to the model on every step. */
   system?: string;
   /** Hard cap on iterations. Default 10. */
@@ -156,6 +182,11 @@ export interface ResumeFromCheckpointOptions extends AgentResumeOptions {
 }
 
 export interface Agent {
+  /**
+   * Stable, human-readable agent name (default `'agent'`). Drives
+   * handoff tool naming and tracing attributes.
+   */
+  readonly name: string;
   readonly tools: Record<string, Tool>;
   /**
    * The {@link Checkpointer} the agent was created with, or `undefined`
@@ -228,10 +259,32 @@ interface LoopState {
  *   - a tool call requires human approval (`AgentSuspendedError` thrown — RFC 0002)
  */
 export function createAgent(options: CreateAgentOptions): Agent {
-  const tools = options.tools ?? {};
+  const agentName = options.name ?? 'agent';
   const baseMaxSteps = options.maxSteps ?? 10;
-  const toolDefs = Object.keys(tools).length > 0 ? toolsToModelDefinitions(tools) : undefined;
   const checkpointer = options.checkpointer;
+  const maxHandoffDepth = options.maxHandoffDepth ?? 5;
+
+  // Merge user-supplied tools with auto-generated handoff tools.
+  // Handoff tool names follow `transfer_to_<sanitised_name>` and would
+  // collide noisily with user tools — fail fast if so.
+  const baseTools: Record<string, Tool> = { ...(options.tools ?? {}) };
+  if (options.handoffs?.length) {
+    for (const h of options.handoffs) {
+      const tool = buildHandoffTool(h, {
+        maxHandoffDepth,
+        parentChain: [agentName],
+      });
+      if (tool.name in baseTools) {
+        throw new Error(
+          `Handoff tool name "${tool.name}" collides with an existing tool. ` +
+            `Either rename the user tool or set a unique \`name\` on the target agent.`,
+        );
+      }
+      baseTools[tool.name] = tool;
+    }
+  }
+  const tools = baseTools;
+  const toolDefs = Object.keys(tools).length > 0 ? toolsToModelDefinitions(tools) : undefined;
 
   /**
    * Auto-persist the snapshot from any `AgentSuspendedError` thrown by
@@ -268,6 +321,7 @@ export function createAgent(options: CreateAgentOptions): Agent {
   };
 
   const agent: Agent = {
+    name: agentName,
     tools,
     ...(checkpointer ? { checkpointer } : {}),
     async run(runOptions: AgentRunOptions): Promise<AgentRunResult> {
@@ -276,7 +330,19 @@ export function createAgent(options: CreateAgentOptions): Agent {
         return await iterateLoop(state, runOptions);
       };
       const tid = runOptions.threadId ?? options.defaultThreadId;
-      return await withAutoCheckpoint(tid, () => runWithBudget(runOptions, exec));
+      // Wrap the run in a fresh handoff frame ONLY when one isn't
+      // already in scope — nested handoff calls (the sub-agent's run)
+      // already established the frame in `buildHandoffTool.execute`,
+      // and over-writing it here would reset the depth counter and
+      // break `maxHandoffDepth` enforcement.
+      const wrapHandoff = (fn: () => Promise<AgentRunResult>): Promise<AgentRunResult> => {
+        if (handoffStore.getStore() !== undefined) return fn();
+        const initialMessages = runOptions.messages ?? [];
+        return handoffStore.run({ messages: initialMessages, depth: 0, loopErrorSink: {} }, fn);
+      };
+      return await wrapHandoff(() =>
+        withAutoCheckpoint(tid, () => runWithBudget(runOptions, exec)),
+      );
     },
 
     async resume(
@@ -531,6 +597,12 @@ export function createAgent(options: CreateAgentOptions): Agent {
           step: stepIndex,
           messages: [...state.messages] as ReadonlyArray<unknown>,
         };
+        // Refresh the handoff frame's `messages` snapshot BEFORE
+        // running tools so any handoff-derived tool sees the latest
+        // conversation state. We only mutate the existing frame —
+        // never create a new one — so depth tracking is preserved.
+        const frame = handoffStore.getStore();
+        if (frame) frame.messages = [...state.messages];
         toolResults = await executeToolCalls({
           tools,
           toolCalls: llmResult.toolCalls,
@@ -608,6 +680,16 @@ export function createAgent(options: CreateAgentOptions): Agent {
         await handleBudgetThrow(synthErr, 'tool');
         break;
       }
+
+      // RFC 0007: HandoffLoopError is a configuration bug, not a
+      // recoverable tool error — abort the run rather than letting
+      // it loop until maxSteps. The `executeToolCalls` layer
+      // serialises thrown Errors into plain `{ name, message }`
+      // (cross-realm safety), so the live instance is stashed on the
+      // shared `loopErrorSink` walked through every nested frame;
+      // we re-throw it verbatim here.
+      const liveLoopError = handoffStore.getStore()?.loopErrorSink.error;
+      if (liveLoopError) throw liveLoopError;
 
       if (llmResult.toolCalls.length === 0) {
         state.finishReason = 'completed';
