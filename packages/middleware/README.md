@@ -25,11 +25,13 @@ interface LanguageModelMiddleware {
 ```ts
 import { openai } from '@ziro-agent/openai';
 import { wrapModel } from '@ziro-agent/core';
-import { retry, cache } from '@ziro-agent/middleware';
+import { blockPromptInjection, cache, redactPII, retry } from '@ziro-agent/middleware';
 
 const robust = wrapModel(openai('gpt-4o-mini'), [
-  retry({ maxAttempts: 4 }),    // outer: retries on 5xx / 429
-  cache({ ttlMs: 60_000 }),     // inner: returns cached result on identical params
+  blockPromptInjection(),                                  // outermost: fail fast on attacks
+  redactPII({ entities: ['EMAIL', 'PHONE_NUMBER'] }),      // strip PII BEFORE the cache key
+  cache({ ttlMs: 60_000 }),                                // hits short-circuit before retry
+  retry({ maxAttempts: 4 }),                               // innermost: closest to the wire
 ]);
 
 // Drop into createAgent / generateText — same LanguageModel surface.
@@ -87,6 +89,82 @@ class RedisCache implements CacheStore {
 cache({ store: new RedisCache() });
 ```
 
+### `redactPII(options)`
+
+Replaces common PII tokens (`EMAIL`, `PHONE_NUMBER`, `SSN`, `CREDIT_CARD`, `IP_ADDRESS`, `IBAN`) in outbound `user` / `system` messages BEFORE they reach the model. Operates in `transformParams` so the redaction is visible to every downstream middleware (cache keys, traces).
+
+```ts
+import { redactPII, heuristicPiiAdapter } from '@ziro-agent/middleware';
+
+redactPII({
+  adapter: heuristicPiiAdapter(),                  // default; swap for Presidio / AWS Comprehend
+  entities: ['EMAIL', 'PHONE_NUMBER', 'SSN', 'CREDIT_CARD'],  // default
+  redactUserMessages: true,                        // default; tool messages are always skipped
+  onRedacted: ({ replacements }) =>
+    log.info({ count: Object.keys(replacements).length }),
+});
+```
+
+- The built-in **heuristic adapter** is regex-based, zero-dep, and **conservative by design** — false negatives are possible. NEVER rely on it for GDPR / HIPAA compliance.
+- Plug in a model-based adapter via the 3-method `PiiAdapter` interface for production:
+
+  ```ts
+  import type { PiiAdapter } from '@ziro-agent/middleware';
+
+  const presidio: PiiAdapter = {
+    async redact({ text, entities }) {
+      const res = await fetch(`${PRESIDIO_URL}/analyze`, {
+        method: 'POST',
+        body: JSON.stringify({ text, entities }),
+      }).then((r) => r.json());
+      return { redacted: res.text, replacements: res.replacements };
+    },
+  };
+
+  redactPII({ adapter: presidio });
+  ```
+
+- Tool messages are **skipped** because they often carry already-structured data; redact at the tool boundary instead.
+- The middleware never resurrects the original PII. If you need restoration, capture the `onRedacted` map and rewrite the response in application code — the SDK refuses to ship that primitive until the threat model is settled (see [RFC 0005 unresolved questions](../../rfcs/0005-language-model-middleware.md#unresolved-questions)).
+
+### `blockPromptInjection(options)`
+
+Pre-flight guard against jailbreak attempts and indirect injection via tool results. Throws `PromptInjectionError` on the first offending message — `wrapGenerate` / `wrapStream` is never reached.
+
+```ts
+import { blockPromptInjection, PromptInjectionError } from '@ziro-agent/middleware';
+
+blockPromptInjection({
+  heuristic: true,                            // default; built-in regex catches obvious cases
+  scanRoles: ['user', 'tool'],                // default; tool results are an indirect-injection vector
+  minScore: 0.5,                              // adapter score threshold (heuristic always blocks on match)
+  onBlocked: ({ verdict, messageIndex }) =>
+    metrics.inc('prompt_injection.blocked', { rule: verdict.reason }),
+});
+```
+
+- The built-in heuristic catches `ignore previous instructions`, `you are now …`, `reveal the system prompt`, `DAN mode`, etc. **High precision, low recall** — pair with an adapter for production.
+- Adapters (Lakera, Rebuff, custom) plug in via the 3-method `PromptInjectionAdapter` interface:
+
+  ```ts
+  import type { PromptInjectionAdapter } from '@ziro-agent/middleware';
+
+  const lakera: PromptInjectionAdapter = {
+    async check({ text }) {
+      const res = await fetch('https://api.lakera.ai/v1/prompt_injection', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${process.env.LAKERA_KEY}` },
+        body: JSON.stringify({ input: text }),
+      }).then((r) => r.json());
+      return { injected: res.flagged, score: res.score, reason: res.category };
+    },
+  };
+
+  blockPromptInjection({ adapter: lakera, heuristic: true, minScore: 0.5 });
+  ```
+
+- Place this **first** in the middleware stack — you don't want a cache hit (or any side-effect) downstream of an injection attempt.
+
 ## Writing your own middleware
 
 ```ts
@@ -115,11 +193,11 @@ Tips:
 
 ## Status
 
-- **Stable**: `wrapModel`, `retry`, `cache`.
-- **Coming next** (planned in [RFC 0005](../../rfcs/0005-language-model-middleware.md) §built-ins):
-  - `redactPII()` — strip emails, credit cards, phone numbers from `params.messages` before egress.
-  - `blockPromptInjection()` — heuristic + classifier-based gate against override attacks.
+- **Stable**: `wrapModel`, `retry`, `cache`, `redactPII`, `blockPromptInjection`.
+- **Coming next** (tracked in [RFC 0005 unresolved questions](../../rfcs/0005-language-model-middleware.md#unresolved-questions)):
   - `structuredOutput(schema)` — Zod-validated post-processing with a single retry on schema failure.
+  - Tracing spans (`ziro.middleware.<id>`) and a `printMiddlewareChain(model)` debug helper.
+  - Cache-stream support (current `cache()` deliberately bypasses streams; experimental flag landing in `0.2.x`).
 
 Open an issue or RFC if your team needs one of these sooner.
 
