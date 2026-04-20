@@ -27,6 +27,13 @@ export {
   fireApprovalResolved,
   setApprovalObserver,
 } from './hitl/observer.js';
+export {
+  type AutoApproverOptions,
+  autoApprove,
+  autoReject,
+  autoSuspend,
+  createAutoApprover,
+} from './hitl/presets.js';
 export type {
   ApprovalContext,
   ApprovalDecision,

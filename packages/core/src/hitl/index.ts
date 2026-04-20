@@ -6,6 +6,13 @@ export {
   fireApprovalResolved,
   setApprovalObserver,
 } from './observer.js';
+export {
+  type AutoApproverOptions,
+  autoApprove,
+  autoReject,
+  autoSuspend,
+  createAutoApprover,
+} from './presets.js';
 export type {
   ApprovalContext,
   ApprovalDecision,
