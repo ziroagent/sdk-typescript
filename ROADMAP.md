@@ -5,6 +5,8 @@ A high-level view of where ZiroAgent SDK is headed. For day-to-day tracking see 
 Our roadmap is shaped by one question: **"What stops 88% of agent projects from reaching production?"** Every milestone below maps to a documented production failure mode (cost runaway, context pollution, integration brittleness, missing observability, multi-agent coordination, no governance).
 
 > **2026-04-22 — v2.** This file was restructured per [RFC 0004](./rfcs/0004-roadmap-v2.md) after a 12-SDK competitive review. The v0.1 section is unchanged; v0.2 onwards is reordered, every milestone now carries an **adoption matrix** (what we keep / reject from competitors), and a v0.1.9 housekeeping milestone is inserted before v0.2. The original ROADMAP remains in git history.
+>
+> **2026-04-20 — v3.** Extended past v0.3 per [RFC 0008](./rfcs/0008-roadmap-v3.md) after a v0.2 retrospective + fresh sweep of 2026 best-practices for agentic SDKs. The v0.1 / v0.1.9 / v0.2 sections are **unchanged** (only `[ ] → [x]` status updates). Milestones v0.3 → v1.0 are rewritten with a per-feature **gap matrix** (status × P0/P1/P2 tier) and 8 child RFCs (0009–0016) cover the largest P0 surface areas. See RFC 0008 §A for the full 56-feature matrix.
 
 ---
 
@@ -114,109 +116,193 @@ This milestone exists because the 12-SDK review (RFC 0004) surfaced eight gaps w
 | Vercel AI SDK / `prepareStep`              | `prepareStep({ stepIndex, messages })` to swap model / inject system / restrict `activeTools` per step        | `experimental_*` proliferation as a versioning escape hatch                                     |
 
 ### Track 1 — Middleware layer (week 1-2) — see RFC 0005
-- [ ] `LanguageModelMiddleware` interface + `wrapModel(model, middleware[])` in `@ziro-agent/core`
-- [ ] **`@ziro-agent/middleware`** new package: `retry()`, `cache()` (LRU + pluggable adapter), `redactPII()` (Presidio adapter), `blockPromptInjection()` (Lakera + heuristic)
-- [ ] Tracing instrumentation reuses existing `instrumentModel()` — middleware spans nest under model spans
+- [x] `LanguageModelMiddleware` interface + `wrapModel(model, middleware[])` in `@ziro-agent/core`
+- [x] **`@ziro-agent/middleware`** new package: `retry()`, `cache()` (in-memory LRU + pluggable adapter), `redactPII()` (heuristic adapter, Presidio adapter pending), `blockPromptInjection()` (heuristic + adapter interface)
+- [x] Tracing instrumentation reuses existing `instrumentModel()` — middleware spans nest under model spans
 
 ### Track 2 — Checkpointer + resumable streams (week 3-4) — see RFC 0006
-- [ ] `Checkpointer` interface in `@ziro-agent/agent`
-- [x] `@ziro-agent/checkpoint-memory` (v0.1.9), [x] `@ziro-agent/checkpoint-postgres` (v0.2), [ ] `@ziro-agent/checkpoint-redis`
-- [ ] `agent.resumeFromCheckpoint(threadId)` / `agent.listCheckpoints(threadId)`
-- [ ] `streamText({ resumeKey, resumeFromIndex })` with cached event log
-- [ ] **Mental model rename**: durable is the *default* (any checkpointer); Temporal/Inngest become the long-running adapters
+- [x] `Checkpointer` interface in `@ziro-agent/agent`
+- [x] `@ziro-agent/checkpoint-memory`, [x] `@ziro-agent/checkpoint-postgres`, [x] `@ziro-agent/checkpoint-redis`
+- [ ] `agent.resumeFromCheckpoint(threadId)` / `agent.listCheckpoints(threadId)` — moved to v0.9 stabilisation per RFC 0008
+- [ ] `streamText({ resumeKey, resumeFromIndex })` with cached event log — moved to v0.6 (RFC 0015 resilience)
+- [x] **Mental model rename**: durable is the *default* (any checkpointer); Temporal/Inngest become the long-running adapters
 
 ### Track 3 — Provider depth (week 5-6)
-- [ ] `@ziro-agent/google` (Gemini)
-- [ ] `@ziro-agent/groq` (fastest inference benchmark wedge)
-- [ ] Cache-control parameters surfaced on `@ziro-agent/anthropic` (`cache_control` blocks)
-- [ ] `@ziro-agent/openai` prompt-cache control parity
+- [x] `@ziro-agent/google` (Gemini)
+- [ ] `@ziro-agent/groq` (fastest inference benchmark wedge) — moved to v0.8 sovereign track
+- [ ] Cache-control parameters surfaced on `@ziro-agent/anthropic` (`cache_control` blocks) — v0.9 stabilisation
+- [ ] `@ziro-agent/openai` prompt-cache control parity — v0.9 stabilisation
 
 ### Track 4 — Durable adapters (week 7-9)
-- [ ] **`@ziro-agent/inngest` first** — TS-first DX, ~1 week ship
-- [ ] `@ziro-agent/temporal` — uses `@temporalio/ai-sdk` integration as reference but does *not* depend on Vercel AI SDK
+- [x] **`@ziro-agent/inngest` first** — TS-first DX, ~1 week ship
+- [ ] `@ziro-agent/temporal` — moved to v0.6 per RFC 0008 (G5 promoted from P1 if pulled)
 - [ ] (Restate adapter deferred to v0.3 — no design-partner demand yet)
 - [ ] `examples/durable-support-agent` end-to-end with Inngest
 
 ### Track 5 — Evals polish (parallel, throughout)
-- [ ] **Replay-from-trace** (deferred from RFC 0003 §Q4) — load OTel `ziro.agent.run` span → reconstruct `EvalCase` → run against new code
-- [ ] JSON / YAML datasets accepted by `ziroagent eval` (currently TS-only)
-- [ ] Online sampling middleware: `samplingEval({ rate: 0.05 })` writes 5% of production traces into eval store
+- [ ] **Replay-from-trace** (deferred from RFC 0003 §Q4) — folded into RFC 0015 (v0.6)
+- [ ] JSON / YAML datasets accepted by `ziroagent eval` (currently TS-only) — v0.9 stabilisation
+- [ ] Online sampling middleware: `samplingEval({ rate: 0.05 })` writes 5% of production traces into eval store — D4 in RFC 0008 (P1, post-v1.0)
 
 ---
 
-## v0.3 — Sovereign + Multi-agent + Frontend (10-12 weeks)
+## v0.3 — Standards & Ecosystem (8 weeks) — see RFC 0008 §C
 
-**Goal**: VN/SEA banking design partners go to production. Multi-agent coordination ships as the smallest possible primitive (handoffs + deterministic router), not a graph framework.
+**Goal**: Ziro becomes a citizen of the 2026 agent ecosystem (MCP servers, OpenAPI tools, OTel GenAI conventions, mock provider, three-layer docs). No new feature surface — only first-class adoption of standards already adopted by Vercel AI SDK v6, OpenAI Agents JS, and Anthropic SDK.
 
 ### Adoption matrix
 
-| Inspired by                              | Keep                                                                                              | Reject                                                                                                |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| OpenAI Agents JS / `handoffs[]`          | `handoffs: Agent[]` field on `CreateAgentOptions` — handoffs auto-expose as tools to the LLM, with `inputFilter` to control message history pass-through | Handoff *graph* visualisation as 1st-class — premature complexity                                     |
-| Inngest Agent Kit / state-based router   | `router: (ctx) => Agent \| Agent[] \| undefined` — function-form deterministic only               | LLM-as-router (`createRoutingAgent`) — extra LLM call per step, opaque cost behaviour                 |
-| Mastra / Working memory persistence scopes | `WorkingMemory` with `scope: 'resource' \| 'thread'`, markdown-block storage, libSQL+Postgres adapters | Observational Memory full implementation — defer until 1+ design partner asks; Mastra owns this design space |
-| Letta / Tiered memory                    | (nothing taken into core)                                                                          | Self-editing memory tools (`core_memory_append`) — security nightmare, surface area too large         |
-| AG-UI / 17 standard events               | `@ziro-agent/agui` event emitter; `@ziro-agent/react` with `<Chat>` / `<TraceTimeline>` / `<ToolApproval>` | Custom non-AG-UI event protocol — fragmenting is the worst outcome                                    |
-| EU AI Act / hash-chained audit log       | `@ziro-agent/audit` package emitting JSONL with `prevHash` + `eventHash` per record               | Compliance-as-a-cloud-service — must work air-gapped                                                  |
+| Inspired by                                  | Keep                                                                                     | Reject                                                                                                |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Anthropic MCP / `mcp serve` pattern          | `ziroagent mcp serve ./tools.ts` exposing `defineTool[]` + `Agent[]` over MCP transports | Bundling an MCP gateway daemon — server is a CLI subcommand, not a long-running platform              |
+| Vercel AI SDK v6 / `~standard` Schema        | Tool input schema accepted from any Standard Schema validator                            | Locking the public type surface to a single validator                                                 |
+| OpenAPI 3.1 ecosystem                        | `toolsFromOpenAPI(spec, { auth })` in `@ziro-agent/openapi`                              | Auto-generating one tool per HTTP verb with no curation hook — emit factory + filter callbacks       |
+| OpenTelemetry GenAI WG (semconv stable 2025) | Rename `ATTR.*` to `gen_ai.*` aliases, retain Ziro-specific attrs under `ziroagent.*`    | Dropping our own `ziroagent.*` namespace — multi-vendor span enrichment requires both                 |
+| Vitest / Mocked LLM patterns                 | `mockModel({ responses })` + `recordModel(real)` from `@ziro-agent/core/testing`         | Shipping a separate `@ziro-agent/testing` package — testing utilities live with the contract under test |
 
-### Track 1 — Sovereign mode
-- [ ] `@ziro-agent/vllm`
-- [ ] `@ziro-agent/lmstudio`
-- [ ] Vietnamese tokenizer / model presets (PhoGPT, VinAI, Viettel AI, FPT.AI)
-- [ ] Air-gapped install bundle (single tarball, zero network calls)
-- [ ] EU AI Act audit log hash-chained format (`@ziro-agent/audit`)
-- [ ] `@ziro-agent/nestjs` integration
-
-### Track 2 — Multi-agent (handoffs + router only) — see RFC 0007
-- [ ] `handoffs: Agent[]` on `CreateAgentOptions`
-- [ ] `inputFilter: (messages) => messages` per handoff
-- [ ] `router?: AgentRouter` — function-form deterministic state-based routing only
-- [ ] `examples/multi-agent-handoff` (replaces over-engineered `examples/multi-agent-workflow`)
-- [ ] **Reject**: full graph engine like LangGraph — `@ziro-agent/workflow` already covers the small graph case
-
-### Track 3 — Frontend layer
-- [ ] `@ziro-agent/agui` — AG-UI 17-event protocol emitter
-- [ ] `@ziro-agent/react` — `<Chat>`, `<TraceTimeline>`, `<ToolApproval>`, hooks via SSE
-- [ ] Resumable client (uses `streamText({ resumeKey })` from v0.2)
-
-### Track 4 — Memory polish
-- [ ] `WorkingMemory` with `scope: 'resource' | 'thread'`
-- [ ] `MemoryProcessor` middleware pattern (Mastra-style: trim / summarise / inject)
-- [ ] Vector store adapters: Qdrant, Pinecone, Weaviate, Chroma
-
-### Track 5 — Edge & deploy
-- [ ] Edge deployment recipes: Cloudflare Workers, Vercel Edge, Deno Deploy, Bun
-- [ ] Code Mode (Cloudflare pattern) — generate code instead of 40+ tool calls
-- [ ] Compliance pack: EU AI Act audit log format, SOC 2 control mapping, HIPAA-ready handlers
+### Tracks (P0 only)
+- [ ] **A5** — OTel GenAI semconv aliases in `@ziro-agent/tracing` (dual-emit one minor)
+- [ ] **A6** — MCP server (`ziroagent mcp serve`) — see [RFC 0009](./rfcs/0009-mcp-server.md)
+- [ ] **A7** — Standard Schema (`~standard`) interop in `@ziro-agent/tools`
+- [ ] **B6** — Mock / record provider exposed from `@ziro-agent/core/testing`
+- [ ] **H3** — OpenAPI → tools generator — see [RFC 0010](./rfcs/0010-openapi-tools.md)
+- [ ] **M1** — Three-layer docs audit (Quickstart / Tutorial / Reference) in `apps/docs`
 
 ---
 
-## v0.4 — Multi-agent advanced + interop
+## v0.4 — Memory & RAG (8 weeks) — see RFC 0008 §C
+
+**Goal**: a production agent can ingest a 10K-document corpus, retrieve with hybrid + rerank, return cited answers, and persist working / conversation memory across sessions.
 
 ### Adoption matrix
 
-| Inspired by                          | Keep                                                                       | Reject                                                                                  |
-| ------------------------------------ | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| Google A2A protocol                  | A2A wire format adapter as soon as a stable spec lands                     | Inventing a competing protocol                                                          |
-| AutoGen v0.4 actor model             | `supervisor / worker` patterns as composition examples (no new primitives) | Cross-language interop bridge — TS-native is the value prop                             |
-| Effect-TS                            | Optional `@ziro-agent/effect` adapter package                              | Effect as a core dependency — raises learning curve too much                            |
-| anthropic-sdk-python perf regressions| Bench every release; reject any code path that costs >1% CPU on 100KB payloads | Recursive type-introspection on every message payload                                |
+| Inspired by                                  | Keep                                                                                | Reject                                                                                                |
+| -------------------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Mastra / Working memory scopes               | `WorkingMemory` with `scope: 'resource' \| 'thread'`, markdown-block storage        | Observational Memory — not yet design-partner-pulled, Mastra owns this design                         |
+| LangChain / Document loader registry         | `loadDocument(uri)` autodetect (PDF / CSV / MD / DOCX / image OCR) + adapter pattern | Chain abstraction (`DocumentLoaders` as classes) — keep a pure function adapter                       |
+| LlamaIndex / Citation-first responses        | Output type `{ text, citations: [{ chunkId, score, text }] }`                       | Citation as opt-in formatter — citations are first-class on every retrieval call                      |
+| BM25 + RRF (Pinecone hybrid, Vespa)          | Hybrid as default in `@ziro-agent/memory`; semantic-only via explicit flag          | One-vector-per-doc design — chunked-then-RRF is the default                                           |
+| Cohere / Voyage / BGE rerankers              | `rerank()` middleware composable in retrieval pipeline                              | Coupling reranker to a single provider — ships as `RerankerAdapter` interface                         |
 
-- [ ] Supervisor / worker hierarchical patterns documented as composition examples
-- [ ] Agent-to-agent (A2A) protocol adapter (when standardised)
-- [ ] Workflow graph: conditional routing, parallel branches, compensation steps
-- [ ] Native tokenizer (Rust via `napi-rs`) for hot paths — bench-driven
-- [ ] Session storage adapters (Redis, Postgres, DynamoDB)
-- [ ] Optional `@ziro-agent/effect` adapter
+### Tracks (P0 only)
+- [ ] **E1** — Three-tier memory (working / conversation / long-term) — see [RFC 0011](./rfcs/0011-memory-tiers.md)
+- [ ] **E2** — Citation-first RAG output type
+- [ ] **E3** — Hybrid search (semantic + BM25 + RRF) default — see [RFC 0012](./rfcs/0012-rag-hardening.md)
+- [ ] **E4** — Reranker as middleware
+- [ ] **E5** — Document ingestion pipeline (PDF / CSV / MD / DOCX / image OCR)
 
 ---
 
-## v1.0 — Stability + Ziro Cloud GA
+## v0.5 — Safety & Governance (6 weeks) — see RFC 0008 §C
 
-- [ ] **API frozen**, semver-strict from here on
+**Goal**: ship the structural safety primitives that turn the existing heuristic middlewares into an auditable governance layer.
+
+### Adoption matrix
+
+| Inspired by                                  | Keep                                                                                                  | Reject                                                                                                |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| OpenAI Agents JS / `requiresApproval` flag   | `mutates: true` heuristic auto-sets `requiresApproval` on `defineTool`                                | Network-egress checks at tool runtime — too late; agent-level egress allowlist instead                |
+| Vercel AI SDK / `generateObject` + JSON mode | `generateObject({ schema })` with 1-shot validation-failure repair                                    | Shipping our own JSON-mode shim per provider — providers own this; we wrap                            |
+| Mastra / Tenant-scoped budgets               | `withBudget({ tenantId, hard: true })` + cost attribution span attribute                              | Per-tool token caps — too granular; per-agent + per-tenant only                                       |
+| Adversarial eval research                    | `@ziro-agent/eval/safety` ships red-team prompt suites with version pinning                           | Auto-running adversarial evals on every PR — opt-in via `pnpm eval --suite=safety`                    |
+
+### Tracks (P0 only)
+- [ ] **C1** — Default-deny for mutating tools (`mutates: true` heuristic)
+- [ ] **C4** — Structured output enforcement (`generateObject` with auto-repair)
+- [ ] **C2** — Per-tenant budget hard cap (promoted from P1 if design-partner pull)
+
+---
+
+## v0.6 — Resilience (6 weeks) — see RFC 0008 §C
+
+**Goal**: the SDK survives provider outages, malformed completions, flaky tools, and process crashes — without operator intervention.
+
+### Adoption matrix
+
+| Inspired by                                  | Keep                                                                                | Reject                                                                                                |
+| -------------------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| LiteLLM / Provider fallback chain            | `wrapModel(primary, fallback([anthropic, openai]))` with circuit breaker            | LiteLLM's per-call routing config file — keep configuration in code                                   |
+| OpenAI Agents JS / `repairToolCall`          | `repairToolCall(call, error, ctx) => repairedCall \| null` hook on `agent.run`      | Auto-repair via second LLM call by default — opt-in, cost-aware                                       |
+| LangSmith / Trace replay                     | `recordRun()` → JSONL trace + tool I/O; `replayRun(trace)` reuses recorded responses | Vendor-locked replay format — emit OTel-compatible JSON                                               |
+| Speculative execution (Cursor, Vercel)       | (deferred to P2)                                                                    | Premature optimisation — re-evaluate when 3+ design partners cite p99 latency                         |
+
+### Tracks (P0 only)
+- [ ] **K3** — Model fallback chain — see [RFC 0015](./rfcs/0015-resilience.md)
+- [ ] **L1** — Snapshot record / replay
+- [ ] **G5** — `@ziro-agent/temporal` durable adapter (promoted from P1 if pulled)
+- [ ] `repairToolCall` hook on `agent.run` (carried over from RFC 0004 v0.2 Track 4)
+
+---
+
+## v0.7 — Multi-modal & Sandbox (8 weeks) — see RFC 0008 §C
+
+**Goal**: agents handle audio + file inputs and run code / browse the web in sandboxed environments — the two most-cited "missing piece" complaints in the 2026 agent demo cycle.
+
+### Adoption matrix
+
+| Inspired by                                  | Keep                                                                                | Reject                                                                                                |
+| -------------------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| OpenAI / Anthropic / Google content parts    | `audio`, `file`, `image` parts on `UserMessage.content`; large content via URL handle | Base64 inlining for >1 MB payloads — file handles only                                                |
+| E2B / Modal / Daytona                        | `@ziro-agent/sandbox-e2b` adapter implementing `SandboxAdapter` interface           | Bundling an in-process Node VM as the default — sandboxing requires kernel isolation                  |
+| Browserbase / Stagehand / Anthropic Computer Use | `@ziro-agent/browser-playwright` adapter + `browse(url, intent)` high-level tool | Reimplementing Stagehand's NL-to-action layer — keep low-level page primitive                         |
+| ElevenLabs / Whisper / OpenAI TTS            | (P1) `speak(text, voice)` + `transcribe(audio)` model interfaces                    | Bundling TTS / STT into the chat agent loop — separate model surface                                  |
+
+### Tracks (P0 only)
+- [ ] **I2** — Audio input parts — see [RFC 0014](./rfcs/0014-multimodal-content-parts.md)
+- [ ] **I3** — File / PDF parts
+- [ ] **H4** — Code interpreter sandbox — see [RFC 0013](./rfcs/0013-sandbox-tools.md)
+- [ ] **H5** — Browser tool
+
+---
+
+## v0.8 — Sovereign & Compliance (6 weeks) — see RFC 0008 §C
+
+**Goal**: VN/SEA banking + EU AI Act design partners can deploy air-gapped with a documented compliance posture.
+
+### Adoption matrix
+
+| Inspired by                                  | Keep                                                                                | Reject                                                                                                |
+| -------------------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| vLLM, TGI, LM Studio                         | `@ziro-agent/vllm`, `@ziro-agent/tgi` providers                                     | Hosting a model registry — providers only, no model lifecycle                                         |
+| EU AI Act + ISO/IEC 42001 templates          | `@ziro-agent/compliance` ships risk-assessment markdown + control-mapping JSON      | Compliance-as-a-cloud-service — must work fully offline                                               |
+| GDPR right-to-erasure                        | `agent.deleteUserData(userId)` propagates across checkpointer + memory + traces     | Storing user-identifiable data in spans by default — span attrs use opaque IDs only                   |
+
+### Tracks (P0 only)
+- [ ] **O5** — Compliance starter pack (`@ziro-agent/compliance` + `@ziro-agent/audit`) — see [RFC 0016](./rfcs/0016-compliance-pack.md)
+- [ ] **O4** — `@ziro-agent/vllm` + `@ziro-agent/tgi` (promoted from P1 if banking pull)
+- [ ] Vietnamese tokenizer / model presets (PhoGPT, VinAI, Viettel AI, FPT.AI) — carried from RFC 0004 v0.3
+- [ ] Air-gapped install bundle (single tarball, zero network calls) — carried from RFC 0004 v0.3
+
+---
+
+## v0.9 — Release Candidate stabilisation (4 weeks) — see RFC 0008 §C
+
+**Goal**: freeze API surface; publish migration guide + codemod; close every P0 still open.
+
+- [ ] **B3** — error `code` enum + `docsUrl` rollout across every error class
+- [ ] **B5** — `@ziro-agent/codemod` package shipped with `v0-to-v1` transform set
+- [ ] **A3** — zero-dep core audit (drop accidental deps from refactors)
+- [ ] **F2** — loop-guard defaults documented + asserted in tests
+- [ ] **F3** — sub-agent budget propagation hardened
+- [ ] **G1** — idempotency-key API formalised on `defineTool`
+- [ ] **G2** — auto-checkpoint cadence formalised
+- [ ] **M1** — three-layer docs audit pass 2
+- [ ] **N1** — `CONTRIBUTING-ADAPTERS.md` published
+- [ ] **N2** — release-cadence commitment in `RELEASING.md`
+- [ ] **J3** — `SUPPORT-MATRIX.md` published (TS / Node LTS policy)
+- [ ] `agent.resumeFromCheckpoint(threadId)` / `agent.listCheckpoints(threadId)` (carried from v0.2 Track 2)
+- [ ] JSON / YAML datasets accepted by `ziroagent eval` (carried from v0.2 Track 5)
+
+---
+
+## v1.0 — General Availability — see RFC 0008 §C
+
+- [ ] **API frozen**, semver-strict from this point
 - [ ] **Compatibility commitment table** mapping every v0.x → v1.0 deprecation path
-- [ ] **Codemod published alongside breaking changes** (Vercel AI SDK v4→v5 lesson: shipping migration *after* the release loses goodwill)
-- [ ] Migration guide from v0.x with `@ziro-agent/codemod` package
+- [ ] Every breaking change since v0.1 mapped in `apps/docs/content/docs/migration.mdx`
+- [ ] **`@ziro-agent/codemod`** covers every breaking change with an executable transform
+- [ ] `BENCHMARKS.md` republished with v1.0 numbers vs. Vercel AI SDK v6, Mastra, OpenAI Agents JS
+- [ ] Compliance pack published (RFC 0016)
 - [ ] Governance: BDFL → maintainer-vote model (per `GOVERNANCE.md`)
 - [ ] **Ziro Cloud GA** — managed durable execution + observability + eval store
   - Free tier (10K agent steps/month)
@@ -225,13 +311,45 @@ This milestone exists because the 12-SDK review (RFC 0004) surfaced eight gaps w
 
 ---
 
-## Future / exploratory (post-v1)
+## Post-v1.0 — P1 hardening backlog (target v1.x within 6 months)
 
+P1 items deferred from v1.0 GA per RFC 0008 tier definitions. Backwards-compatible additions only; no breaking changes once v1.0 freezes the API.
+
+- **B4** — CLI breadth (`dev` watch, `deploy`)
+- **C2** / **C3** — Per-tenant budget + egress allowlist (if not promoted to P0)
+- **C5** — Adversarial eval suite (`@ziro-agent/eval/safety`)
+- **D2** — Cost attribution by tag (tenant / user / session)
+- **D3** — Trace replay → Playground integration
+- **D4** — Eval-on-trace drift detection sampler
+- **E6** — Vector adapters (Qdrant / Pinecone / Weaviate / Chroma)
+- **G5** — Temporal durable adapter (if not promoted to P0)
+- **I4** / **I5** — Image generation + TTS / STT model interfaces
+- **K2** — Semantic cache middleware
+- **M2** — RFC index auto-published to docs site
+- **O2** — Long-context auto-compress hook
+- **O4** — vLLM / TGI providers (if not promoted)
+- AG-UI / `@ziro-agent/agui` + `@ziro-agent/react` frontend layer (carried from RFC 0004 v0.3 Track 3)
+- `@ziro-agent/nestjs` integration (carried from RFC 0004 v0.3 Track 1)
+- Edge deployment recipes (Cloudflare Workers, Vercel Edge, Deno Deploy, Bun) (carried from RFC 0004 v0.3 Track 5)
+
+---
+
+## Future / exploratory (post-v1, P2 / v2.0+)
+
+- **A8** — Agent-to-agent (A2A) protocol adapter (when standardised)
+- **H6** — Tool capability manifest + signed marketplace
+- **K4** — Speculative execution (parallel models, fastest wins)
+- **N3** — Anonymous opt-in telemetry (post legal / UX review)
+- **O3** — Prompt versioning UI (dashboard product, not SDK)
+- **E7** — Knowledge graph storage
+- **I6** — Video parts
+- **L3** — Property-based test helpers
+- **G6** — S3 cold-tier checkpoint adapter
 - `ziro-engine` — standalone durable execution service (separate product)
-- Browser-use adapter (Stagehand-style natural language page automation)
 - Voice agents (Realtime API + WebRTC primitives)
-- Marketplace for verified `defineTool` packages (signed, sandboxed)
 - Enterprise SSO + RBAC for Ziro Cloud (SAML, SCIM)
+- Native tokenizer (Rust via `napi-rs`) — bench-driven
+- Optional `@ziro-agent/effect` adapter
 
 ---
 

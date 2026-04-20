@@ -1,0 +1,238 @@
+name: Nightly
+
+# Catches problems CI deliberately doesn't run on every PR:
+#   - Full 3 OS × 2 Node matrix (Linux/macOS/Windows × Node 20/22)
+#   - Provider integration tests against real APIs (gated by secrets;
+#     skipped automatically if a secret is missing)
+#   - `npm audit signatures` against published packages on the registry
+#   - `pnpm outdated` report so we have a weekly view of dep drift
+#
+# Failures here open a single tracking issue (deduped by label) so the
+# noise stays low — Slack/email integrations should subscribe to that
+# issue, not the workflow runs.
+
+on:
+  schedule:
+    # 04:30 UTC every day. Off-peak globally; results are ready before
+    # the European workday starts.
+    - cron: '30 4 * * *'
+  workflow_dispatch:
+    inputs:
+      run-integration:
+        description: 'Run provider integration tests (cost: real API calls).'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+
+jobs:
+  # --------------------------------------------------------------------------
+  # Full validation matrix — same reusable workflow as `ci.yml` and
+  # `release.yml gate`, expanded to 3 OS × 2 Node.
+  # --------------------------------------------------------------------------
+  full-matrix:
+    name: Full matrix validate
+    uses: ./.github/workflows/_validate.yml
+    permissions:
+      contents: read
+    with:
+      matrix-os: '["ubuntu-latest", "macos-latest", "windows-latest"]'
+      matrix-node: '["20", "22"]'
+      run-package-quality: true
+      run-coverage: false
+      run-examples-typecheck: true
+    secrets:
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+
+  # --------------------------------------------------------------------------
+  # Provider integration: hits real provider APIs. Skipped per-provider when
+  # the corresponding API key secret is absent (e.g. a fork running this
+  # workflow won't crash — it just runs the providers it has keys for).
+  # --------------------------------------------------------------------------
+  integration:
+    name: Provider integration (${{ matrix.provider }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.run-integration }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        provider: [openai, anthropic, google, ollama]
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-pnpm-node
+
+      - name: Detect provider secret
+        id: secret
+        env:
+          OPENAI_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          OLLAMA_HOST: ${{ secrets.OLLAMA_HOST }}
+        run: |
+          set -euo pipefail
+          case "${{ matrix.provider }}" in
+            openai)    [ -n "${OPENAI_KEY:-}" ]    && echo "have=true" >> "$GITHUB_OUTPUT" || echo "have=false" >> "$GITHUB_OUTPUT" ;;
+            anthropic) [ -n "${ANTHROPIC_KEY:-}" ] && echo "have=true" >> "$GITHUB_OUTPUT" || echo "have=false" >> "$GITHUB_OUTPUT" ;;
+            google)    [ -n "${GOOGLE_KEY:-}" ]    && echo "have=true" >> "$GITHUB_OUTPUT" || echo "have=false" >> "$GITHUB_OUTPUT" ;;
+            ollama)    [ -n "${OLLAMA_HOST:-}" ]   && echo "have=true" >> "$GITHUB_OUTPUT" || echo "have=false" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - name: Skip notice
+        if: steps.secret.outputs.have == 'false'
+        run: |
+          echo "::notice::No secret configured for ${{ matrix.provider }} — skipping integration."
+          echo "### ${{ matrix.provider }}: skipped (no secret)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build packages
+        if: steps.secret.outputs.have == 'true'
+        run: pnpm --filter "./packages/*" build
+
+      - name: Run integration tests
+        if: steps.secret.outputs.have == 'true'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          OLLAMA_HOST: ${{ secrets.OLLAMA_HOST }}
+          INTEGRATION: '1'
+        run: |
+          set -euo pipefail
+          # Convention: providers expose `pnpm test:integration` if they
+          # have one. `--if-present` makes packages without it no-op.
+          pnpm --filter "@ziro-agent/providers-${{ matrix.provider }}" --if-present test:integration
+
+  # --------------------------------------------------------------------------
+  # Verify provenance / signatures on published tarballs. This is the
+  # public-facing analog of `npm audit signatures` recommended in SECURITY.md
+  # — running it nightly catches a registry-side compromise within 24h.
+  # --------------------------------------------------------------------------
+  audit-signatures:
+    name: Audit npm signatures
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-pnpm-node
+
+      - name: npm audit signatures
+        # Continues on error — when provenance is OFF (current state) this
+        # step naturally reports "no attestations found". Once we flip on
+        # Trusted Publishers the report becomes meaningful and we can flip
+        # this to `continue-on-error: false`.
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          npm audit signatures || echo "::notice::No signatures yet — provenance still disabled (see RELEASING.md)."
+
+  # --------------------------------------------------------------------------
+  # Surface dep drift weekly so dependabot's grouped PRs don't hide a
+  # major version we should be tracking manually.
+  # --------------------------------------------------------------------------
+  outdated:
+    name: Outdated deps report
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event.schedule == '30 4 * * 0' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-pnpm-node
+
+      - name: pnpm outdated
+        run: |
+          set +e
+          {
+            echo "### Outdated dependencies"
+            echo ""
+            echo '```'
+            pnpm -r outdated || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # --------------------------------------------------------------------------
+  # Open / refresh a single tracking issue when nightly fails. Keeps
+  # subscribers from getting a notification per failed job.
+  # --------------------------------------------------------------------------
+  notify:
+    name: Notify on failure
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [full-matrix, integration, audit-signatures]
+    if: failure()
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              '## Nightly run failed',
+              '',
+              `Run: ${runUrl}`,
+              '',
+              'Triage steps:',
+              '1. Identify which job failed (full-matrix / integration / audit-signatures).',
+              '2. If integration: check provider status pages first — most failures are upstream.',
+              '3. If full-matrix: reproduce locally with the same Node + OS combo.',
+              '4. File a separate issue if the root cause needs longer-running work; close this one once green.',
+            ].join('\n');
+            const title = 'nightly: run failed';
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'nightly-failure',
+              state: 'open',
+            });
+            if (existing.data.length > 0) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.data[0].number,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['nightly-failure'],
+              });
+            }

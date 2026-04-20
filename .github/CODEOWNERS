@@ -1,0 +1,64 @@
+# https://docs.github.com/articles/about-codeowners
+#
+# Order matters — the LAST matching pattern wins. We declare a global
+# fallback first, then narrow to package-level ownership so changes to a
+# specific package automatically request review from the right people.
+#
+# Replace `@ziroagent/maintainers` with the actual team handle once it
+# exists. GitHub silently no-ops on unknown teams, so the wrong handle
+# fails open (no review required) — please verify.
+
+# Global fallback: any path not matched below.
+*                                          @ziroagent/maintainers
+
+# CI / release infrastructure: extra-careful review.
+/.github/                                  @ziroagent/maintainers @ziroagent/release
+/.github/workflows/                        @ziroagent/maintainers @ziroagent/release
+/.github/workflows/release.yml             @ziroagent/release
+/.github/workflows/snapshot.yml            @ziroagent/release
+/.github/workflows/auto-merge-release.yml  @ziroagent/release
+/.github/actions/                          @ziroagent/release
+
+# Dependency / governance files
+/package.json                              @ziroagent/maintainers @ziroagent/release
+/pnpm-workspace.yaml                       @ziroagent/maintainers @ziroagent/release
+/turbo.json                                @ziroagent/maintainers
+/biome.json                                @ziroagent/maintainers
+/CODEOWNERS                                @ziroagent/maintainers
+/SECURITY.md                               @ziroagent/maintainers @ziroagent/security
+/RELEASING.md                              @ziroagent/release
+/CONTRIBUTING.md                           @ziroagent/maintainers
+
+# Per-package ownership.
+# Each package gets its own line so PRs that touch multiple packages
+# automatically request review from each owner.
+/packages/core/                            @ziroagent/core
+/packages/agent/                           @ziroagent/core
+/packages/tools/                           @ziroagent/core
+/packages/workflow/                        @ziroagent/core
+/packages/memory/                          @ziroagent/core
+/packages/middleware/                      @ziroagent/core
+/packages/tracing/                         @ziroagent/core
+/packages/eval/                            @ziroagent/core
+/packages/cli/                             @ziroagent/core
+
+# Pricing data: keep tight ownership — wrong numbers ship in users' bills.
+/packages/core/src/pricing/                @ziroagent/maintainers @ziroagent/core
+/scripts/check-pricing-drift.ts            @ziroagent/maintainers @ziroagent/core
+
+# Provider integrations: each could have its own owner once the team grows.
+/packages/providers-openai/                @ziroagent/providers
+/packages/providers-anthropic/             @ziroagent/providers
+/packages/providers-google/                @ziroagent/providers
+/packages/providers-ollama/                @ziroagent/providers
+
+# Storage adapters
+/packages/checkpoint-memory/               @ziroagent/storage
+/packages/checkpoint-postgres/             @ziroagent/storage
+/packages/checkpoint-redis/                @ziroagent/storage
+/packages/inngest/                         @ziroagent/storage
+
+# Apps + examples — lower bar; any maintainer can approve.
+/apps/                                     @ziroagent/maintainers
+/examples/                                 @ziroagent/maintainers
+/rfcs/                                     @ziroagent/maintainers

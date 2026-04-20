@@ -58,28 +58,94 @@ Use `git commit -s` to add it automatically.
 
 ## Conventional Commits
 
-| Type | Use for |
-| --- | --- |
-| `feat` | New feature |
-| `fix` | Bug fix |
-| `docs` | Documentation only |
-| `refactor` | Code change that neither fixes a bug nor adds a feature |
-| `perf` | Performance improvement |
-| `test` | Adding or updating tests |
-| `chore` | Tooling, build, CI |
-| `breaking` | Breaking change (also use `!` after type) |
+We **enforce** Conventional Commits via `commitlint` in CI (see
+`commitlint.config.cjs` for the full rule set). The check runs on every
+commit in the PR **and** on the PR title itself, because we squash-merge
+and the PR title becomes the `main`-branch commit message.
 
-Scope should be the package name without the `@ziro-agent/` prefix, e.g. `feat(core): ...`, `fix(agent): ...`.
+### Allowed types
+
+| Type | Use for | Triggers release? |
+| --- | --- | --- |
+| `feat` | New feature | ✅ minor bump |
+| `fix` | Bug fix | ✅ patch bump |
+| `perf` | Performance improvement (no API change) | ✅ patch bump |
+| `refactor` | Internal restructure with no behaviour change | ❌ |
+| `docs` | Documentation only | ❌ |
+| `test` | Adding or updating tests | ❌ |
+| `chore` | Tooling, build, deps | ❌ |
+| `ci` | CI/CD config | ❌ |
+| `build` | Build system / external deps | ❌ |
+| `style` | Formatting only (no logic change) | ❌ |
+| `revert` | Revert of a previous commit | ❌ |
+
+### Breaking changes
+
+A breaking change is signalled by `!` after the type/scope **or** a
+`BREAKING CHANGE:` footer in the body:
+
+```text
+feat(core)!: rename `runAgent` to `runAgentStream`
+
+BREAKING CHANGE: `runAgent` is removed. Migration: rename all imports
+and update the result handler — see RFC 0008 § Migration.
+```
+
+### Scope
+
+Scope is **optional** but if present must match a known package or
+cross-cutting topic. The full list is enforced by `commitlint.config.cjs`
+under `scope-enum`. Examples: `core`, `agent`, `providers-google`,
+`checkpoint-postgres`, `cli`, `docs`, `playground`, `deps`, `release`,
+`security`, `pricing`.
+
+## Versioning policy
+
+| PR commit | Required changeset bump | Notes |
+| --- | --- | --- |
+| `feat:` / `feat(scope):` | `minor` | Adds public API surface |
+| `fix:` / `perf:` | `patch` | No API change, behaviour fix |
+| `feat!:` / `feat(scope)!:` / `BREAKING CHANGE:` footer | `major` | **Strict pre-1.0**: we still bump major even though SemVer 0.x technically permits breaking at minor. Reason: it makes the eventual 1.0 cutover trivial — no policy switch, no consumer surprise. |
+| `chore`, `docs`, `ci`, `build`, `test`, `refactor`, `style`, `revert` | _none_ | Changeset optional. If you include one anyway, that's fine. |
+
+CI enforces this via `scripts/validate-changeset.ts` running in the
+`Changeset gate` workflow (`.github/workflows/changeset-status.yml`):
+
+- `feat:` PR with no changeset → **CI fail**.
+- `feat:` PR with only a `patch` changeset → **CI fail**.
+- `fix:` PR with a `minor` changeset → **CI pass** (over-bumping is OK).
+- `chore:` PR with no changeset → **CI pass**.
+- Breaking PR (`!` or `BREAKING CHANGE:`) without `major` changeset → **CI fail**.
+
+### Bypass (rare)
+
+If you need to bypass the gate (e.g. an emergency revert that doesn't
+fit the contract), apply the label `skip-changeset-gate`. The bypass is
+logged in the workflow summary and visible to anyone reading the run.
+Use sparingly — bypasses are auditable.
 
 ## Changesets
 
-Every PR that affects a published package must include a changeset:
+Every PR that maps to a release-bumping commit type (`feat`, `fix`,
+`perf`) **must** include a changeset:
 
 ```bash
 pnpm changeset
 ```
 
-Pick the affected package(s), the bump type (patch/minor/major), and write a short user-facing summary. The generated `.md` file goes into `.changeset/` and is committed with your PR.
+Pick the affected package(s), the bump type (`patch`/`minor`/`major`),
+and write a short user-facing summary. The generated `.md` file goes
+into `.changeset/` and is committed with your PR.
+
+Conventions:
+
+- Imperative mood: "Add X", "Fix Y", "Deprecate Z".
+- Mention the public API surface that changed, not the internal refactor.
+- For `major`, add a "Migration:" section. The richer the better — these
+  end up verbatim in the GitHub Release body.
+
+If your PR is a non-release type (`chore`, `docs`, etc.), the gate
+allows you to skip the changeset entirely.
 
 ## RFC process for large changes
 

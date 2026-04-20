@@ -61,8 +61,9 @@ describe('runEval', () => {
       graders: [exactMatch()],
     });
     const run = await runEval(spec);
-    const c = run.cases[0]!;
-    expect(c.error?.kind).toBe('timeout');
+    const c = run.cases[0];
+    expect(c).toBeDefined();
+    expect(c?.error?.kind).toBe('timeout');
   });
 
   it('captures budgetUsage when spec.budget is set', async () => {
@@ -74,8 +75,8 @@ describe('runEval', () => {
       budget: { maxLlmCalls: 10 },
     });
     const run = await runEval(spec);
-    expect(run.cases[0]!.budgetUsage).toBeDefined();
-    expect(run.cases[0]!.scopeId).toBeDefined();
+    expect(run.cases[0]?.budgetUsage).toBeDefined();
+    expect(run.cases[0]?.scopeId).toBeDefined();
   });
 
   it('non-contributing graders are reported but do not affect meanScore', async () => {
@@ -92,8 +93,8 @@ describe('runEval', () => {
     });
     const run = await runEval(spec);
     expect(run.summary.meanScore).toBe(1);
-    expect(run.cases[0]!.passed).toBe(true);
-    expect(run.cases[0]!.graders.find((g) => g.grader === 'noisy')?.contributes).toBe(false);
+    expect(run.cases[0]?.passed).toBe(true);
+    expect(run.cases[0]?.graders.find((g) => g.grader === 'noisy')?.contributes).toBe(false);
   });
 
   it('catches grader exceptions without crashing the run', async () => {
@@ -110,10 +111,11 @@ describe('runEval', () => {
       graders: [broken],
     });
     const run = await runEval(spec);
-    const entry = run.cases[0]!.graders[0]!;
-    expect(entry.error?.message).toBe('bad grader');
-    expect(entry.result.passed).toBe(false);
-    expect(run.cases[0]!.passed).toBe(false);
+    const entry = run.cases[0]?.graders[0];
+    expect(entry).toBeDefined();
+    expect(entry?.error?.message).toBe('bad grader');
+    expect(entry?.result.passed).toBe(false);
+    expect(run.cases[0]?.passed).toBe(false);
   });
 
   it('respects concurrency by running cases in parallel', async () => {
