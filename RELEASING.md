@@ -19,14 +19,19 @@ contributor opens PR
 maintainer merges PR to main
    └─ Release workflow re-runs the full gate on `main`
    └─ Opens (or updates) "chore(release): version packages" PR
-maintainer merges the version PR
-   └─ Release workflow runs again
+   └─ Auto-merge workflow enables GitHub native auto-merge on that PR
+   └─ CI passes on the PR → GitHub auto-merges into main
+       └─ (no human click required — see "Auto-publish" section below)
+   └─ Release workflow runs again on the merge commit
    └─ Publishes every bumped package to npm
    └─ Creates a GitHub Release per package, tagged `<name>@<version>`
    └─ Pushes git tags
 ```
 
-End-to-end latency from "merge version PR" to "available on npm" is ~3 min.
+End-to-end latency from "merge feature PR" to "available on npm" is
+typically 8–12 minutes (gate → version PR → CI on version PR →
+auto-merge → publish), with no human intervention after the initial
+feature merge.
 
 ---
 
@@ -37,6 +42,7 @@ End-to-end latency from "merge version PR" to "available on npm" is ~3 min.
 | `.github/workflows/ci.yml`                       | push/PR to `main`                    | Lint + matrix build/test/typecheck + publint + attw                                                         |
 | `.github/workflows/changeset-status.yml`         | PR                                   | Soft warning if PR touches `packages/*` without a changeset                                                 |
 | `.github/workflows/release.yml`                  | push to `main`                       | **Gate** (re-runs full CI suite) → opens version PR or publishes + creates GitHub Releases                  |
+| `.github/workflows/auto-merge-release.yml`       | PR opened/updated                    | Detects the changesets `chore(release): version packages` PR and enables GitHub native auto-merge on it     |
 | `.github/workflows/snapshot.yml`                 | PR labeled `release:snapshot`        | Publishes ephemeral preview build under dist-tag `pr-<number>`; comments install instructions on the PR    |
 | `.github/workflows/pricing-drift.yml`            | scheduled                            | Detects unverified pricing entries (unrelated to publishing)                                                |
 
@@ -61,6 +67,62 @@ Conventions:
 
 For a doc-only / infra-only / internal refactor PR, skip the changeset. The
 `Changeset status` workflow will warn rather than fail.
+
+---
+
+## Auto-publish (zero-touch releases)
+
+The `auto-merge-release.yml` workflow turns the changesets PR into a
+zero-touch hop: once `release.yml` opens or updates
+`chore(release): version packages`, GitHub native auto-merge is enabled
+on it. The PR merges itself the moment branch-protection checks go
+green, and `release.yml` immediately publishes on the resulting merge
+commit.
+
+### Required repository settings
+
+Both must be enabled exactly once per repository — `gh pr merge --auto`
+silently fails (returns "Auto-merge is not allowed for this repository")
+without them.
+
+1. **Settings → General → Pull Requests** — enable
+   **"Allow auto-merge"** and **"Allow squash merging"**.
+2. **Settings → Branches → Branch protection rule for `main`**:
+   - **Require a pull request before merging** ✅
+   - **Require status checks to pass before merging** ✅
+     - Add: `Lint & format`, `Build & test (ubuntu-latest / Node 20)`,
+       `Build & test (ubuntu-latest / Node 22)`,
+       `Package quality (attw + publint)`
+   - **Require branches to be up to date before merging** — optional
+     but recommended; auto-merge will rebase as needed.
+
+Without branch protection, GitHub's auto-merge fires immediately on PR
+open (the PR is "mergeable" before CI even starts), which defeats the
+gating intent. With the checks above, the PR sits open until CI passes
+and only then merges.
+
+### How to halt an auto-publish in flight
+
+You have two windows to intervene:
+
+| Window                                  | How to stop it                                                                                |
+| --------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Version PR open, CI not yet passed      | Click **"Disable auto-merge"** on the PR (or push an empty commit to `changeset-release/main`)|
+| Version PR merged, publish step running | Cancel the `release.yml` run from the Actions tab. Note: any tarball already PUT to npm is final — `npm deprecate` is the only remediation after that. |
+
+If you want to keep auto-merge for some releases but pause it for others
+(e.g. before a major version), revoke "Allow auto-merge" in repo
+settings or disable the `auto-merge-release.yml` workflow file. Both
+take effect immediately and do not require code changes.
+
+### Disabling auto-publish entirely
+
+Two equivalent ways:
+
+- Disable the workflow from the Actions tab (per-repo, reversible).
+- Delete or rename `.github/workflows/auto-merge-release.yml`.
+
+The release pipeline reverts cleanly to manual merge of the version PR.
 
 ---
 

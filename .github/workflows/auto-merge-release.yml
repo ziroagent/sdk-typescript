@@ -1,0 +1,77 @@
+name: Auto-merge release PR
+
+# Triggered when the changesets/action bot opens / updates the
+# "Version Packages" PR. Enables GitHub's native auto-merge so the PR
+# merges into `main` automatically once required status checks pass —
+# `release.yml` then runs the publish step on the merge commit.
+#
+# This workflow ONLY targets PRs that match ALL of:
+#   - opened by `app/github-actions` (the changesets bot)
+#   - source branch `changeset-release/main` (changesets/action default)
+#   - title starts with `chore(release): version packages`
+#
+# Any other PR — human-authored or otherwise — is ignored.
+#
+# Branch-protection requirement (recommended):
+#   To make auto-merge actually WAIT for CI green, configure
+#   Settings → Branches → main → "Require status checks to pass"
+#   and pick the CI jobs (`Lint & format`, `Build & test (...)`,
+#   `Package quality (attw + publint)`). Without branch protection,
+#   GitHub's auto-merge will merge as soon as the PR is mergeable
+#   (i.e. immediately) which defeats the purpose.
+#
+# Repo setting requirement (mandatory):
+#   Settings → General → Pull Requests → "Allow auto-merge" must be
+#   ON, otherwise `gh pr merge --auto` returns:
+#       "Auto-merge is not allowed for this repository"
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
+    branches: [main]
+
+# A second trigger is needed because `gh pr merge --auto` requires
+# the PR to be in a mergeable state, and `pull_request` events
+# sometimes fire BEFORE the mergeability check has finished. The
+# `pull_request_target` retry on `synchronize` handles late updates.
+concurrency:
+  group: auto-merge-release-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  enable-auto-merge:
+    name: Enable auto-merge
+    runs-on: ubuntu-latest
+    # Hard guard: bail out before the API call when this PR is not the
+    # changesets release PR. Saves a token and keeps logs clean for the
+    # 99% of PRs this workflow doesn't care about.
+    if: >-
+      github.event.pull_request.user.login == 'github-actions[bot]' &&
+      github.event.pull_request.head.ref == 'changeset-release/main' &&
+      startsWith(github.event.pull_request.title, 'chore(release): version packages')
+    steps:
+      - name: Enable auto-merge (squash)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        # `gh pr merge --auto` is idempotent — calling it on a PR that
+        # already has auto-merge enabled is a no-op exit-zero. Squash
+        # mirrors how a human would normally land changesets PRs so the
+        # main-branch history stays one commit per release.
+        run: |
+          set -euo pipefail
+          echo "Enabling auto-merge on ${PR_URL}"
+          gh pr merge --auto --squash "${PR_URL}"
+          echo "::notice::Auto-merge enabled. PR will merge once required checks pass."
+          {
+            echo "### Auto-merge enabled"
+            echo ""
+            echo "PR: ${PR_URL}"
+            echo ""
+            echo "Will merge automatically once branch-protection checks pass."
+            echo "Bypass: dismiss the PR's auto-merge from the GitHub UI to halt."
+          } >> "${GITHUB_STEP_SUMMARY}"
