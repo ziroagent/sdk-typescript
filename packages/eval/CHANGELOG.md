@@ -1,5 +1,16 @@
 # @ziro-agent/eval
 
+## 0.2.1
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies [082e91a]
+- Updated dependencies [cdfad7c]
+  - @ziro-agent/agent@0.4.0
+  - @ziro-agent/core@0.4.0
+
 ## 0.2.0
 
 ### Minor Changes

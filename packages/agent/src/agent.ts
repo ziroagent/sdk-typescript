@@ -24,6 +24,7 @@ import {
   type ToolExecutionResult,
   toolsToModelDefinitions,
 } from '@ziro-agent/tools';
+import type { Checkpointer, CheckpointId } from './checkpointer.js';
 import {
   type AgentResumeOptions,
   type AgentSnapshot,
@@ -56,6 +57,27 @@ export interface CreateAgentOptions {
   temperature?: number;
   /** Per-step LLM call timeout. Set 0 / undefined to disable. */
   timeoutMs?: number;
+  /**
+   * Optional persistence boundary. When supplied, every
+   * `AgentSuspendedError` thrown by `run()` / `resume()` automatically
+   * `put`s its snapshot under `runOptions.threadId` (or the agent-level
+   * `defaultThreadId`) before re-throwing — so the caller can recover
+   * with `agent.resumeFromCheckpoint(threadId)` after a process restart
+   * without writing any persistence glue.
+   *
+   * Future strategies (`'message'` / `'invocation'` per RFC 0006
+   * §strategies) auto-checkpoint inside the loop too; they ship in v0.2
+   * once `AgentSnapshot` captures non-suspended mid-run state.
+   *
+   * Available since v0.1.9.
+   */
+  checkpointer?: Checkpointer;
+  /**
+   * Default thread id used by `checkpointer` when neither `run` nor
+   * `resume` overrides it. Useful when an agent instance is dedicated
+   * to a single conversation; otherwise pass `threadId` per-call.
+   */
+  defaultThreadId?: string;
 }
 
 export interface AgentRunOptions {
@@ -94,6 +116,13 @@ export interface AgentRunOptions {
    */
   agentId?: string;
   /**
+   * Per-call thread id for `checkpointer` auto-persist. Falls back to
+   * `CreateAgentOptions.defaultThreadId`. When neither is set, an
+   * agent-level `checkpointer` is a no-op (the snapshot still arrives
+   * via `AgentSuspendedError` so callers may persist manually).
+   */
+  threadId?: string;
+  /**
    * Free-form metadata propagated to the approver and tool-execute ctx.
    */
   metadata?: Record<string, unknown>;
@@ -118,8 +147,22 @@ export interface AgentRunResult {
   budgetExceeded?: AgentBudgetExceededInfo;
 }
 
+export interface ResumeFromCheckpointOptions extends AgentResumeOptions {
+  /**
+   * When omitted, loads the latest checkpoint for the thread. Pass an
+   * id to resume from a specific point (useful for retry experiments).
+   */
+  checkpointId?: CheckpointId;
+}
+
 export interface Agent {
   readonly tools: Record<string, Tool>;
+  /**
+   * The {@link Checkpointer} the agent was created with, or `undefined`
+   * when none was supplied. Re-exposed so callers can manually `list`
+   * / `delete` checkpoints without holding a separate reference.
+   */
+  readonly checkpointer?: Checkpointer;
   run(options: AgentRunOptions): Promise<AgentRunResult>;
   /**
    * Continue an agent run that was suspended via `AgentSuspendedError`.
@@ -129,6 +172,20 @@ export interface Agent {
    * suspension error. See RFC 0002.
    */
   resume(snapshot: AgentSnapshot, options: AgentResumeOptions): Promise<AgentRunResult>;
+  /**
+   * Convenience wrapper around `checkpointer.get(threadId, ?id)` +
+   * `resume(snapshot, options)`. Throws `Error("No checkpoint found ...")`
+   * when no snapshot exists for the thread — callers should treat that
+   * as "nothing to resume from" and fall back to a fresh `run()`.
+   *
+   * Requires the agent to have been created with a `checkpointer`.
+   *
+   * Available since v0.1.9.
+   */
+  resumeFromCheckpoint(
+    threadId: string,
+    options: ResumeFromCheckpointOptions,
+  ): Promise<AgentRunResult>;
 }
 
 /**
@@ -174,15 +231,52 @@ export function createAgent(options: CreateAgentOptions): Agent {
   const tools = options.tools ?? {};
   const baseMaxSteps = options.maxSteps ?? 10;
   const toolDefs = Object.keys(tools).length > 0 ? toolsToModelDefinitions(tools) : undefined;
+  const checkpointer = options.checkpointer;
 
-  return {
+  /**
+   * Auto-persist the snapshot from any `AgentSuspendedError` thrown by
+   * `fn` so the caller can later `agent.resumeFromCheckpoint(threadId)`.
+   *
+   * No-ops when no `checkpointer` is configured, or when neither the
+   * agent-level `defaultThreadId` nor a per-call `threadId` is set —
+   * the snapshot still arrives via the thrown error so manual storage
+   * is always possible.
+   *
+   * Persistence failure is logged on `console.error` and does NOT mask
+   * the original `AgentSuspendedError`: durability is best-effort, the
+   * ground truth is the in-flight error.
+   */
+  const withAutoCheckpoint = async (
+    threadId: string | undefined,
+    fn: () => Promise<AgentRunResult>,
+  ): Promise<AgentRunResult> => {
+    try {
+      return await fn();
+    } catch (err) {
+      if (checkpointer && threadId && err instanceof AgentSuspendedError) {
+        try {
+          await checkpointer.put(threadId, err.snapshot);
+        } catch (persistErr) {
+          // Don't shadow the original suspension — persistence is
+          // best-effort. Surface the failure so ops can see it.
+          // eslint-disable-next-line no-console
+          console.error('[ziro-agent] checkpointer.put failed:', persistErr);
+        }
+      }
+      throw err;
+    }
+  };
+
+  const agent: Agent = {
     tools,
+    ...(checkpointer ? { checkpointer } : {}),
     async run(runOptions: AgentRunOptions): Promise<AgentRunResult> {
       const exec = async (): Promise<AgentRunResult> => {
         const state = seedFromRunOptions(runOptions, baseMaxSteps);
         return await iterateLoop(state, runOptions);
       };
-      return await runWithBudget(runOptions, exec);
+      const tid = runOptions.threadId ?? options.defaultThreadId;
+      return await withAutoCheckpoint(tid, () => runWithBudget(runOptions, exec));
     },
 
     async resume(
@@ -269,12 +363,46 @@ export function createAgent(options: CreateAgentOptions): Agent {
 
       // Resume opens its own budget scope with the snapshot's accumulated
       // usage carried forward, so a multi-day pause cannot bypass maxUsd.
-      return await runWithBudget(cleanRo, exec, snapshot.budgetUsage);
+      const tid = snapshot.agentId ? undefined : options.defaultThreadId;
+      // Note: we don't pull threadId from resumeOptions because the
+      // canonical thread identity is established at run time. If the
+      // caller wants to retarget, they can manually checkpointer.put
+      // after a successful resume.
+      return await withAutoCheckpoint(tid, () =>
+        runWithBudget(cleanRo, exec, snapshot.budgetUsage),
+      );
+    },
+
+    async resumeFromCheckpoint(
+      threadId: string,
+      resumeOptions: ResumeFromCheckpointOptions,
+    ): Promise<AgentRunResult> {
+      if (!checkpointer) {
+        throw new Error(
+          'agent.resumeFromCheckpoint() requires a `checkpointer` on createAgent({ checkpointer }).',
+        );
+      }
+      const snap = await checkpointer.get(threadId, resumeOptions.checkpointId);
+      if (!snap) {
+        throw new Error(
+          `No checkpoint found for thread "${threadId}"` +
+            (resumeOptions.checkpointId ? ` (id "${resumeOptions.checkpointId}")` : '') +
+            '. Treat this as "nothing to resume from" and call agent.run() instead.',
+        );
+      }
+      // Strip our own option before forwarding so AgentResumeOptions
+      // stays clean.
+      const { checkpointId: _ignored, ...rest } = resumeOptions;
+      return await this.resume(snap, rest);
     },
   };
 
+  return agent;
+
   // ============================================================
   // Loop implementation — shared between `run` and `resume`.
+  // (Function declarations are hoisted; placement after `return`
+  //  keeps the public surface readable up top.)
   // ============================================================
 
   async function iterateLoop(state: LoopState, ro: AgentRunOptions): Promise<AgentRunResult> {

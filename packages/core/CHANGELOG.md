@@ -1,5 +1,49 @@
 # @ziro-agent/core
 
+## 0.4.0
+
+### Minor Changes
+
+- **New: `@ziro-agent/middleware` package + `LanguageModelMiddleware` interface in core (RFC 0005).**
+
+  Adds a composable middleware layer for `LanguageModel`, allowing cross-cutting concerns like retry, caching, and PII redaction to be written once and applied to any provider via `wrapModel(model, middleware)`.
+
+  Initial built-ins shipped:
+
+  - `retry({ maxAttempts, baseDelayMs, maxDelayMs, isRetryable, onRetry })` — full-jittered exponential backoff over `APICallError.isRetryable`. Cooperates with `params.abortSignal`. Streams retry only on open failure.
+  - `cache({ store, ttlMs, keyOf, onEvent })` — short-circuits `wrapGenerate` on identical params. In-memory `MemoryCacheStore` ships by default; `CacheStore` interface lets you plug in Redis / SQLite / KV. Streams pass through (intentionally not cached).
+
+  Core additions:
+
+  - `LanguageModelMiddleware` interface: optional `transformParams`, `wrapGenerate`, `wrapStream` hooks.
+  - `wrapModel(model, mw | mw[])` helper: onion composition (first middleware = outermost). Re-wrapping is supported and composes naturally.
+  - Both exported from `@ziro-agent/core`.
+
+  No breaking changes — existing `LanguageModel` consumers are unaffected.
+
+- 082e91a: **Pricing data: `unverified` flag for speculative model IDs (RFC 0004 §v0.1.9 trust-recovery)**
+
+  `ModelPricing` gains an optional `unverified?: boolean` field. Rows that
+  cannot be cross-referenced against a live provider pricing page (today:
+  `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.4-nano`, `claude-opus-4-7`,
+  `claude-sonnet-4-6`, `claude-haiku-4-5`, `claude-opus-4-6`,
+  `claude-sonnet-4-5`) are now marked `unverified: true`.
+
+  `getPricing(provider, modelId)` filters unverified rows out by default.
+  Pre-flight USD enforcement falls back to the `chars / 4` heuristic
+  (same path as for unknown models) instead of trusting a speculative price
+  tag. Pass `getPricing(provider, modelId, { allowUnverified: true })` to
+  opt back in for internal dashboards / best-effort estimation.
+
+  **Verified rows (defaults still resolve normally):** `gpt-4o`,
+  `gpt-4o-mini`, `claude-sonnet-4`, `claude-opus-4`, `claude-opus-4-1`.
+
+  **Migration**: no user-facing API change. If you were depending on
+  pre-flight USD bounds for the speculative IDs above, your `BudgetGuard`
+  now falls back to the heuristic and you'll get post-call enforcement
+  instead of pre-flight throws. Catch `BudgetExceededError` with
+  `preflight: false` if you need to detect that path explicitly.
+
 ## 0.3.0
 
 ### Minor Changes

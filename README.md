@@ -165,7 +165,7 @@ ziro eval ./evals/*.ts --gate 0.95     # CI gate: fail merge if score < 95%
 | [`@ziro-agent/workflow`](packages/workflow) | shipped (v0.1.x) | Graph engine for multi-agent flows |
 | [`@ziro-agent/tracing`](packages/tracing) | shipped (v0.1.x) | OpenTelemetry instrumentation |
 | [`@ziro-agent/cli`](packages/cli) | shipped (v0.1.x) | `ziroagent` CLI: `chat`, `run`, `eval`, `mcp`, `playground` |
-| `@ziro-agent/middleware` | planned (v0.2, [RFC 0005](rfcs/0005-language-model-middleware.md)) | `LanguageModelMiddleware`: retry, cache, redactPII, blockPromptInjection |
+| [`@ziro-agent/middleware`](packages/middleware) | shipped (v0.1.9, [RFC 0005](rfcs/0005-language-model-middleware.md)) | `LanguageModelMiddleware` runtime + built-ins (`retry`, `cache`); `redactPII` / `blockPromptInjection` planned |
 | [`@ziro-agent/checkpoint-memory`](packages/checkpoint-memory) | shipped (v0.1.9, [RFC 0006](rfcs/0006-checkpointer.md)) | Reference `Checkpointer` adapter (in-memory) — bootstrap for durable execution |
 | `@ziro-agent/checkpoint-postgres` / `-redis` | planned (v0.2, [RFC 0006](rfcs/0006-checkpointer.md)) | Production `Checkpointer` adapters for durable agent state |
 | `@ziro-agent/gateway` | planned (v0.2) | Routing + fallback + virtual keys (cost tracking via `@ziro-agent/middleware`) |

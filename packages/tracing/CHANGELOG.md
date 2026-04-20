@@ -1,5 +1,13 @@
 # @ziro-agent/tracing
 
+## 0.3.1
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies [082e91a]
+  - @ziro-agent/core@0.4.0
+
 ## 0.3.0
 
 ### Minor Changes

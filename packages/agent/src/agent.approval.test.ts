@@ -3,6 +3,7 @@ import { defineTool } from '@ziro-agent/tools';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { createAgent } from './agent.js';
+import type { Checkpointer, CheckpointId, CheckpointMeta } from './checkpointer.js';
 import {
   type AgentSnapshot,
   AgentSuspendedError,
@@ -461,6 +462,181 @@ describe('createAgent — HITL suspend/resume (RFC 0002)', () => {
     it('migrateSnapshot rejects an unknown future version', () => {
       const future = { version: 99 } as unknown as AgentSnapshot;
       expect(() => migrateSnapshot(future)).toThrow(/version 99/);
+    });
+  });
+
+  // ----------------------------------------------------------------
+  // Checkpointer wiring (RFC 0006 §integration / RFC 0004 §v0.1.9)
+  // ----------------------------------------------------------------
+  describe('Checkpointer wiring — auto-persist on suspend + resumeFromCheckpoint', () => {
+    /** Tiny inline Checkpointer so this test file stays free of cross-package deps. */
+    function inlineCheckpointer(): Checkpointer & {
+      readonly puts: number;
+      readonly snapshots: Map<string, AgentSnapshot[]>;
+    } {
+      const snapshots = new Map<string, AgentSnapshot[]>();
+      let puts = 0;
+      return {
+        get puts() {
+          return puts;
+        },
+        get snapshots() {
+          return snapshots;
+        },
+        async put(threadId, snap) {
+          puts++;
+          const id = `cp_${puts}_${Math.random().toString(36).slice(2, 7)}` as CheckpointId;
+          const list = snapshots.get(threadId) ?? [];
+          list.unshift(structuredClone(snap));
+          snapshots.set(threadId, list);
+          return id;
+        },
+        async get(threadId, _id) {
+          const list = snapshots.get(threadId);
+          if (!list || list.length === 0) return null;
+          return structuredClone(list[0] as AgentSnapshot);
+        },
+        async list(threadId): Promise<CheckpointMeta[]> {
+          const list = snapshots.get(threadId) ?? [];
+          return list.map((s, i) => ({
+            id: `cp_${i}` as CheckpointId,
+            threadId,
+            createdAt: new Date(),
+            agentSnapshotVersion: s.version,
+            sizeBytes: 0,
+          }));
+        },
+        async delete(threadId) {
+          snapshots.delete(threadId);
+        },
+      };
+    }
+
+    it('auto-persists snapshots from AgentSuspendedError when threadId + checkpointer are configured', async () => {
+      const checkpointer = inlineCheckpointer();
+      const dangerous = defineTool({
+        name: 'dangerous',
+        input: z.object({}),
+        requiresApproval: true,
+        execute: () => 'done',
+      });
+      const agent = createAgent({
+        tools: { dangerous },
+        checkpointer,
+        defaultThreadId: 'thread-default',
+        // Two suspending runs back-to-back — script enough responses
+        // for both initial steps (resume is never reached here).
+        model: scriptedModel([
+          toolCallStep([{ id: 'c1', name: 'dangerous', args: {} }]),
+          toolCallStep([{ id: 'c2', name: 'dangerous', args: {} }]),
+        ]),
+      });
+
+      await expect(agent.run({ prompt: 'go' })).rejects.toBeInstanceOf(AgentSuspendedError);
+      expect(checkpointer.puts).toBe(1);
+      expect(checkpointer.snapshots.get('thread-default')).toHaveLength(1);
+
+      // Per-call threadId overrides defaultThreadId.
+      await expect(
+        agent.run({ prompt: 'go again', threadId: 'thread-other' }),
+      ).rejects.toBeInstanceOf(AgentSuspendedError);
+      expect(checkpointer.puts).toBe(2);
+      expect(checkpointer.snapshots.get('thread-other')).toHaveLength(1);
+    });
+
+    it('resumeFromCheckpoint loads the latest snapshot and continues the run', async () => {
+      const checkpointer = inlineCheckpointer();
+      const dangerous = defineTool({
+        name: 'dangerous',
+        input: z.object({}),
+        requiresApproval: true,
+        execute: () => 'dangerous_done',
+      });
+      const agent = createAgent({
+        tools: { dangerous },
+        checkpointer,
+        defaultThreadId: 't1',
+        model: scriptedModel([
+          toolCallStep([{ id: 'c1', name: 'dangerous', args: {} }]),
+          finalText('approved + done'),
+        ]),
+      });
+
+      // First run suspends; checkpoint was persisted as a side-effect.
+      await expect(agent.run({ prompt: 'go' })).rejects.toBeInstanceOf(AgentSuspendedError);
+
+      // Resume purely from the threadId — no snapshot in memory.
+      const result = await agent.resumeFromCheckpoint('t1', {
+        decisions: { c1: { decision: 'approve' } },
+      });
+      expect(result.text).toBe('approved + done');
+    });
+
+    it('resumeFromCheckpoint throws helpfully when no checkpoint exists', async () => {
+      const checkpointer = inlineCheckpointer();
+      const agent = createAgent({
+        checkpointer,
+        model: scriptedModel([finalText('hi')]),
+      });
+      await expect(agent.resumeFromCheckpoint('nonexistent', { decisions: {} })).rejects.toThrow(
+        /No checkpoint found/,
+      );
+    });
+
+    it('resumeFromCheckpoint requires a checkpointer at construction time', async () => {
+      const agent = createAgent({ model: scriptedModel([finalText('hi')]) });
+      await expect(agent.resumeFromCheckpoint('t1', { decisions: {} })).rejects.toThrow(
+        /requires a `checkpointer`/,
+      );
+    });
+
+    it('checkpointer.put failure does NOT mask the original AgentSuspendedError', async () => {
+      const dangerous = defineTool({
+        name: 'dangerous',
+        input: z.object({}),
+        requiresApproval: true,
+        execute: () => 'done',
+      });
+      const failing: Checkpointer = {
+        async put() {
+          throw new Error('disk full');
+        },
+        async get() {
+          return null;
+        },
+        async list() {
+          return [];
+        },
+        async delete() {},
+      };
+      const agent = createAgent({
+        tools: { dangerous },
+        checkpointer: failing,
+        defaultThreadId: 't1',
+        model: scriptedModel([
+          toolCallStep([{ id: 'c1', name: 'dangerous', args: {} }]),
+          finalText('done'),
+        ]),
+      });
+      const errSpy = (() => {
+        const original = console.error;
+        const calls: unknown[][] = [];
+        console.error = (...args: unknown[]) => calls.push(args);
+        return {
+          calls,
+          restore() {
+            console.error = original;
+          },
+        };
+      })();
+      try {
+        await expect(agent.run({ prompt: 'go' })).rejects.toBeInstanceOf(AgentSuspendedError);
+        expect(errSpy.calls.some((c) => String(c[0]).includes('checkpointer.put failed'))).toBe(
+          true,
+        );
+      } finally {
+        errSpy.restore();
+      }
     });
   });
 });

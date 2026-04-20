@@ -1,24 +1,23 @@
 {
-  "name": "@ziro-agent/memory",
-  "version": "0.1.6",
-  "description": "Vector store interfaces, in-memory & pgvector adapters, chunking and embedding helpers for ZiroAgent SDK.",
+  "name": "@ziro-agent/middleware",
+  "version": "0.2.0",
+  "description": "Built-in LanguageModelMiddleware for ZiroAgent SDK — retry, in-memory cache, and other production-safety primitives that compose via wrapModel().",
   "license": "Apache-2.0",
   "homepage": "https://ziroagent.com",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ziroagent/sdk-typescript.git",
-    "directory": "packages/memory"
+    "directory": "packages/middleware"
   },
   "bugs": {
     "url": "https://github.com/ziroagent/sdk-typescript/issues"
   },
   "keywords": [
     "ai",
-    "memory",
-    "rag",
-    "vector",
-    "pgvector",
-    "embeddings",
+    "agent",
+    "middleware",
+    "retry",
+    "cache",
     "ziroagent"
   ],
   "type": "module",
@@ -35,16 +34,6 @@
       "require": {
         "types": "./dist/index.d.cts",
         "default": "./dist/index.cjs"
-      }
-    },
-    "./pgvector": {
-      "import": {
-        "types": "./dist/stores/pgvector.d.ts",
-        "default": "./dist/stores/pgvector.js"
-      },
-      "require": {
-        "types": "./dist/stores/pgvector.d.cts",
-        "default": "./dist/stores/pgvector.cjs"
       }
     },
     "./package.json": "./package.json"
@@ -67,18 +56,8 @@
   "dependencies": {
     "@ziro-agent/core": "workspace:*"
   },
-  "peerDependencies": {
-    "pg": ">=8.10.0"
-  },
-  "peerDependenciesMeta": {
-    "pg": {
-      "optional": true
-    }
-  },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",
-    "@types/pg": "^8.15.5",
-    "pg": "^8.13.1",
     "publint": "^0.3.18",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
