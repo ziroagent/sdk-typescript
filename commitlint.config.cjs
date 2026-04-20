@@ -83,6 +83,7 @@ module.exports = {
         // examples/*
         'examples',
         // cross-cutting
+        'ci', // CI / CD config touching multiple workflows
         'deps',
         'release',
         'repo',
@@ -90,6 +91,8 @@ module.exports = {
         'security',
         'pricing',
         'hitl',
+        'lint', // formatter / linter / biome config
+        'workflows', // synonym for ci, used in some legacy commits
       ],
     ],
     'scope-case': [2, 'always', 'kebab-case'],
@@ -105,9 +108,13 @@ module.exports = {
     'header-max-length': [2, 'always', 120],
 
     // Footer wrapping for long bodies (BREAKING CHANGE block, etc.).
+    // `footer-leading-blank` is demoted from error -> warn because
+    // `git commit -s -s` (or co-author sign-offs from multiple machines)
+    // appends extra `Signed-off-by:` trailers without a blank line, and
+    // failing CI on that is more annoying than helpful.
     'body-leading-blank': [2, 'always'],
     'body-max-line-length': [1, 'always', 200],
-    'footer-leading-blank': [2, 'always'],
+    'footer-leading-blank': [1, 'always'],
     'footer-max-line-length': [1, 'always', 200],
 
     // Sign-off (DCO) is required by CONTRIBUTING.md. Bot commits are
