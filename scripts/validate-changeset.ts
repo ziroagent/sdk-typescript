@@ -29,8 +29,8 @@
  *   expectations.
  */
 
-import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
-import { join, dirname, resolve } from 'node:path';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // ---------------------------------------------------------------------------
@@ -201,8 +201,10 @@ function annotate(level: 'error' | 'warning' | 'notice', msg: string): void {
 function summary(lines: string[]): void {
   const out = process.env.GITHUB_STEP_SUMMARY;
   if (!out) return;
+  // Lazy import to keep top-of-file imports minimal — this runs only
+  // inside GitHub Actions where GITHUB_STEP_SUMMARY is set.
   const fs = require('node:fs');
-  fs.appendFileSync(out, lines.join('\n') + '\n');
+  fs.appendFileSync(out, `${lines.join('\n')}\n`);
 }
 
 function fatal(msg: string): never {

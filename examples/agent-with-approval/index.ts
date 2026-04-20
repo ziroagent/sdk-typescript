@@ -60,7 +60,12 @@ const sendEmail = defineTool({
   },
 });
 
-const transferFunds = defineTool({
+// Demonstrates the **function form** of `requiresApproval`: approval is
+// only requested when the predicate returns true. Kept as documentation
+// for readers of this example — the demos below only wire `sendEmail`
+// into the agent. The leading underscore signals "intentionally unused"
+// to the linter without losing the educational value.
+const _transferFunds = defineTool({
   name: 'transfer_funds',
   description: 'Move money between accounts.',
   input: z.object({
@@ -68,7 +73,6 @@ const transferFunds = defineTool({
     to: z.string(),
     amountUsd: z.number(),
   }),
-  // Function form: only require approval for transfers > $100.
   requiresApproval: (input) => input.amountUsd > 100,
   execute: (i) => {
     console.log(`   [side-effect] Transfer executed — $${i.amountUsd} from ${i.from} → ${i.to}`);

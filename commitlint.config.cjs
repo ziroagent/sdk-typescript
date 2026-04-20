@@ -97,11 +97,7 @@ module.exports = {
     // Subject rules — keep messages skimmable in `git log --oneline`
     // and changelog rendering.
     'subject-empty': [2, 'never'],
-    'subject-case': [
-      2,
-      'never',
-      ['sentence-case', 'start-case', 'pascal-case', 'upper-case'],
-    ],
+    'subject-case': [2, 'never', ['sentence-case', 'start-case', 'pascal-case', 'upper-case']],
     'subject-full-stop': [2, 'never', '.'],
     'subject-max-length': [2, 'always', 100],
 
