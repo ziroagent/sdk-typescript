@@ -29,7 +29,8 @@ flowchart LR
 ```
 
 1. **Feature branch → `dev`** (PR). CI runs (`ci.yml`). If the change touches
-   `packages/*` source, `changeset-status.yml` reminds you to add a changeset.
+   `packages/*` source, `changeset-status.yml` enforces changesets on PRs
+   to `main` (see `CONTRIBUTING.md`).
 2. **`dev` → `main`** (PR, periodic). CI re-runs against the merge commit.
    The maintainer merges (squash). This is the only human-driven path that
    reaches `main`.
@@ -47,7 +48,7 @@ flowchart LR
 Every PR targeting `dev` or `main` runs:
 
 - `ci.yml` → lint + typecheck + build + test on Node 20/22 × Linux/macOS/Windows + `attw` + `publint`
-- `changeset-status.yml` → soft-warn if `packages/*/src` changed without a changeset
+- `changeset-status.yml` → hard gate on PRs to `main` (commitlint + changeset bump policy)
 - `pricing-drift.yml` → only if `packages/core/src/pricing/data.ts` was touched
 - `snapshot.yml` → only if PR labelled `release:snapshot` (publishes ephemeral `pr-N` dist-tag preview)
 

@@ -1,16 +1,18 @@
 name: Auto-merge release PR
 
-# Triggered when the changesets/action bot opens / updates the
+# Triggered when the changesets/action step opens / updates the
 # "Version Packages" PR. Enables GitHub's native auto-merge so the PR
 # merges into `main` automatically once required status checks pass —
 # `release.yml` then runs the publish step on the merge commit.
 #
 # This workflow ONLY targets PRs that match ALL of:
-#   - opened by `app/github-actions` (the changesets bot)
 #   - source branch `changeset-release/main` (changesets/action default)
 #   - title starts with `chore(release): version packages`
 #   - head repository == base repository (defends against fork PRs that
 #     spoof the branch name)
+#
+# We intentionally do NOT require `github-actions[bot]` as the PR author:
+# when `release.yml` uses `RELEASE_BOT_TOKEN`, the author is the PAT's user.
 #
 # Any other PR — human-authored or otherwise — is ignored.
 #
@@ -68,7 +70,6 @@ jobs:
     # PR that names its branch `changeset-release/main` to game the filter
     # — fork PRs always have a different head repo.
     if: >-
-      github.event.pull_request.user.login == 'github-actions[bot]' &&
       github.event.pull_request.head.ref == 'changeset-release/main' &&
       github.event.pull_request.head.repo.full_name == github.event.pull_request.base.repo.full_name &&
       startsWith(github.event.pull_request.title, 'chore(release): version packages')
