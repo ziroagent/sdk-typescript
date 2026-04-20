@@ -1,13 +1,13 @@
 {
-  "name": "@ziro-agent/eval",
-  "version": "0.2.2",
-  "description": "First-class evaluation primitive for ZiroAgent SDK — defineEval, built-in graders, CI gate.",
+  "name": "@ziro-agent/checkpoint-postgres",
+  "version": "0.2.0",
+  "description": "Production Postgres Checkpointer adapter for ZiroAgent SDK — durable agent state with row-locked snapshot persistence (RFC 0006).",
   "license": "Apache-2.0",
   "homepage": "https://ziroagent.com",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ziroagent/sdk-typescript.git",
-    "directory": "packages/eval"
+    "directory": "packages/checkpoint-postgres"
   },
   "bugs": {
     "url": "https://github.com/ziroagent/sdk-typescript/issues"
@@ -15,10 +15,9 @@
   "keywords": [
     "ai",
     "agent",
-    "evals",
-    "evaluation",
-    "llm-judge",
-    "grader",
+    "checkpoint",
+    "durable",
+    "postgres",
     "ziroagent"
   ],
   "type": "module",
@@ -55,24 +54,24 @@
     "attw": "attw --pack . --profile=node16"
   },
   "dependencies": {
-    "@ziro-agent/agent": "workspace:*",
-    "@ziro-agent/core": "workspace:*"
+    "@ziro-agent/agent": "workspace:*"
+  },
+  "peerDependencies": {
+    "pg": ">=8.10.0"
+  },
+  "peerDependenciesMeta": {
+    "pg": {
+      "optional": false
+    }
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",
+    "@types/pg": "^8.15.6",
+    "pg": "^8.16.4",
     "publint": "^0.3.18",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.4",
-    "zod": "^4.3.6"
-  },
-  "peerDependencies": {
-    "zod": "^3.0.0 || ^4.0.0"
-  },
-  "peerDependenciesMeta": {
-    "zod": {
-      "optional": true
-    }
+    "vitest": "^4.1.4"
   },
   "engines": {
     "node": ">=20.10.0"

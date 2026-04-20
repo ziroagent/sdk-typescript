@@ -120,7 +120,7 @@ This milestone exists because the 12-SDK review (RFC 0004) surfaced eight gaps w
 
 ### Track 2 — Checkpointer + resumable streams (week 3-4) — see RFC 0006
 - [ ] `Checkpointer` interface in `@ziro-agent/agent`
-- [ ] `@ziro-agent/checkpoint-memory`, `@ziro-agent/checkpoint-postgres`, `@ziro-agent/checkpoint-redis`
+- [x] `@ziro-agent/checkpoint-memory` (v0.1.9), [x] `@ziro-agent/checkpoint-postgres` (v0.2), [ ] `@ziro-agent/checkpoint-redis`
 - [ ] `agent.resumeFromCheckpoint(threadId)` / `agent.listCheckpoints(threadId)`
 - [ ] `streamText({ resumeKey, resumeFromIndex })` with cached event log
 - [ ] **Mental model rename**: durable is the *default* (any checkpointer); Temporal/Inngest become the long-running adapters

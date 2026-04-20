@@ -247,7 +247,7 @@ describe('createAgent — HITL suspend/resume (RFC 0002)', () => {
     expect(snap2).toBeDefined();
     expect(snap2?.pendingApprovals).toHaveLength(1);
     // Second suspension carries forward and is timestamped fresh.
-    expect(new Date(snap2!.createdAt).getTime()).toBeGreaterThanOrEqual(
+    expect(new Date(snap2?.createdAt ?? 0).getTime()).toBeGreaterThanOrEqual(
       new Date(snap1.createdAt).getTime(),
     );
   });
