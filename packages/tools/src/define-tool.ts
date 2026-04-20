@@ -1,4 +1,4 @@
-import type { BudgetSpec } from '@ziro-agent/core';
+import type { BudgetSpec, RequiresApproval } from '@ziro-agent/core';
 import type { z } from 'zod';
 
 export interface ToolExecutionContext {
@@ -31,6 +31,28 @@ export interface Tool<TInput = unknown, TOutput = unknown> {
    * iterating or terminate.
    */
   readonly budget?: BudgetSpec;
+  /**
+   * Human-in-the-loop gate — see RFC 0002. Boolean form requires approval
+   * for every call; function form is consulted with the already-validated
+   * input so the gate can depend on data ("only need approval if amount
+   * > $100"). When unset/false (default) the tool runs immediately with
+   * zero overhead.
+   *
+   * Evaluated by `executeToolCalls` AFTER input parsing and BEFORE
+   * `tool.execute()`. Resolution is delegated to the `approver` callback
+   * passed into `executeToolCalls`; if no approver is supplied, the tool
+   * call short-circuits with `pendingApproval` set on the result so the
+   * agent layer can suspend.
+   *
+   * Available since v0.1.7.
+   *
+   * Stored as the un-parameterized `RequiresApproval` (i.e. `<unknown>`)
+   * so heterogeneous tool maps (`Record<string, Tool>`) remain assignable
+   * — `RequiresApproval<TInput>` is contravariant in `TInput` and would
+   * otherwise block widening. The user-facing typed form is preserved on
+   * `DefineToolOptions.requiresApproval` below.
+   */
+  readonly requiresApproval?: RequiresApproval;
   execute(input: TInput, ctx: ToolExecutionContext): Promise<TOutput> | TOutput;
 }
 
@@ -41,6 +63,8 @@ export interface DefineToolOptions<TInput, TOutput> {
   output?: z.ZodType<TOutput>;
   /** See {@link Tool.budget}. */
   budget?: BudgetSpec;
+  /** See {@link Tool.requiresApproval}. */
+  requiresApproval?: RequiresApproval<TInput>;
   execute(input: TInput, ctx: ToolExecutionContext): Promise<TOutput> | TOutput;
 }
 
@@ -58,6 +82,9 @@ export function defineTool<TInput, TOutput>(
     input: options.input,
     ...(options.output !== undefined ? { output: options.output } : {}),
     ...(options.budget !== undefined ? { budget: options.budget } : {}),
+    ...(options.requiresApproval !== undefined
+      ? { requiresApproval: options.requiresApproval as RequiresApproval }
+      : {}),
     execute: options.execute,
   } as Tool<TInput, TOutput>;
 }

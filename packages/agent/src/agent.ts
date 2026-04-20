@@ -1,17 +1,30 @@
 import {
+  type ApprovalDecision,
+  type Approver,
   BudgetExceededError,
   type BudgetSpec,
+  type BudgetUsage,
   type ChatMessage,
+  fireAgentResumed,
+  fireAgentSuspended,
   generateText,
   getCurrentBudget,
   type LanguageModel,
+  type PendingApproval,
+  type SerializableBudgetSpec,
   type TextPart,
   type TokenUsage,
   type ToolCallPart,
   type ToolResultPart,
   withBudget,
 } from '@ziro-agent/core';
-import { executeToolCalls, type Tool, toolsToModelDefinitions } from '@ziro-agent/tools';
+import {
+  executeToolCalls,
+  type Tool,
+  type ToolExecutionResult,
+  toolsToModelDefinitions,
+} from '@ziro-agent/tools';
+import { type AgentResumeOptions, type AgentSnapshot, AgentSuspendedError } from './snapshot.js';
 import type { StopWhen } from './stop-when.js';
 import type {
   AgentBudgetExceededInfo,
@@ -63,6 +76,21 @@ export interface AgentRunOptions {
    * whole agent budget.
    */
   toolBudget?: BudgetSpec;
+  /**
+   * Resolves `tool.requiresApproval` gates inline. When unset and any
+   * tool needs approval, the agent suspends with `AgentSuspendedError`
+   * (carrying a serializable `AgentSnapshot`). See RFC 0002.
+   */
+  approver?: Approver;
+  /**
+   * Stable id stamped onto any `AgentSnapshot` produced during this run
+   * (for the caller's storage layer). Optional.
+   */
+  agentId?: string;
+  /**
+   * Free-form metadata propagated to the approver and tool-execute ctx.
+   */
+  metadata?: Record<string, unknown>;
 }
 
 export interface AgentRunResult {
@@ -87,6 +115,44 @@ export interface AgentRunResult {
 export interface Agent {
   readonly tools: Record<string, Tool>;
   run(options: AgentRunOptions): Promise<AgentRunResult>;
+  /**
+   * Continue an agent run that was suspended via `AgentSuspendedError`.
+   * `decisions` must contain a decision for every tool call in
+   * `snapshot.pendingApprovals`; missing entries default to
+   * `{ decision: 'suspend' }` and the loop will re-emit a fresh
+   * suspension error. See RFC 0002.
+   */
+  resume(snapshot: AgentSnapshot, options: AgentResumeOptions): Promise<AgentRunResult>;
+}
+
+/**
+ * Mutable, in-flight loop state shared between the initial `run` path and
+ * the `resume` path. Both entry points populate this and then hand it to
+ * `iterateLoop` which runs the standard `generateText → executeToolCalls`
+ * loop from `nextStepIndex` to `stepCap`.
+ */
+interface LoopState {
+  messages: ChatMessage[];
+  steps: AgentStep[];
+  totalUsage: TokenUsage;
+  /** 1-indexed; the iteration starts at this step number. */
+  nextStepIndex: number;
+  /** Effective step cap = min(CreateAgent.maxSteps, BudgetSpec.maxSteps). */
+  stepCap: number;
+  finishReason: AgentFinishReason;
+  budgetInfo?: AgentBudgetExceededInfo;
+  /**
+   * Tool results produced **before** entering iterateLoop (e.g. by
+   * `resume` after applying the human decisions). When non-empty, the
+   * loop appends them as a tool message and synthesizes a step before
+   * making any new LLM call.
+   */
+  pendingToolResults?: ToolExecutionResult[];
+  /**
+   * Tool calls that produced the `pendingToolResults` above (so the
+   * synthesized step has accurate `toolCalls`).
+   */
+  pendingToolCalls?: ToolCallPart[];
 }
 
 /**
@@ -96,6 +162,7 @@ export interface Agent {
  *   - `stopWhen` returns true
  *   - `maxSteps` is reached
  *   - `abortSignal` fires
+ *   - a tool call requires human approval (`AgentSuspendedError` thrown — RFC 0002)
  */
 export function createAgent(options: CreateAgentOptions): Agent {
   const tools = options.tools ?? {};
@@ -105,261 +172,619 @@ export function createAgent(options: CreateAgentOptions): Agent {
   return {
     tools,
     async run(runOptions: AgentRunOptions): Promise<AgentRunResult> {
-      // The actual loop body — extracted so the surrounding `withBudget`
-      // wrap is a single line and no logic lives outside the scope.
-      const exec = async (): Promise<AgentRunResult> => runLoop(runOptions);
+      const exec = async (): Promise<AgentRunResult> => {
+        const state = seedFromRunOptions(runOptions, baseMaxSteps);
+        return await iterateLoop(state, runOptions);
+      };
+      return await runWithBudget(runOptions, exec);
+    },
 
-      if (!runOptions.budget) return await exec();
-      try {
-        return await withBudget(runOptions.budget, exec);
-      } catch (err) {
-        if (!(err instanceof BudgetExceededError)) throw err;
-        const onExceed = runOptions.budget.onExceed;
+    async resume(
+      snapshot: AgentSnapshot,
+      resumeOptions: AgentResumeOptions,
+    ): Promise<AgentRunResult> {
+      // Build a `runOptions`-shaped object so the rest of the loop sees
+      // a uniform interface. We keep the snapshot-derived budget as a
+      // fallback if the caller didn't re-supply one.
+      const resolvedBudget =
+        resumeOptions.budget ?? deserializeBudgetSpec(snapshot.budgetSpec) ?? undefined;
+      const cleanRo: AgentRunOptions = {
+        ...(resumeOptions.toolBudget !== undefined ? { toolBudget: resumeOptions.toolBudget } : {}),
+        ...(resumeOptions.approver !== undefined ? { approver: resumeOptions.approver } : {}),
+        ...(resumeOptions.abortSignal !== undefined
+          ? { abortSignal: resumeOptions.abortSignal }
+          : {}),
+        ...(resumeOptions.onEvent !== undefined ? { onEvent: resumeOptions.onEvent } : {}),
+        ...(resumeOptions.metadata !== undefined ? { metadata: resumeOptions.metadata } : {}),
+        ...(snapshot.agentId !== undefined ? { agentId: snapshot.agentId } : {}),
+        ...(resolvedBudget !== undefined ? { budget: resolvedBudget } : {}),
+      };
 
-        // Function-form `onExceed` (v0.1.6) — invoke the user's resolver with
-        // a synthetic BudgetContext built from the error's partial usage. The
-        // original ALS scope is gone (withBudget unwound on throw), but the
-        // resolver only needs the spec + observed-so-far snapshot.
-        if (typeof onExceed === 'function') {
-          const ctx = {
-            spec: runOptions.budget,
-            used: err.partialUsage,
-            remaining: computeRemaining(runOptions.budget, err.partialUsage),
-            scopeId: err.scopeId,
-          };
-          let resolution: { handled: boolean; replacement?: unknown };
-          try {
-            resolution = await Promise.resolve(onExceed(ctx));
-          } catch (resolverErr) {
-            if (resolverErr instanceof Error) {
-              (resolverErr as Error & { cause?: unknown }).cause = err;
-            }
-            throw resolverErr;
+      const exec = async (): Promise<AgentRunResult> => {
+        const decisions = resumeOptions.decisions ?? {};
+        const decisionCounts = countDecisions(decisions, snapshot.pendingApprovals);
+
+        // Resolve every pending tool call into a real ToolExecutionResult,
+        // collecting any that turn into NEW pending approvals so we can
+        // re-suspend with a refreshed snapshot.
+        const newlyResolved: ToolExecutionResult[] = [];
+        const stillPending: PendingApproval[] = [];
+        for (const pending of snapshot.pendingApprovals) {
+          const decision = decisions[pending.toolCallId] ?? { decision: 'suspend' };
+          const result = await applyDecisionToPending(tools, pending, decision, cleanRo);
+          if (result.pendingApproval) {
+            stillPending.push(result.pendingApproval);
+            // Don't append a tool result for still-pending calls.
+          } else {
+            newlyResolved.push(result);
           }
-          if (resolution.handled) return resolution.replacement as AgentRunResult;
-          throw err;
         }
 
-        if (onExceed === 'truncate') {
-          // The loop already emitted any partial state via onEvent; rebuild
-          // a result from the closure-captured progress that the loop
-          // attached to the error before re-throwing.
-          const partial = (err as BudgetExceededError & { __agentPartial?: AgentRunResult })
-            .__agentPartial;
-          if (partial) {
-            return {
-              ...partial,
-              finishReason: 'budgetExceeded',
-              budgetExceeded: toAgentBudgetInfo(err, 'preflight'),
-            };
-          }
-          // Defensive fallback: error escaped before the loop attached
-          // partial state. Surface a minimal truncation result instead of
-          // re-throwing so `truncate` semantics are preserved.
-          return {
-            text: '',
-            steps: [],
-            totalUsage: {},
-            messages: [],
-            finishReason: 'budgetExceeded',
-            budgetExceeded: toAgentBudgetInfo(err, 'preflight'),
+        if (stillPending.length > 0) {
+          // Re-throw with an updated snapshot — the previously-resolved
+          // siblings stay in `resolvedSiblings`, and the newly-resolved
+          // ones are merged in too so resume #2 doesn't re-run them.
+          const merged: AgentSnapshot = {
+            ...snapshot,
+            createdAt: new Date().toISOString(),
+            pendingApprovals: stillPending,
+            resolvedSiblings: [...snapshot.resolvedSiblings, ...newlyResolved],
           };
+          fireAgentSuspended({
+            ...(snapshot.agentId !== undefined ? { agentId: snapshot.agentId } : {}),
+            ...(snapshot.scopeId !== undefined ? { scopeId: snapshot.scopeId } : {}),
+            step: snapshot.step,
+            pendingCount: stillPending.length,
+          });
+          throw new AgentSuspendedError({ snapshot: merged });
+        }
+
+        // Combine resolved siblings + newly-resolved into a single tool
+        // message + synthesized step, then continue the loop.
+        const allResults = [...snapshot.resolvedSiblings, ...newlyResolved];
+        const state = seedFromSnapshot(snapshot, allResults, baseMaxSteps);
+
+        fireAgentResumed({
+          ...(snapshot.agentId !== undefined ? { agentId: snapshot.agentId } : {}),
+          ...(snapshot.scopeId !== undefined ? { scopeId: snapshot.scopeId } : {}),
+          step: snapshot.step,
+          decisionCounts,
+        });
+
+        return await iterateLoop(state, cleanRo);
+      };
+
+      // Resume opens its own budget scope with the snapshot's accumulated
+      // usage carried forward, so a multi-day pause cannot bypass maxUsd.
+      return await runWithBudget(cleanRo, exec, snapshot.budgetUsage);
+    },
+  };
+
+  // ============================================================
+  // Loop implementation — shared between `run` and `resume`.
+  // ============================================================
+
+  async function iterateLoop(state: LoopState, ro: AgentRunOptions): Promise<AgentRunResult> {
+    const emit = async (event: StepEvent) => {
+      if (ro.onEvent) await ro.onEvent(event);
+    };
+
+    const truncate = ro.budget?.onExceed === 'truncate';
+    const captureSnapshot = (): AgentRunResult => ({
+      text: state.steps[state.steps.length - 1]?.text ?? '',
+      steps: state.steps,
+      totalUsage: state.totalUsage,
+      finishReason: state.finishReason,
+      messages: state.messages,
+    });
+
+    const handleBudgetThrow = async (
+      err: BudgetExceededError,
+      origin: AgentBudgetExceededInfo['origin'],
+    ): Promise<undefined> => {
+      const info = toAgentBudgetInfo(err, origin);
+      await emit({ type: 'budget-exceeded', info });
+      if (truncate) {
+        state.budgetInfo = info;
+        state.finishReason = 'budgetExceeded';
+        return undefined;
+      }
+      (err as BudgetExceededError & { __agentPartial?: AgentRunResult }).__agentPartial =
+        captureSnapshot();
+      throw err;
+    };
+
+    // If the seeding code (e.g. `resume`) handed us pre-resolved tool
+    // results for a step that already happened, replay them as a
+    // synthesized step BEFORE entering the LLM-call loop.
+    if (state.pendingToolResults && state.pendingToolCalls) {
+      const replayResults = state.pendingToolResults;
+      const replayCalls = state.pendingToolCalls;
+      const stepIdx = state.nextStepIndex - 1; // the suspended step
+
+      for (const r of replayResults) {
+        await emit({ type: 'tool-result', index: stepIdx, result: r });
+      }
+      const toolContent: ToolResultPart[] = replayResults.map((r) => ({
+        type: 'tool-result',
+        toolCallId: r.toolCallId,
+        toolName: r.toolName,
+        result: r.result,
+        ...(r.isError ? { isError: true } : {}),
+      }));
+      state.messages.push({ role: 'tool', content: toolContent });
+
+      const synthStep: AgentStep = {
+        index: stepIdx,
+        text: '',
+        content: replayCalls,
+        toolCalls: replayCalls,
+        toolResults: replayResults,
+        finishReason: 'tool-calls',
+        usage: {},
+      };
+      state.steps.push(synthStep);
+      await emit({ type: 'step-finish', step: synthStep });
+
+      // Promote tool budget overruns to a loop-level halt, same as the
+      // standard path below.
+      const toolBudgetHit = replayResults.find((r) => r.budgetExceeded);
+      if (toolBudgetHit?.budgetExceeded) {
+        const synthErr = synthBudgetErrorFromToolResult(toolBudgetHit, state);
+        await handleBudgetThrow(synthErr, 'tool');
+        return finalizeResult(state, emit);
+      }
+
+      // Pre-resolved results consumed; clear so they don't replay.
+      state.pendingToolResults = undefined;
+      state.pendingToolCalls = undefined;
+    }
+
+    for (let i = state.nextStepIndex - 1; i < state.stepCap; i++) {
+      if (ro.abortSignal?.aborted) {
+        state.finishReason = 'aborted';
+        break;
+      }
+
+      const stepIndex = i + 1;
+      await emit({ type: 'step-start', index: stepIndex });
+
+      let llmResult: Awaited<ReturnType<typeof generateText>>;
+      try {
+        llmResult = await generateText({
+          model: options.model,
+          messages: state.messages,
+          ...(toolDefs ? { tools: toolDefs } : {}),
+          ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
+          ...(ro.abortSignal ? { abortSignal: ro.abortSignal } : {}),
+        });
+      } catch (err) {
+        if (err instanceof BudgetExceededError) {
+          await handleBudgetThrow(err, 'preflight');
+          break;
         }
         throw err;
       }
 
-      // Local: the loop. Closes over `tools`, `toolDefs`, `options`,
-      // `baseMaxSteps`, etc. so the outer wrap stays tiny.
-      async function runLoop(ro: AgentRunOptions): Promise<AgentRunResult> {
-        const messages: ChatMessage[] = [];
-        if (options.system) messages.push({ role: 'system', content: options.system });
+      addUsageInPlace(state.totalUsage, llmResult.usage);
 
-        if (ro.messages?.length) {
-          messages.push(...ro.messages);
-        } else if (ro.prompt) {
-          messages.push({ role: 'user', content: ro.prompt });
-        } else {
-          throw new Error('createAgent.run requires either `prompt` or `messages`.');
-        }
+      await emit({
+        type: 'llm-finish',
+        index: stepIndex,
+        text: llmResult.text,
+        toolCalls: llmResult.toolCalls,
+      });
 
-        const steps: AgentStep[] = [];
-        const totalUsage: TokenUsage = {};
-        let finishReason: AgentFinishReason = 'completed';
-        let budgetInfo: AgentBudgetExceededInfo | undefined;
+      if (llmResult.toolCalls.length > 0) {
+        const assistantContent = llmResult.content.filter(
+          (p): p is TextPart | ToolCallPart => p.type === 'text' || p.type === 'tool-call',
+        );
+        state.messages.push({ role: 'assistant', content: assistantContent });
+      } else {
+        state.messages.push({ role: 'assistant', content: llmResult.text });
+      }
 
-        // Effective step cap = min(CreateAgent.maxSteps, BudgetSpec.maxSteps).
-        const stepCap =
-          ro.budget?.maxSteps !== undefined
-            ? Math.min(baseMaxSteps, ro.budget.maxSteps)
-            : baseMaxSteps;
-
-        const emit = async (event: StepEvent) => {
-          if (ro.onEvent) await ro.onEvent(event);
+      let toolResults: ToolExecutionResult[] = [];
+      if (llmResult.toolCalls.length > 0) {
+        const approvalContext = {
+          step: stepIndex,
+          messages: [...state.messages] as ReadonlyArray<unknown>,
         };
-
-        // Snapshot of progress, kept so the `truncate` catch above can
-        // rebuild an `AgentRunResult` from a `BudgetExceededError`.
-        const snapshot = (): AgentRunResult => ({
-          text: steps[steps.length - 1]?.text ?? '',
-          steps,
-          totalUsage,
-          finishReason,
-          messages,
+        toolResults = await executeToolCalls({
+          tools,
+          toolCalls: llmResult.toolCalls,
+          ...(ro.abortSignal ? { abortSignal: ro.abortSignal } : {}),
+          ...(ro.toolBudget ? { toolBudget: ro.toolBudget } : {}),
+          ...(ro.approver ? { approver: ro.approver } : {}),
+          ...(ro.metadata ? { metadata: ro.metadata } : {}),
+          approvalContext,
         });
 
-        const truncate = ro.budget?.onExceed === 'truncate';
-        const handleBudgetThrow = async (
-          err: BudgetExceededError,
-          origin: AgentBudgetExceededInfo['origin'],
-        ): Promise<never | undefined> => {
-          const info = toAgentBudgetInfo(err, origin);
-          await emit({ type: 'budget-exceeded', info });
-          if (truncate) {
-            budgetInfo = info;
-            finishReason = 'budgetExceeded';
-            return undefined;
-          }
-          // Stash the partial result on the error so the outer catch can
-          // surface it for `truncate` (we're in `throw` mode here, but the
-          // attachment is harmless and keeps the code path uniform).
-          (err as BudgetExceededError & { __agentPartial?: AgentRunResult }).__agentPartial =
-            snapshot();
-          throw err;
-        };
-
-        for (let i = 0; i < stepCap; i++) {
-          if (ro.abortSignal?.aborted) {
-            finishReason = 'aborted';
-            break;
-          }
-
-          const stepIndex = i + 1;
-          await emit({ type: 'step-start', index: stepIndex });
-
-          let llmResult: Awaited<ReturnType<typeof generateText>>;
-          try {
-            llmResult = await generateText({
-              model: options.model,
-              messages,
-              ...(toolDefs ? { tools: toolDefs } : {}),
-              ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
-              ...(ro.abortSignal ? { abortSignal: ro.abortSignal } : {}),
-            });
-          } catch (err) {
-            if (err instanceof BudgetExceededError) {
-              await handleBudgetThrow(err, 'preflight');
-              break;
-            }
-            throw err;
-          }
-
-          addUsageInPlace(totalUsage, llmResult.usage);
-
-          await emit({
-            type: 'llm-finish',
-            index: stepIndex,
-            text: llmResult.text,
-            toolCalls: llmResult.toolCalls,
-          });
-
-          if (llmResult.toolCalls.length > 0) {
-            const assistantContent = llmResult.content.filter(
-              (p): p is TextPart | ToolCallPart => p.type === 'text' || p.type === 'tool-call',
-            );
-            messages.push({ role: 'assistant', content: assistantContent });
-          } else {
-            messages.push({ role: 'assistant', content: llmResult.text });
-          }
-
-          let toolResults: Awaited<ReturnType<typeof executeToolCalls>> = [];
-          if (llmResult.toolCalls.length > 0) {
-            toolResults = await executeToolCalls({
-              tools,
-              toolCalls: llmResult.toolCalls,
-              ...(ro.abortSignal ? { abortSignal: ro.abortSignal } : {}),
-              ...(ro.toolBudget ? { toolBudget: ro.toolBudget } : {}),
-            });
-
-            for (const r of toolResults) {
-              await emit({ type: 'tool-result', index: stepIndex, result: r });
-            }
-
-            const toolContent: ToolResultPart[] = toolResults.map((r) => ({
-              type: 'tool-result',
-              toolCallId: r.toolCallId,
-              toolName: r.toolName,
-              result: r.result,
-              ...(r.isError ? { isError: true } : {}),
-            }));
-            messages.push({ role: 'tool', content: toolContent });
-          }
-
-          const step: AgentStep = {
-            index: stepIndex,
-            text: llmResult.text,
-            content: llmResult.content,
-            toolCalls: llmResult.toolCalls,
-            toolResults,
-            finishReason: llmResult.finishReason,
-            usage: llmResult.usage,
-          };
-          steps.push(step);
-          await emit({ type: 'step-finish', step });
-
-          // Synthesize a BudgetExceededError if any tool tripped its budget,
-          // so behaviour is identical whether the throw originates inside an
-          // LLM call or inside a tool. We promote only the FIRST such
-          // result; the rest stay on the step for the user to inspect.
-          const toolBudgetHit = toolResults.find((r) => r.budgetExceeded);
-          if (toolBudgetHit?.budgetExceeded) {
-            const synthErr = new BudgetExceededError({
-              kind: toolBudgetHit.budgetExceeded.kind,
-              limit: toolBudgetHit.budgetExceeded.limit,
-              observed: toolBudgetHit.budgetExceeded.observed,
-              scopeId: toolBudgetHit.budgetExceeded.scopeId,
-              partialUsage: getCurrentBudget()?.used ?? {
-                usd: 0,
-                tokens: 0,
-                llmCalls: 0,
-                steps: steps.length,
-                durationMs: 0,
-              },
-              preflight: false,
-            });
-            await handleBudgetThrow(synthErr, 'tool');
-            break;
-          }
-
-          if (llmResult.toolCalls.length === 0) {
-            finishReason = 'completed';
-            break;
-          }
-
-          if (options.stopWhen && (await options.stopWhen({ steps, totalUsage }))) {
-            finishReason = 'stopWhen';
-            break;
-          }
-
-          if (i === stepCap - 1) {
-            finishReason = 'maxSteps';
-            break;
-          }
+        for (const r of toolResults) {
+          await emit({ type: 'tool-result', index: stepIndex, result: r });
         }
 
-        await emit({ type: 'agent-finish', reason: finishReason });
+        // Suspension check — RFC 0002. If any result carries a
+        // pendingApproval, the loop captures full state and throws
+        // AgentSuspendedError. Sibling results that already executed
+        // are preserved in `snapshot.resolvedSiblings`.
+        const pending = toolResults.filter((r) => r.pendingApproval);
+        if (pending.length > 0) {
+          const resolvedSiblings = toolResults.filter((r) => !r.pendingApproval);
+          const snap: AgentSnapshot = {
+            version: 1,
+            __ziro_snapshot__: true,
+            ...(ro.agentId !== undefined ? { agentId: ro.agentId } : {}),
+            createdAt: new Date().toISOString(),
+            ...(getCurrentBudget()?.scopeId
+              ? { scopeId: getCurrentBudget()?.scopeId as string }
+              : {}),
+            step: stepIndex,
+            messages: [...state.messages],
+            steps: [...state.steps],
+            totalUsage: { ...state.totalUsage },
+            ...(getCurrentBudget()?.used !== undefined
+              ? { budgetUsage: { ...(getCurrentBudget()?.used as BudgetUsage) } }
+              : {}),
+            ...(ro.budget ? { budgetSpec: serializeBudgetSpec(ro.budget) } : {}),
+            pendingApprovals: pending.map((r) => r.pendingApproval as PendingApproval),
+            resolvedSiblings,
+          };
+          fireAgentSuspended({
+            ...(snap.agentId !== undefined ? { agentId: snap.agentId } : {}),
+            ...(snap.scopeId !== undefined ? { scopeId: snap.scopeId } : {}),
+            step: snap.step,
+            pendingCount: pending.length,
+          });
+          throw new AgentSuspendedError({ snapshot: snap });
+        }
 
-        const last = steps[steps.length - 1];
+        const toolContent: ToolResultPart[] = toolResults.map((r) => ({
+          type: 'tool-result',
+          toolCallId: r.toolCallId,
+          toolName: r.toolName,
+          result: r.result,
+          ...(r.isError ? { isError: true } : {}),
+        }));
+        state.messages.push({ role: 'tool', content: toolContent });
+      }
+
+      const step: AgentStep = {
+        index: stepIndex,
+        text: llmResult.text,
+        content: llmResult.content,
+        toolCalls: llmResult.toolCalls,
+        toolResults,
+        finishReason: llmResult.finishReason,
+        usage: llmResult.usage,
+      };
+      state.steps.push(step);
+      await emit({ type: 'step-finish', step });
+
+      const toolBudgetHit = toolResults.find((r) => r.budgetExceeded);
+      if (toolBudgetHit?.budgetExceeded) {
+        const synthErr = synthBudgetErrorFromToolResult(toolBudgetHit, state);
+        await handleBudgetThrow(synthErr, 'tool');
+        break;
+      }
+
+      if (llmResult.toolCalls.length === 0) {
+        state.finishReason = 'completed';
+        break;
+      }
+
+      if (
+        options.stopWhen &&
+        (await options.stopWhen({ steps: state.steps, totalUsage: state.totalUsage }))
+      ) {
+        state.finishReason = 'stopWhen';
+        break;
+      }
+
+      if (i === state.stepCap - 1) {
+        state.finishReason = 'maxSteps';
+        break;
+      }
+    }
+
+    return finalizeResult(state, emit);
+  }
+
+  // ============================================================
+  // Helpers — closure-scoped over `tools`/`baseMaxSteps`/`options`.
+  // ============================================================
+
+  function seedFromRunOptions(ro: AgentRunOptions, baseMaxSteps: number): LoopState {
+    const messages: ChatMessage[] = [];
+    if (options.system) messages.push({ role: 'system', content: options.system });
+    if (ro.messages?.length) {
+      messages.push(...ro.messages);
+    } else if (ro.prompt) {
+      messages.push({ role: 'user', content: ro.prompt });
+    } else {
+      throw new Error('createAgent.run requires either `prompt` or `messages`.');
+    }
+    const stepCap =
+      ro.budget?.maxSteps !== undefined ? Math.min(baseMaxSteps, ro.budget.maxSteps) : baseMaxSteps;
+    return {
+      messages,
+      steps: [],
+      totalUsage: {},
+      nextStepIndex: 1,
+      stepCap,
+      finishReason: 'completed',
+    };
+  }
+
+  function seedFromSnapshot(
+    snapshot: AgentSnapshot,
+    resolvedResults: ToolExecutionResult[],
+    baseMaxSteps: number,
+  ): LoopState {
+    // Reconstruct the toolCalls array from the snapshot's pending
+    // approvals + the resolvedSiblings that already ran. Order: matches
+    // the order of `resolvedResults`.
+    const toolCalls: ToolCallPart[] = resolvedResults.map((r) => ({
+      type: 'tool-call' as const,
+      toolCallId: r.toolCallId,
+      toolName: r.toolName,
+      args: undefined as unknown,
+    }));
+    const stepCap =
+      snapshot.budgetSpec?.maxSteps !== undefined
+        ? Math.min(baseMaxSteps, snapshot.budgetSpec.maxSteps)
+        : baseMaxSteps;
+    return {
+      messages: [...snapshot.messages],
+      steps: [...snapshot.steps],
+      totalUsage: { ...snapshot.totalUsage },
+      nextStepIndex: snapshot.step + 1,
+      stepCap,
+      finishReason: 'completed',
+      pendingToolResults: resolvedResults,
+      pendingToolCalls: toolCalls,
+    };
+  }
+
+  async function finalizeResult(
+    state: LoopState,
+    emit: (event: StepEvent) => Promise<void>,
+  ): Promise<AgentRunResult> {
+    await emit({ type: 'agent-finish', reason: state.finishReason });
+    const last = state.steps[state.steps.length - 1];
+    return {
+      text: last?.text ?? '',
+      steps: state.steps,
+      totalUsage: state.totalUsage,
+      finishReason: state.finishReason,
+      messages: state.messages,
+      ...(state.budgetInfo ? { budgetExceeded: state.budgetInfo } : {}),
+    };
+  }
+}
+
+// ============================================================
+// Module-level helpers (shared between run + resume).
+// ============================================================
+
+/**
+ * Wrap `exec` in a `withBudget` scope honouring the user's `onExceed`
+ * settings (throw / truncate / function form). Used by both `run` and
+ * `resume`. `presetUsage` is supplied by `resume` so accumulated spend
+ * carries across a HITL pause.
+ */
+async function runWithBudget(
+  ro: AgentRunOptions,
+  exec: () => Promise<AgentRunResult>,
+  presetUsage?: BudgetUsage,
+): Promise<AgentRunResult> {
+  if (!ro.budget) return await exec();
+  try {
+    return await withBudget(
+      ro.budget,
+      exec,
+      presetUsage !== undefined ? { presetUsage } : undefined,
+    );
+  } catch (err) {
+    if (!(err instanceof BudgetExceededError)) throw err;
+    const onExceed = ro.budget.onExceed;
+
+    if (typeof onExceed === 'function') {
+      const ctx = {
+        spec: ro.budget,
+        used: err.partialUsage,
+        remaining: computeRemaining(ro.budget, err.partialUsage),
+        scopeId: err.scopeId,
+      };
+      let resolution: { handled: boolean; replacement?: unknown };
+      try {
+        resolution = await Promise.resolve(onExceed(ctx));
+      } catch (resolverErr) {
+        if (resolverErr instanceof Error) {
+          (resolverErr as Error & { cause?: unknown }).cause = err;
+        }
+        throw resolverErr;
+      }
+      if (resolution.handled) return resolution.replacement as AgentRunResult;
+      throw err;
+    }
+
+    if (onExceed === 'truncate') {
+      const partial = (err as BudgetExceededError & { __agentPartial?: AgentRunResult })
+        .__agentPartial;
+      if (partial) {
         return {
-          text: last?.text ?? '',
-          steps,
-          totalUsage,
-          finishReason,
-          messages,
-          ...(budgetInfo ? { budgetExceeded: budgetInfo } : {}),
+          ...partial,
+          finishReason: 'budgetExceeded',
+          budgetExceeded: toAgentBudgetInfo(err, 'preflight'),
         };
       }
-    },
+      return {
+        text: '',
+        steps: [],
+        totalUsage: {},
+        messages: [],
+        finishReason: 'budgetExceeded',
+        budgetExceeded: toAgentBudgetInfo(err, 'preflight'),
+      };
+    }
+    throw err;
+  }
+}
+
+/**
+ * Run a single pending tool through the user-supplied decision, returning
+ * a `ToolExecutionResult` ready to splice into the conversation. Mirrors
+ * `executeToolCalls`'s behaviour for the approve/reject paths so the
+ * tool-message shape stays uniform between run and resume.
+ *
+ * `suspend` decisions yield a result whose `pendingApproval` is set —
+ * the caller (`agent.resume`) detects this and re-suspends.
+ */
+async function applyDecisionToPending(
+  tools: Record<string, Tool>,
+  pending: PendingApproval,
+  decision: ApprovalDecision,
+  ro: AgentRunOptions,
+): Promise<ToolExecutionResult> {
+  const start = performance.now();
+  const tool = tools[pending.toolName];
+  if (!tool) {
+    return {
+      toolCallId: pending.toolCallId,
+      toolName: pending.toolName,
+      result: {
+        name: 'ToolMissing',
+        message:
+          `Tool "${pending.toolName}" was not registered on the agent that ` +
+          'received this resume call.',
+      },
+      isError: true,
+      durationMs: performance.now() - start,
+    };
+  }
+
+  if (decision.decision === 'reject') {
+    return {
+      toolCallId: pending.toolCallId,
+      toolName: pending.toolName,
+      result: {
+        name: 'ApprovalRejected',
+        message: decision.reason ?? `Tool "${pending.toolName}" rejected by approver.`,
+      },
+      isError: true,
+      durationMs: performance.now() - start,
+    };
+  }
+
+  if (decision.decision === 'suspend') {
+    return {
+      toolCallId: pending.toolCallId,
+      toolName: pending.toolName,
+      result: null,
+      isError: false,
+      durationMs: performance.now() - start,
+      pendingApproval: pending,
+    };
+  }
+
+  // approve — re-validate any modifiedInput so the tool gets a typed
+  // payload at runtime.
+  let approvedInput = pending.parsedInput;
+  if (decision.modifiedInput !== undefined) {
+    try {
+      approvedInput = tool.input.parse(decision.modifiedInput);
+    } catch (err) {
+      return {
+        toolCallId: pending.toolCallId,
+        toolName: pending.toolName,
+        result: serializeError(err),
+        isError: true,
+        durationMs: performance.now() - start,
+      };
+    }
+  }
+
+  const composedBudget = ro.toolBudget ?? tool.budget ?? undefined;
+  const runExecute = async (): Promise<unknown> => {
+    const value = await Promise.resolve(
+      tool.execute(approvedInput, {
+        toolCallId: pending.toolCallId,
+        ...(ro.abortSignal ? { abortSignal: ro.abortSignal } : {}),
+        ...(ro.metadata ? { metadata: ro.metadata } : {}),
+      }),
+    );
+    return tool.output ? tool.output.parse(value) : value;
   };
+  try {
+    const out = composedBudget ? await withBudget(composedBudget, runExecute) : await runExecute();
+    return {
+      toolCallId: pending.toolCallId,
+      toolName: pending.toolName,
+      result: out,
+      isError: false,
+      durationMs: performance.now() - start,
+    };
+  } catch (err) {
+    if (err instanceof BudgetExceededError) {
+      return {
+        toolCallId: pending.toolCallId,
+        toolName: pending.toolName,
+        result: serializeError(err),
+        isError: true,
+        durationMs: performance.now() - start,
+        budgetExceeded: {
+          kind: err.kind,
+          limit: err.limit,
+          observed: err.observed,
+          scopeId: err.scopeId,
+        },
+      };
+    }
+    return {
+      toolCallId: pending.toolCallId,
+      toolName: pending.toolName,
+      result: serializeError(err),
+      isError: true,
+      durationMs: performance.now() - start,
+    };
+  }
+}
+
+function countDecisions(
+  decisions: Record<string, ApprovalDecision>,
+  pending: PendingApproval[],
+): { approve: number; reject: number; suspend: number } {
+  const counts = { approve: 0, reject: 0, suspend: 0 };
+  for (const p of pending) {
+    const d = decisions[p.toolCallId]?.decision ?? 'suspend';
+    counts[d as 'approve' | 'reject' | 'suspend']++;
+  }
+  return counts;
+}
+
+function synthBudgetErrorFromToolResult(
+  toolResult: ToolExecutionResult,
+  state: LoopState,
+): BudgetExceededError {
+  const be = toolResult.budgetExceeded;
+  if (!be) {
+    throw new Error('synthBudgetErrorFromToolResult called without budgetExceeded');
+  }
+  return new BudgetExceededError({
+    kind: be.kind,
+    limit: be.limit,
+    observed: be.observed,
+    scopeId: be.scopeId,
+    partialUsage: getCurrentBudget()?.used ?? {
+      usd: 0,
+      tokens: 0,
+      llmCalls: 0,
+      steps: state.steps.length,
+      durationMs: 0,
+    },
+    preflight: false,
+  });
 }
 
 function toAgentBudgetInfo(
@@ -403,4 +828,39 @@ function addUsageInPlace(target: TokenUsage, add: TokenUsage): void {
   target.totalTokens = sum(target.totalTokens, add.totalTokens);
   target.cachedPromptTokens = sum(target.cachedPromptTokens, add.cachedPromptTokens);
   target.reasoningTokens = sum(target.reasoningTokens, add.reasoningTokens);
+}
+
+/**
+ * Strip non-serializable fields from a `BudgetSpec` so the snapshot
+ * stays JSON-safe. Function-form `onExceed` collapses to `'throw'`; the
+ * caller can re-supply the spec on resume to restore the resolver.
+ */
+function serializeBudgetSpec(spec: BudgetSpec): SerializableBudgetSpec {
+  const out: SerializableBudgetSpec = {};
+  if (spec.maxUsd !== undefined) out.maxUsd = spec.maxUsd;
+  if (spec.maxTokens !== undefined) out.maxTokens = spec.maxTokens;
+  if (spec.maxLlmCalls !== undefined) out.maxLlmCalls = spec.maxLlmCalls;
+  if (spec.maxSteps !== undefined) out.maxSteps = spec.maxSteps;
+  if (spec.maxDurationMs !== undefined) out.maxDurationMs = spec.maxDurationMs;
+  if (spec.warnAt !== undefined) out.warnAt = { ...spec.warnAt };
+  if (spec.onExceed === 'throw' || spec.onExceed === 'truncate') {
+    out.onExceed = spec.onExceed;
+  } else if (typeof spec.onExceed === 'function') {
+    // Function form cannot survive serialization; fall back to throw and
+    // document that the caller should re-supply the spec on resume.
+    out.onExceed = 'throw';
+  }
+  return out;
+}
+
+function deserializeBudgetSpec(spec: SerializableBudgetSpec | undefined): BudgetSpec | undefined {
+  if (!spec) return undefined;
+  return spec as BudgetSpec; // shape is already a structural superset
+}
+
+function serializeError(err: unknown): { message: string; name?: string } {
+  if (err instanceof Error) {
+    return { name: err.name, message: err.message };
+  }
+  return { message: String(err) };
 }

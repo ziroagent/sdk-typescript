@@ -5,6 +5,13 @@ export {
   type CreateAgentOptions,
   createAgent,
 } from './agent.js';
+export {
+  type AgentResumeOptions,
+  type AgentSnapshot,
+  AgentSuspendedError,
+  isAgentSuspendedError,
+  type ResumeSummary,
+} from './snapshot.js';
 export type { StopWhen, StopWhenContext } from './stop-when.js';
 export type {
   AgentBudgetExceededInfo,

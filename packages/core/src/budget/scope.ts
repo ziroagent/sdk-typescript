@@ -19,12 +19,25 @@ export interface BudgetScope {
   readonly firedWarnings: Set<string>;
 }
 
-export function createScope(spec: BudgetSpec, parent?: BudgetScope): BudgetScope {
+export function createScope(
+  spec: BudgetSpec,
+  parent?: BudgetScope,
+  presetUsage?: BudgetUsage,
+): BudgetScope {
   const merged = parent ? intersectSpecs(parent.spec, spec) : spec;
+  // `presetUsage` (RFC 0002) lets `agent.resume` open a fresh scope that
+  // inherits prior accumulated spend. It overrides the parent inheritance —
+  // resume scopes never have a parent in practice, but if both are supplied
+  // we trust the explicit preset.
+  const seed: BudgetUsage = presetUsage
+    ? { ...presetUsage }
+    : parent
+      ? { ...parent.used }
+      : emptyBudgetUsage();
   return {
     id: makeScopeId(),
     spec: merged,
-    used: parent ? { ...parent.used } : emptyBudgetUsage(),
+    used: seed,
     startedAt: Date.now(),
     firedWarnings: new Set<string>(),
   };
@@ -73,30 +86,37 @@ function makeScopeId(): string {
 }
 
 // --- AsyncLocalStorage-backed implicit scope -------------------------------
+//
+// We import `node:async_hooks` statically. Both ESM and CJS builds emit a real
+// module-level import that Node resolves immediately. The package targets
+// Node >=20.10 (see `engines`), so the module is always available; no lazy
+// fallback is necessary. A previous lazy-`require()` based implementation
+// silently fell back to `null` under pure ESM (where `require` is undefined),
+// which broke implicit budget-scope propagation across `await` boundaries.
 
-type ALSCtor = new <T>() => {
-  getStore(): T | undefined;
-  run<R>(store: T, fn: () => R): R;
-};
+import { AsyncLocalStorage } from 'node:async_hooks';
 
-let als: {
-  getStore(): BudgetScope | undefined;
-  run<R>(store: BudgetScope, fn: () => R): R;
-} | null = null;
-let alsResolved = false;
+let als: AsyncLocalStorage<BudgetScope> | null = null;
 
-function getAls() {
-  if (alsResolved) return als;
-  alsResolved = true;
-  try {
-    // Lazy require so non-Node runtimes can still import the module.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mod = require('node:async_hooks') as { AsyncLocalStorage: ALSCtor };
-    als = new mod.AsyncLocalStorage<BudgetScope>();
-  } catch {
-    als = null;
+function getAls(): AsyncLocalStorage<BudgetScope> {
+  if (als === null) {
+    als = new AsyncLocalStorage<BudgetScope>();
   }
   return als;
+}
+
+export interface WithBudgetOptions {
+  /**
+   * Seed the new scope's `BudgetUsage` instead of starting from zero.
+   * Used by `agent.resume` (RFC 0002) so spend, tokens, and call counts
+   * accumulated before a HITL suspension carry forward into the resumed
+   * run — a multi-hour pause cannot accidentally bypass a `maxUsd` cap.
+   *
+   * When the new scope inherits a parent (i.e. `withBudget` is nested),
+   * `presetUsage` overrides the parent's usage as the seed for *this*
+   * scope. The parent scope itself is unaffected.
+   */
+  presetUsage?: BudgetUsage;
 }
 
 /**
@@ -104,9 +124,13 @@ function getAls() {
  * call that consults `getCurrentScope()`) inherit and intersect with this
  * scope automatically when AsyncLocalStorage is available.
  */
-export async function withBudget<R>(spec: BudgetSpec, fn: () => Promise<R> | R): Promise<R> {
+export async function withBudget<R>(
+  spec: BudgetSpec,
+  fn: () => Promise<R> | R,
+  options?: WithBudgetOptions,
+): Promise<R> {
   const parent = getCurrentScope();
-  const scope = createScope(spec, parent);
+  const scope = createScope(spec, parent, options?.presetUsage);
   const storage = getAls();
   fireScopeStart(toContext(scope));
   const runIt = async () => {
@@ -119,14 +143,11 @@ export async function withBudget<R>(spec: BudgetSpec, fn: () => Promise<R> | R):
       throw err;
     }
   };
-  if (storage === null) {
-    return await runIt();
-  }
   return await storage.run(scope, runIt);
 }
 
 export function getCurrentScope(): BudgetScope | undefined {
-  return getAls()?.getStore();
+  return getAls().getStore();
 }
 
 export function getCurrentBudget(): BudgetContext | undefined {

@@ -1,7 +1,13 @@
 import {
+  type ApprovalDecision,
+  type ApprovalRequest,
+  type Approver,
   BudgetExceededError,
   type BudgetSpec,
+  fireApprovalRequested,
+  fireApprovalResolved,
   intersectSpecs,
+  type PendingApproval,
   type ToolCallPart,
   withBudget,
 } from '@ziro-agent/core';
@@ -27,6 +33,17 @@ export interface ToolExecutionResult {
     observed: number;
     scopeId: string;
   };
+  /**
+   * Set when the tool's `requiresApproval` gate fired and either no
+   * `approver` was supplied or the approver returned `{decision: 'suspend'}`.
+   * `tool.execute()` was NOT called. The agent loop is expected to
+   * capture state into an `AgentSnapshot` and throw `AgentSuspendedError`.
+   *
+   * `result` is `null` and `isError` is `false` when this is set.
+   *
+   * Available since v0.1.7 — see RFC 0002.
+   */
+  pendingApproval?: PendingApproval;
 }
 
 interface ExecuteOptions {
@@ -42,6 +59,21 @@ interface ExecuteOptions {
    * `withBudget` scope. See RFC 0001 §"How budgets compose".
    */
   toolBudget?: BudgetSpec;
+  /**
+   * Resolves `tool.requiresApproval` gates. When a tool needs approval
+   * and this is supplied, the approver decides; when missing, the tool
+   * call short-circuits with `pendingApproval` so the agent layer can
+   * suspend. See RFC 0002.
+   *
+   * Available since v0.1.7.
+   */
+  approver?: Approver;
+  /**
+   * Read-only context surfaced to the approver alongside the tool input.
+   * The agent layer populates this with conversation history and step
+   * number; for direct `executeToolCalls` callers it can stay undefined.
+   */
+  approvalContext?: { step: number; messages: ReadonlyArray<unknown> };
 }
 
 /**
@@ -57,7 +89,16 @@ interface ExecuteOptions {
  * matching the behaviour of any other tool failure.
  */
 export async function executeToolCalls(options: ExecuteOptions): Promise<ToolExecutionResult[]> {
-  const { toolCalls, tools, strict = true, abortSignal, metadata, toolBudget } = options;
+  const {
+    toolCalls,
+    tools,
+    strict = true,
+    abortSignal,
+    metadata,
+    toolBudget,
+    approver,
+    approvalContext,
+  } = options;
 
   const tasks = toolCalls.map(async (call): Promise<ToolExecutionResult> => {
     const start = performance.now();
@@ -87,9 +128,112 @@ export async function executeToolCalls(options: ExecuteOptions): Promise<ToolExe
       };
     }
 
+    // Approval gate (RFC 0002). Evaluated AFTER input parsing so the
+    // function form gets the validated input, BEFORE budget+execute so a
+    // rejected/suspended call costs nothing.
+    let approvedInput = parsedInput;
+    const gateActive = await evaluateGate(tool, parsedInput, call.toolCallId, metadata);
+    if (gateActive) {
+      const req: ApprovalRequest = {
+        toolCallId: call.toolCallId,
+        toolName: call.toolName,
+        ...(tool.description !== undefined ? { toolDescription: tool.description } : {}),
+        input: parsedInput,
+        rawArgs: call.args,
+        context: {
+          step: approvalContext?.step ?? 0,
+          messages: approvalContext?.messages ?? [],
+          ...(metadata ? { metadata } : {}),
+        },
+      };
+      fireApprovalRequested(req);
+
+      // No approver → short-circuit with pendingApproval so the agent
+      // layer can capture state and suspend.
+      if (!approver) {
+        const pending: PendingApproval = {
+          toolCallId: call.toolCallId,
+          toolName: call.toolName,
+          ...(tool.description !== undefined ? { toolDescription: tool.description } : {}),
+          parsedInput,
+          rawArgs: call.args,
+        };
+        fireApprovalResolved(req, { decision: 'suspend' });
+        return {
+          toolCallId: call.toolCallId,
+          toolName: call.toolName,
+          result: null,
+          isError: false,
+          durationMs: performance.now() - start,
+          pendingApproval: pending,
+        };
+      }
+
+      let decision: ApprovalDecision;
+      try {
+        decision = await Promise.resolve(approver(req));
+      } catch (err) {
+        // Approver itself crashed — surface as a tool error so the agent
+        // can recover; do NOT throw out of `executeToolCalls`.
+        return {
+          toolCallId: call.toolCallId,
+          toolName: call.toolName,
+          result: serializeError(err),
+          isError: true,
+          durationMs: performance.now() - start,
+        };
+      }
+      fireApprovalResolved(req, decision);
+
+      if (decision.decision === 'reject') {
+        return {
+          toolCallId: call.toolCallId,
+          toolName: call.toolName,
+          result: {
+            name: 'ApprovalRejected',
+            message: decision.reason ?? `Tool "${call.toolName}" rejected by approver.`,
+          },
+          isError: true,
+          durationMs: performance.now() - start,
+        };
+      }
+      if (decision.decision === 'suspend') {
+        const pending: PendingApproval = {
+          toolCallId: call.toolCallId,
+          toolName: call.toolName,
+          ...(tool.description !== undefined ? { toolDescription: tool.description } : {}),
+          parsedInput,
+          rawArgs: call.args,
+        };
+        return {
+          toolCallId: call.toolCallId,
+          toolName: call.toolName,
+          result: null,
+          isError: false,
+          durationMs: performance.now() - start,
+          pendingApproval: pending,
+        };
+      }
+      // approve — re-validate any human-supplied modifiedInput so the tool
+      // still receives a typed payload at runtime.
+      if (decision.modifiedInput !== undefined) {
+        try {
+          approvedInput = tool.input.parse(decision.modifiedInput);
+        } catch (err) {
+          return {
+            toolCallId: call.toolCallId,
+            toolName: call.toolName,
+            result: serializeError(err),
+            isError: true,
+            durationMs: performance.now() - start,
+          };
+        }
+      }
+    }
+
     const runExecute = async (): Promise<unknown> => {
       const value = await Promise.resolve(
-        tool.execute(parsedInput, {
+        tool.execute(approvedInput, {
           toolCallId: call.toolCallId,
           ...(abortSignal ? { abortSignal } : {}),
           ...(metadata ? { metadata } : {}),
@@ -138,6 +282,30 @@ export async function executeToolCalls(options: ExecuteOptions): Promise<ToolExe
   });
 
   return Promise.all(tasks);
+}
+
+/**
+ * Evaluate `tool.requiresApproval` (boolean or function form) for a single
+ * tool call. Returns `true` when the gate is active for this invocation,
+ * `false` otherwise. Function-form gates that throw are treated as "needs
+ * approval" — fail-safe; we'd rather over-prompt than silently bypass.
+ */
+async function evaluateGate(
+  tool: Tool,
+  parsedInput: unknown,
+  toolCallId: string,
+  metadata: Record<string, unknown> | undefined,
+): Promise<boolean> {
+  const ra = tool.requiresApproval;
+  if (ra === undefined || ra === false) return false;
+  if (ra === true) return true;
+  try {
+    const ctx: { toolCallId: string; metadata?: Record<string, unknown> } = { toolCallId };
+    if (metadata) ctx.metadata = metadata;
+    return Boolean(await Promise.resolve(ra(parsedInput, ctx)));
+  } catch {
+    return true;
+  }
 }
 
 /**

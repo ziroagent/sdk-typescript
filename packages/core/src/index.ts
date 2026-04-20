@@ -5,6 +5,7 @@ export {
   getCurrentBudget,
   getCurrentScope,
   intersectSpecs,
+  type WithBudgetOptions,
   withBudget,
 } from './budget/scope.js';
 export type {
@@ -18,6 +19,24 @@ export type {
 } from './budget/types.js';
 export * from './errors.js';
 export * from './generate-text.js';
+export {
+  type ApprovalObserver,
+  fireAgentResumed,
+  fireAgentSuspended,
+  fireApprovalRequested,
+  fireApprovalResolved,
+  setApprovalObserver,
+} from './hitl/observer.js';
+export type {
+  ApprovalContext,
+  ApprovalDecision,
+  ApprovalRequest,
+  Approver,
+  CoreAgentSnapshotFields,
+  PendingApproval,
+  RequiresApproval,
+  SerializableBudgetSpec,
+} from './hitl/types.js';
 export * from './stream-text.js';
 export * from './streaming/text-stream.js';
 export * from './types/content.js';

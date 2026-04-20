@@ -7,6 +7,7 @@ export {
   getCurrentBudget,
   getCurrentScope,
   intersectSpecs,
+  type WithBudgetOptions,
   withBudget,
 } from './scope.js';
 export * from './types.js';

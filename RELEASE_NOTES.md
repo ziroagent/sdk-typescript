@@ -29,6 +29,71 @@ single version across the workspace.
 
 ---
 
+## v0.1.7 — 2026-04-20
+
+**Theme**: Human-in-the-Loop — RFC 0002 lands. Approval gates + suspend/resume.
+
+`agent.run` is no longer "fire-and-forget" for irreversible side effects. Any tool can declare `requiresApproval: true` (or a function returning a boolean), and the loop either (a) resolves the approval inline through a caller-supplied `Approver` callback, or (b) suspends the run by serializing its full state to a JSON `AgentSnapshot` and throwing `AgentSuspendedError`. Callers persist the snapshot in any KV store and call `agent.resume(snapshot, { decisions })` later — message history, pending sibling tool calls, and budget usage carry forward unchanged. This is production-safety primitive #2, paired with RFC 0001 (Budget Guard); both stop the loop **gracefully**, on a typed exception the caller can branch on, the difference being *what* is being guarded (cost vs. side-effects).
+
+### `@ziro-agent/core` (minor)
+
+- **HITL primitives** under `src/hitl/`: `Approver`, `ApprovalRequest`, `ApprovalDecision` (`approve` / `reject` / `suspend`), `ApprovalContext`, `RequiresApproval`, `PendingApproval`, `SerializableBudgetSpec`, `CoreAgentSnapshotFields`. All re-exported from the package root.
+- **`ApprovalObserver`** hook + `setApprovalObserver()` (mirrors `BudgetObserver` from RFC 0001). Observer exceptions are swallowed so instrumentation bugs cannot break user code. `fireApprovalRequested` / `fireApprovalResolved` / `fireAgentSuspended` / `fireAgentResumed` helpers expose the lifecycle to subscribers without coupling.
+- **`withBudget({ presetUsage })`** new option lets `agent.resume` seed the new budget scope with usage already accumulated before suspension. A multi-day pause cannot accidentally bypass `maxUsd` / `maxLlmCalls` caps. `presetUsage` overrides parent-inherited usage as the seed for the new scope; the parent itself is untouched.
+- **Bug fix — `AsyncLocalStorage` under pure ESM.** `getCurrentBudget()` and `getCurrentScope()` previously returned `undefined` when the package was loaded via pure-ESM Node runtimes (`tsx`, `node --import`, etc.) because the lazy `require('node:async_hooks')` shim threw and fell back to `null`. Replaced with a static `import { AsyncLocalStorage } from 'node:async_hooks'`. The package's `engines.node >= 20.10` already guarantees the module is present. **Impact**: implicit budget propagation across `await` boundaries inside the agent loop now works in every Node loader, not just CJS / Vitest.
+
+### `@ziro-agent/tools` (minor)
+
+- **`defineTool({ requiresApproval })`** — boolean (`true` = always require) or function (`(input, ctx) => boolean | Promise<boolean>` for conditional gating, e.g. `(i) => i.amountUsd > 100`).
+- **`executeToolCalls({ approver })`** — when an inline approver is provided, it's invoked between input parsing and `tool.execute()`. `decision: 'approve'` proceeds; `'reject'` short-circuits with the reject reason as the tool message the LLM sees; `'suspend'` (or **no approver at all**) short-circuits with a `pendingApproval` field on `ToolExecutionResult` that the agent layer collects into the snapshot. Approver-thrown errors are surfaced as `isError: true` results, not crashes.
+- **New result variant** — `ToolExecutionResult.pendingApproval` carries `{ toolCallId, toolName, parsedInput, rawArgs }` for the agent layer to snapshot.
+
+### `@ziro-agent/agent` (minor)
+
+- **`agent.run({ approver, agentId })`** — pass an inline `Approver` to handle approvals in the same tick (CLI prompts, internal allow-list, etc.); pass an `agentId` to tag the snapshot for keyed persistence. With no approver, the loop suspends on the first guarded tool call.
+- **`AgentSnapshot`** — JSON-serializable record of `{ messages, step, pendingApprovals, budgetSpec, budgetUsage, scopeId, agentId, createdAt, ... }`. Write it to Postgres / Redis / S3 with `JSON.stringify`; restore with `JSON.parse`. The snapshot is intentionally framework-agnostic — no class instances, no functions, no `Date` objects.
+- **`AgentSuspendedError`** + **`isAgentSuspendedError(err)`** — typed exception with `__ziro_suspended__: true` brand for cross-realm safety; carries `snapshot`. The `name` property is `'AgentSuspendedError'`.
+- **`agent.resume(snapshot, { decisions, approver?, budget?, ... })`** — apply each pending tool call's decision (`approve` runs the tool, `reject` writes a tool-error message, `suspend` re-suspends), seed `withBudget({ presetUsage: snapshot.budgetUsage })`, then re-enter the same loop. New approvals encountered after resume re-suspend with a fresh snapshot.
+- **Internal refactor** — `run()` and `resume()` now share an `iterateLoop(state, runOptions)` driver; `LoopState` carries the mutable per-step state through both paths. Reduces duplicate logic and ensures bug fixes / tracing hooks apply uniformly.
+
+### `@ziro-agent/tracing` (minor)
+
+- **`instrumentApproval()`** — registers an `ApprovalObserver` that opens a `ziro.approval.request` span per pending approval and attaches `ziro.approval.resolved` / `ziro.agent.suspended` / `ziro.agent.resumed` events. Returns `{ unregister, previous }` for clean teardown / chaining (mirrors `instrumentBudget`).
+- **New `ATTR.Approval*` / `ATTR.AgentSuspended*` / `ATTR.AgentResumed*` keys** — `ziroagent.approval.tool.name`, `ziroagent.approval.decision`, `ziroagent.approval.reason`, `ziroagent.agent.suspended.step`, `ziroagent.agent.suspended.pending_count`, `ziroagent.agent.resumed.step`, etc.
+
+### Examples
+
+- **New `examples/agent-with-approval/`** — four scripted-mock-model demos, no API key required:
+  - `DEMO=approve` — inline approver returns `'approve'`; `tool.execute()` runs in-tick.
+  - `DEMO=reject` — inline approver returns `'reject'`; the LLM sees a tool-error message and continues with a fallback reply.
+  - `DEMO=suspend` — no approver; suspend → `JSON.stringify` the snapshot to disk → simulate a human approving from another process → `JSON.parse` and `agent.resume()`.
+  - `DEMO=budget` — same as `suspend` but with `budget: { maxLlmCalls: 1 }`. The first call consumes the budget; resume seeds `presetUsage` so the second call rejects with `BudgetExceededError`. Proves multi-day pauses cannot bypass cost caps.
+
+### Tests
+
+- `packages/core/src/hitl/observer.test.ts` — observer event forwarding, error swallowing.
+- `packages/core/src/budget/preset-usage.test.ts` — `withBudget({ presetUsage })` seeds the scope, intersects with limits, accounts for prior usage during enforcement.
+- `packages/tools/src/define-tool.approval.test.ts` — boolean + function `requiresApproval`, all three approver decisions, approver-thrown errors.
+- `packages/agent/src/agent.approval.test.ts` — suspend → resume round-trip, inline approve / reject paths, budget continuity across resume, snapshot JSON round-trip.
+- `packages/tracing/src/instrument-approval.test.ts` — span / event emission for each lifecycle state.
+
+### RFC
+
+- `rfcs/0002-human-in-the-loop.md` status flipped to **accepted (v0.1.7)**.
+
+### Verified
+
+- `pnpm -r --filter "@ziro-agent/*" --filter "!@ziro-agent/docs" run typecheck` → clean across all SDK packages.
+- `pnpm -r --filter "@ziro-agent/*" --filter "!@ziro-agent/docs" run test` → all package suites green (core 72, agent 27, tools 31, tracing 20, memory 32, workflow 15, providers-openai 6, providers-anthropic 8, cli 10).
+- `pnpm --filter @ziro-agent/example-agent-with-approval start` → all four demos pass end-to-end.
+- `pnpm -w lint` → clean.
+
+### Known issue (pre-existing, not introduced by this release)
+
+- `apps/docs` (Fumadocs site) `typecheck` / `build` fails because `@/.source` and `fumadocs-ui/provider` cannot be resolved. This is a docs-app build pipeline issue independent of the SDK packages and does not affect any published artifact.
+
+---
+
 ## v0.1.6 — 2026-04-20
 
 **Theme**: Budget Guard layer 4 — close out RFC 0001.

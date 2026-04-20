@@ -1,0 +1,24 @@
+{
+  "name": "@ziro-agent/example-agent-with-approval",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx index.ts",
+    "demo:approve": "DEMO=approve tsx index.ts",
+    "demo:reject": "DEMO=reject tsx index.ts",
+    "demo:suspend": "DEMO=suspend tsx index.ts",
+    "demo:budget": "DEMO=budget tsx index.ts"
+  },
+  "dependencies": {
+    "@ziro-agent/agent": "workspace:*",
+    "@ziro-agent/core": "workspace:*",
+    "@ziro-agent/tools": "workspace:*",
+    "@ziro-agent/tracing": "workspace:*",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.3"
+  }
+}

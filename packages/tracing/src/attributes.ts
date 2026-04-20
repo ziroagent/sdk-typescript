@@ -52,6 +52,21 @@ export const ATTR = {
   BudgetWarningObserved: 'ziroagent.budget.warning.observed',
   BudgetWarningThreshold: 'ziroagent.budget.warning.threshold',
   BudgetScopeOutcome: 'ziroagent.budget.scope.outcome',
+
+  // HITL / Approval attributes — Ziro extensions; see RFC 0002 §Tracing.
+  ApprovalToolName: 'ziroagent.approval.tool.name',
+  ApprovalToolCallId: 'ziroagent.approval.tool.call.id',
+  ApprovalDecision: 'ziroagent.approval.decision',
+  ApprovalReason: 'ziroagent.approval.reason',
+  ApprovalModified: 'ziroagent.approval.modified',
+  ApprovalStep: 'ziroagent.approval.step',
+  AgentSuspendedStep: 'ziroagent.agent.suspended.step',
+  AgentSuspendedPendingCount: 'ziroagent.agent.suspended.pending_count',
+  AgentSuspendedAgentId: 'ziroagent.agent.suspended.agent_id',
+  AgentResumedStep: 'ziroagent.agent.resumed.step',
+  AgentResumedDecisionApprove: 'ziroagent.agent.resumed.decisions.approve',
+  AgentResumedDecisionReject: 'ziroagent.agent.resumed.decisions.reject',
+  AgentResumedDecisionSuspend: 'ziroagent.agent.resumed.decisions.suspend',
 } as const;
 
 /** Value type accepted by the span attribute API. */

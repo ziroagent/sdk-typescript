@@ -122,6 +122,31 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  examples/agent-with-approval:
+    dependencies:
+      '@ziro-agent/agent':
+        specifier: workspace:*
+        version: link:../../packages/agent
+      '@ziro-agent/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@ziro-agent/tools':
+        specifier: workspace:*
+        version: link:../../packages/tools
+      '@ziro-agent/tracing':
+        specifier: workspace:*
+        version: link:../../packages/tracing
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
+    devDependencies:
+      tsx:
+        specifier: ^4.20.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
   examples/agent-with-budget:
     dependencies:
       '@ziro-agent/agent':
