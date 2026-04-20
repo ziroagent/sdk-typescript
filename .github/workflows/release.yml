@@ -61,9 +61,12 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
-          # Use the default GITHUB_TOKEN write-credentials so changesets
-          # can push the version PR. Note: this means CI will NOT auto-run
-          # on the resulting PR (cascade rule, see RELEASING.md).
+          # Match the token passed to `changesets/action` below. When
+          # `RELEASE_BOT_TOKEN` is unset, this is `GITHUB_TOKEN` (default)
+          # and the version PR does not re-trigger CI (GitHub cascade rule).
+          # When set, use a bot PAT so the version PR runs full CI and
+          # branch-protection + auto-merge can complete.
+          token: ${{ secrets.RELEASE_BOT_TOKEN || secrets.GITHUB_TOKEN }}
           persist-credentials: true
 
       # NOTE: intentionally NOT setting `registry-url` on setup-node.
@@ -118,7 +121,11 @@ jobs:
           # Tag format: `<package-name>@<version>` (matches changesets default).
           createGithubReleases: true
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Prefer `RELEASE_BOT_TOKEN` (classic PAT: `repo` + `workflow` on a
+          # machine user) so the opened "version packages" PR is not authored
+          # via the workflow `GITHUB_TOKEN`, which does not trigger downstream
+          # workflows. Falls back to `GITHUB_TOKEN` until the secret exists.
+          GITHUB_TOKEN: ${{ secrets.RELEASE_BOT_TOKEN || secrets.GITHUB_TOKEN }}
           # changesets/action reads NPM_TOKEN and writes ~/.npmrc with the
           # actual token value (not a placeholder), then runs `pnpm release`.
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

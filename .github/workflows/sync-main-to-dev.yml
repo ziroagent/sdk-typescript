@@ -22,9 +22,9 @@ name: Sync main -> dev
 #     - the fallback PR (if opened) will NOT auto-trigger CI on `dev`.
 #       Reviewer must close + reopen the PR (or push an empty commit)
 #       to kick CI.
-#   To get full CI cascade, swap GITHUB_TOKEN for a PAT or GitHub App
-#   token here AND in `auto-merge-release.yml`. See `RELEASING.md` >
-#   "Known gotcha".
+#   To get full CI cascade on the fallback sync PR, set repo secret
+#   `RELEASE_BOT_TOKEN` (same PAT as `release.yml`). Checkout + `gh` then
+#   use it instead of `GITHUB_TOKEN`. See `RELEASING.md` > "Known gotcha".
 
 on:
   push:
@@ -70,8 +70,9 @@ jobs:
           fetch-depth: 0
           # Check out main; we'll branch from here for the PR fallback.
           ref: main
-          # Persist credentials so subsequent `git push` calls
-          # authenticate against GITHUB_TOKEN automatically.
+          # Same PAT as `release.yml` when set — unblocks CI on bot-opened
+          # sync PRs and ensures `git push` uses non-`GITHUB_TOKEN` auth.
+          token: ${{ secrets.RELEASE_BOT_TOKEN || secrets.GITHUB_TOKEN }}
           persist-credentials: true
 
       - name: Configure git identity
@@ -82,7 +83,7 @@ jobs:
       - name: Try fast-forward main -> dev
         id: ff
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_BOT_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           # Fetch dev so we know its tip locally.
@@ -111,7 +112,7 @@ jobs:
       - name: Open back-merge PR (fallback when diverged)
         if: steps.ff.outputs.result == 'diverged'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_BOT_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           BRANCH="chore/sync-main-to-dev-$(date -u +%Y%m%dT%H%M%S)"

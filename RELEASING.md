@@ -58,7 +58,7 @@ model, and required repo configuration. Quick map of the publish path:
 | `.github/workflows/release.yml`                  | push to `main`                       | Calls `_validate` with FULL matrix (3 OS × 2 Node) → opens version PR or publishes + creates GitHub Releases |
 | `.github/workflows/auto-merge-release.yml`       | PR opened/updated to `main`          | Detects the changesets `chore(release): version packages` PR and enables GitHub native auto-merge on it     |
 | `.github/workflows/snapshot.yml`                 | PR labeled `release:snapshot` (→ `main`) | Publishes ephemeral preview build under dist-tag `pr-<number>`; comments install instructions on the PR. Gated by maintainer-permission check. |
-| `.github/workflows/changeset-status.yml`         | PR to `main`                         | Soft warning if PR touches `packages/*` without a changeset                                                 |
+| `.github/workflows/changeset-status.yml`         | PR to `main`                         | **Hard gate**: commitlint + changeset bump vs PR type (see `CONTRIBUTING.md`)                               |
 | `.github/workflows/sync-main-to-dev.yml`         | push to `main`                       | Fast-forwards `dev` to `main`, or opens a back-merge PR if the branches diverged                            |
 | `.github/workflows/pricing-drift.yml`            | scheduled / PR touching pricing data | Detects unverified pricing entries (unrelated to publishing)                                                |
 | `.github/workflows/nightly.yml`                  | cron 04:30 UTC daily                 | Full 3 OS × 2 Node matrix + provider integration tests + signature audit + outdated report                  |
@@ -359,7 +359,8 @@ the workflow files:
 GitHub Actions has a hard policy: **workflow runs created via
 `GITHUB_TOKEN` do not trigger downstream workflows** (the "cascade"
 rule, see [GitHub docs](https://docs.github.com/en/actions/security-guides/automatic-token-authentication#using-the-github_token-in-a-workflow)).
-`changesets/action` opens the version PR with `GITHUB_TOKEN`, so the
+`changesets/action` opens the version PR with `GITHUB_TOKEN` **when**
+repo secret `RELEASE_BOT_TOKEN` is unset (`release.yml`). Then the
 `pull_request` event on that PR comes back as `action_required` and CI
 never auto-runs.
 
@@ -374,16 +375,12 @@ will never be satisfied because the checks never started.
    service account (NOT a human maintainer's account) with `repo` +
    `workflow` scopes. Expiration: 90 days max.
 2. Add it as repo secret `RELEASE_BOT_TOKEN`.
-3. In `release.yml`, swap the `changesets/action` env block:
-
-   ```yaml
-   env:
-     GITHUB_TOKEN: ${{ secrets.RELEASE_BOT_TOKEN }}  # was: secrets.GITHUB_TOKEN
-     NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-   ```
-
-4. The version PR is now authored by the service account → triggers CI
-   → branch protection passes → auto-merge fires.
+3. **No further workflow edit** — `release.yml` already passes
+   `secrets.RELEASE_BOT_TOKEN || secrets.GITHUB_TOKEN` to `changesets/action`
+   and to `actions/checkout` on the release job. `sync-main-to-dev.yml` uses
+   the same expression for checkout + `gh`, so sync PRs also get CI when the
+   PAT is set. The next version PR is authored by the PAT user → CI runs →
+   branch protection passes → `auto-merge-release.yml` can complete.
 
 **Option B — GitHub App (recommended, higher trust):**
 
@@ -420,5 +417,6 @@ PR. CI then runs normally and auto-merge proceeds. The `chore(release):
 version packages` PR title makes these easy to spot in the Actions
 queue.
 
-This repo currently relies on the workaround pending a PAT or App
-decision — track in [#TODO-release-bot-token](https://github.com/ziroagent/sdk-typescript/issues).
+Workflows are wired for `RELEASE_BOT_TOKEN` (fallback to `GITHUB_TOKEN`
+until the secret is added). Until then, use **Approve and run** or an
+admin merge on the version PR when CI does not auto-start.
