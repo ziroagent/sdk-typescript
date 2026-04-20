@@ -1,7 +1,50 @@
 import type { LanguageModel, ModelGenerateResult } from '@ziro-agent/core';
-import { describe, expect, it } from 'vitest';
+import { ATTR, type SpanLike, setTracer, type ZiroTracer } from '@ziro-agent/tracing';
+import { afterEach, describe, expect, it } from 'vitest';
 import { createAgent } from './agent.js';
 import { HandoffLoopError, handoffToolName } from './handoff.js';
+
+interface RecordedSpan {
+  name: string;
+  attributes: Record<string, unknown>;
+  ended: boolean;
+}
+
+function recordingTracer(): ZiroTracer & { spans: RecordedSpan[] } {
+  const spans: RecordedSpan[] = [];
+  const make = (name: string): SpanLike => {
+    const rec: RecordedSpan = { name, attributes: {}, ended: false };
+    spans.push(rec);
+    return {
+      setAttribute(k, v) {
+        rec.attributes[k] = v;
+      },
+      setAttributes(a) {
+        Object.assign(rec.attributes, a);
+      },
+      setStatus() {},
+      recordException() {},
+      addEvent() {},
+      end() {
+        rec.ended = true;
+      },
+    };
+  };
+  return {
+    spans,
+    startSpan(n) {
+      return make(n);
+    },
+    async withSpan(n, fn) {
+      const s = make(n);
+      try {
+        return await fn(s);
+      } finally {
+        s.end();
+      }
+    },
+  };
+}
 
 /** See agent.approval.test.ts for the canonical scriptedModel. */
 function scriptedModel(responses: ModelGenerateResult[]): LanguageModel {
@@ -209,6 +252,71 @@ describe('handoffs (RFC 0007)', () => {
     it('agent.name defaults to "agent" when omitted', () => {
       const a = createAgent({ model: scriptedModel([finalText('x')]) });
       expect(a.name).toBe('agent');
+    });
+  });
+
+  describe('tracing', () => {
+    afterEach(() => setTracer(null));
+
+    it('emits ziro.agent.handoff span with parent/target/depth/chain attrs', async () => {
+      const tracer = recordingTracer();
+      setTracer(tracer);
+
+      const billing = createAgent({
+        name: 'billing',
+        model: scriptedModel([finalText('refund issued')]),
+      });
+      const triage = createAgent({
+        name: 'triage',
+        handoffs: [billing],
+        maxHandoffDepth: 3,
+        model: scriptedModel([
+          toolCallStep([
+            {
+              id: 'h1',
+              name: 'transfer_to_billing',
+              args: { reason: 'user wants a refund' },
+            },
+          ]),
+          finalText('done'),
+        ]),
+      });
+
+      await triage.run({ prompt: 'I want my money back' });
+
+      const handoffSpan = tracer.spans.find((s) => s.name === 'ziro.agent.handoff');
+      expect(handoffSpan, 'expected one ziro.agent.handoff span').toBeTruthy();
+      expect(handoffSpan?.ended).toBe(true);
+      expect(handoffSpan?.attributes[ATTR.HandoffParentAgent]).toBe('triage');
+      expect(handoffSpan?.attributes[ATTR.HandoffTargetAgent]).toBe('billing');
+      expect(handoffSpan?.attributes[ATTR.HandoffDepth]).toBe(1);
+      expect(handoffSpan?.attributes[ATTR.HandoffMaxDepth]).toBe(3);
+      expect(handoffSpan?.attributes[ATTR.HandoffChain]).toBe('triage>billing');
+      expect(handoffSpan?.attributes[ATTR.HandoffReason]).toBe('user wants a refund');
+      expect(handoffSpan?.attributes[ATTR.HandoffFiltered]).toBe(false);
+    });
+
+    it('marks HandoffFiltered=true when an inputFilter is supplied', async () => {
+      const tracer = recordingTracer();
+      setTracer(tracer);
+
+      const sub = createAgent({
+        name: 'sub',
+        model: scriptedModel([finalText('ok')]),
+      });
+      const parent = createAgent({
+        name: 'parent',
+        handoffs: [{ agent: sub, inputFilter: (msgs) => msgs.slice(-1) }],
+        model: scriptedModel([
+          toolCallStep([{ id: 'h1', name: 'transfer_to_sub', args: {} }]),
+          finalText('done'),
+        ]),
+      });
+
+      await parent.run({ prompt: 'go' });
+
+      const span = tracer.spans.find((s) => s.name === 'ziro.agent.handoff');
+      expect(span?.attributes[ATTR.HandoffFiltered]).toBe(true);
     });
   });
 });

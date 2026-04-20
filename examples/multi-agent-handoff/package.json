@@ -1,0 +1,22 @@
+{
+  "name": "@ziro-agent/example-multi-agent-handoff",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx index.ts",
+    "start:traced": "tsx --import ./otel.ts index.ts"
+  },
+  "dependencies": {
+    "@ziro-agent/agent": "workspace:*",
+    "@ziro-agent/core": "workspace:*",
+    "@ziro-agent/openai": "workspace:*",
+    "@ziro-agent/tools": "workspace:*",
+    "@ziro-agent/tracing": "workspace:*",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.3"
+  }
+}

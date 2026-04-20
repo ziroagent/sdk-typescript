@@ -67,6 +67,20 @@ export const ATTR = {
   AgentResumedDecisionApprove: 'ziroagent.agent.resumed.decisions.approve',
   AgentResumedDecisionReject: 'ziroagent.agent.resumed.decisions.reject',
   AgentResumedDecisionSuspend: 'ziroagent.agent.resumed.decisions.suspend',
+
+  // Multi-agent handoff attributes — Ziro extensions; see RFC 0007 §Tracing.
+  // The span name is `ziro.agent.handoff` and wraps the sub-agent's `run`
+  // call. Parent and target names are denormalised so a query like
+  // `parent="triage" AND target="billing"` works without joining traces.
+  AgentName: 'ziroagent.agent.name',
+  HandoffParentAgent: 'ziroagent.handoff.parent.name',
+  HandoffTargetAgent: 'ziroagent.handoff.target.name',
+  HandoffDepth: 'ziroagent.handoff.depth',
+  HandoffMaxDepth: 'ziroagent.handoff.max_depth',
+  HandoffChain: 'ziroagent.handoff.chain',
+  HandoffReason: 'ziroagent.handoff.reason',
+  HandoffMessageCount: 'ziroagent.handoff.messages.count',
+  HandoffFiltered: 'ziroagent.handoff.input_filter.applied',
 } as const;
 
 /** Value type accepted by the span attribute API. */

@@ -55,6 +55,7 @@
   "dependencies": {
     "@ziro-agent/core": "workspace:*",
     "@ziro-agent/tools": "workspace:*",
+    "@ziro-agent/tracing": "workspace:*",
     "zod": "^4.3.6"
   },
   "devDependencies": {

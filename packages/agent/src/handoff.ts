@@ -19,6 +19,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import type { ChatMessage } from '@ziro-agent/core';
 import { defineTool, type Tool } from '@ziro-agent/tools';
+import { ATTR, getTracer } from '@ziro-agent/tracing';
 import { z } from 'zod';
 import type { Agent, AgentRunResult } from './agent.js';
 
@@ -141,7 +142,7 @@ export function buildHandoffTool(
     name: toolName,
     description,
     input: handoffInputSchema,
-    async execute(_args, ctx) {
+    async execute(args, ctx) {
       const frame = handoffStore.getStore();
       if (!frame) {
         // Should be unreachable: the agent loop always wraps execution
@@ -154,6 +155,8 @@ export function buildHandoffTool(
 
       const nextDepth = frame.depth + 1;
       const nextChain = [...options.parentChain, target.name];
+      const parentName = options.parentChain[options.parentChain.length - 1] ?? 'agent';
+
       if (nextDepth > options.maxHandoffDepth) {
         const loopErr = new HandoffLoopError({
           depth: nextDepth,
@@ -169,31 +172,54 @@ export function buildHandoffTool(
 
       const filtered = inputFilter ? inputFilter(frame.messages) : frame.messages;
 
-      // We deliberately do NOT forward `budget` here: the parent's
-      // BudgetSpec already lives in AsyncLocalStorage via `withBudget`,
-      // and `target.run()` will compose into the same scope through
-      // `intersectSpecs`. Re-passing it would double-wrap and silently
-      // halve `maxUsd` because of intersection semantics.
-      const subResult: AgentRunResult = await handoffStore.run(
-        {
-          messages: filtered,
-          depth: nextDepth,
-          // Crucial: nested frame keeps the SAME sink reference so
-          // depth-N writes are visible to every depth-<N agent loop.
-          loopErrorSink: frame.loopErrorSink,
-        },
-        () =>
-          target.run({
-            messages: filtered,
-            ...(ctx.abortSignal ? { abortSignal: ctx.abortSignal } : {}),
-            ...(ctx.metadata ? { metadata: ctx.metadata } : {}),
-          }),
-      );
+      // Open a `ziro.agent.handoff` span around the sub-run. Parent and
+      // target names are denormalised so a query like
+      // `parent="triage" AND target="billing"` works without joining
+      // spans. The span attributes are set BEFORE the sub-run so the
+      // exporter still sees them if the sub-run throws midway.
+      return await getTracer().withSpan(
+        'ziro.agent.handoff',
+        async (span) => {
+          span.setAttributes({
+            [ATTR.HandoffParentAgent]: parentName,
+            [ATTR.HandoffTargetAgent]: target.name,
+            [ATTR.HandoffDepth]: nextDepth,
+            [ATTR.HandoffMaxDepth]: options.maxHandoffDepth,
+            [ATTR.HandoffChain]: nextChain.join('>'),
+            [ATTR.HandoffMessageCount]: filtered.length,
+            [ATTR.HandoffFiltered]: Boolean(inputFilter),
+          });
+          const reason = (args as { reason?: string } | undefined)?.reason;
+          if (reason) span.setAttribute(ATTR.HandoffReason, reason);
 
-      // The parent agent receives the sub-agent's final text as the
-      // tool result. Step traces and tracing spans capture the full
-      // sub-run separately via `instrumentAgent()`.
-      return subResult.text;
+          // We deliberately do NOT forward `budget` here: the parent's
+          // BudgetSpec already lives in AsyncLocalStorage via `withBudget`,
+          // and `target.run()` will compose into the same scope through
+          // `intersectSpecs`. Re-passing it would double-wrap and silently
+          // halve `maxUsd` because of intersection semantics.
+          const subResult: AgentRunResult = await handoffStore.run(
+            {
+              messages: filtered,
+              depth: nextDepth,
+              // Crucial: nested frame keeps the SAME sink reference so
+              // depth-N writes are visible to every depth-<N agent loop.
+              loopErrorSink: frame.loopErrorSink,
+            },
+            () =>
+              target.run({
+                messages: filtered,
+                ...(ctx.abortSignal ? { abortSignal: ctx.abortSignal } : {}),
+                ...(ctx.metadata ? { metadata: ctx.metadata } : {}),
+              }),
+          );
+
+          // The parent agent receives the sub-agent's final text as the
+          // tool result. Step traces and tracing spans capture the full
+          // sub-run separately via `instrumentAgent()`.
+          return subResult.text;
+        },
+        { kind: 'internal' },
+      );
     },
   });
 }
