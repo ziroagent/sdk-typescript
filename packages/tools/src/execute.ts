@@ -22,6 +22,21 @@ export interface ToolExecutionResult {
   /** Wall-clock duration of `execute()` in milliseconds. */
   durationMs: number;
   /**
+   * The Zod-validated input the tool actually received (or would have
+   * received in the `reject` / `pendingApproval` paths). Captured so a
+   * downstream `AgentSnapshot` can faithfully reconstruct the original
+   * `ToolCallPart.args` on resume — without this, `seedFromSnapshot`
+   * loses argument context for `resolvedSiblings`.
+   *
+   * Optional for backwards compatibility: callers / serialised v1
+   * snapshots that lack the field continue to work (resume falls back
+   * to `undefined`, matching pre-v0.1.9 behaviour).
+   *
+   * Added in v0.1.9 alongside `AgentSnapshot.version: 2` per
+   * RFC 0004 §v0.1.9 trust-recovery and RFC 0002 amend.
+   */
+  parsedArgs?: unknown;
+  /**
    * Set when the tool was terminated by a `BudgetExceededError`. Useful for
    * the agent loop to distinguish a budget halt from an arbitrary runtime
    * error (the former should usually stop the run; the latter may be
@@ -119,12 +134,16 @@ export async function executeToolCalls(options: ExecuteOptions): Promise<ToolExe
     try {
       parsedInput = tool.input.parse(call.args);
     } catch (err) {
+      // No `parsedArgs` here — input validation failed, so we surface the
+      // raw `call.args` instead so a snapshot can still echo what the
+      // model actually emitted.
       return {
         toolCallId: call.toolCallId,
         toolName: call.toolName,
         result: serializeError(err),
         isError: true,
         durationMs: performance.now() - start,
+        parsedArgs: call.args,
       };
     }
 
@@ -165,6 +184,7 @@ export async function executeToolCalls(options: ExecuteOptions): Promise<ToolExe
           result: null,
           isError: false,
           durationMs: performance.now() - start,
+          parsedArgs: parsedInput,
           pendingApproval: pending,
         };
       }
@@ -181,6 +201,7 @@ export async function executeToolCalls(options: ExecuteOptions): Promise<ToolExe
           result: serializeError(err),
           isError: true,
           durationMs: performance.now() - start,
+          parsedArgs: parsedInput,
         };
       }
       fireApprovalResolved(req, decision);
@@ -195,6 +216,7 @@ export async function executeToolCalls(options: ExecuteOptions): Promise<ToolExe
           },
           isError: true,
           durationMs: performance.now() - start,
+          parsedArgs: parsedInput,
         };
       }
       if (decision.decision === 'suspend') {
@@ -211,6 +233,7 @@ export async function executeToolCalls(options: ExecuteOptions): Promise<ToolExe
           result: null,
           isError: false,
           durationMs: performance.now() - start,
+          parsedArgs: parsedInput,
           pendingApproval: pending,
         };
       }
@@ -226,6 +249,7 @@ export async function executeToolCalls(options: ExecuteOptions): Promise<ToolExe
             result: serializeError(err),
             isError: true,
             durationMs: performance.now() - start,
+            parsedArgs: parsedInput,
           };
         }
       }
@@ -254,6 +278,7 @@ export async function executeToolCalls(options: ExecuteOptions): Promise<ToolExe
         result: validated,
         isError: false,
         durationMs: performance.now() - start,
+        parsedArgs: approvedInput,
       };
     } catch (err) {
       if (err instanceof BudgetExceededError) {
@@ -263,6 +288,7 @@ export async function executeToolCalls(options: ExecuteOptions): Promise<ToolExe
           result: serializeError(err),
           isError: true,
           durationMs: performance.now() - start,
+          parsedArgs: approvedInput,
           budgetExceeded: {
             kind: err.kind,
             limit: err.limit,
@@ -277,6 +303,7 @@ export async function executeToolCalls(options: ExecuteOptions): Promise<ToolExe
         result: serializeError(err),
         isError: true,
         durationMs: performance.now() - start,
+        parsedArgs: approvedInput,
       };
     }
   });

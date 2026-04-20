@@ -3,7 +3,13 @@ import { defineTool } from '@ziro-agent/tools';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { createAgent } from './agent.js';
-import { AgentSuspendedError, isAgentSuspendedError } from './snapshot.js';
+import {
+  type AgentSnapshot,
+  AgentSuspendedError,
+  CURRENT_SNAPSHOT_VERSION,
+  isAgentSuspendedError,
+  migrateSnapshot,
+} from './snapshot.js';
 
 /**
  * Scripted model: returns the next response on each `.generate()`. Tool
@@ -340,5 +346,121 @@ describe('createAgent — HITL suspend/resume (RFC 0002)', () => {
     // model sees a complete tool message.
     expect(result.steps[0]?.toolResults).toHaveLength(2);
     expect(result.text).toBe('all done');
+  });
+
+  // ----------------------------------------------------------------
+  // Snapshot v2 (RFC 0004 §v0.1.9 trust-recovery / RFC 0002 amend)
+  // ----------------------------------------------------------------
+  describe('snapshot v2 — parsedArgs on resolvedSiblings + migrateSnapshot', () => {
+    it('emits version=2 snapshots with parsedArgs populated for every resolvedSibling', async () => {
+      const cheap = defineTool({
+        name: 'cheap',
+        input: z.object({ q: z.string() }),
+        execute: ({ q }) => `cheap_done:${q}`,
+      });
+      const dangerous = defineTool({
+        name: 'dangerous',
+        input: z.object({ amount: z.number() }),
+        requiresApproval: true,
+        execute: ({ amount }) => `dangerous_done:${amount}`,
+      });
+      const agent = createAgent({
+        tools: { cheap, dangerous },
+        model: scriptedModel([
+          toolCallStep([
+            { id: 'c1', name: 'cheap', args: { q: 'hello' } },
+            { id: 'c2', name: 'dangerous', args: { amount: 42 } },
+          ]),
+          finalText('done'),
+        ]),
+      });
+
+      let snapshot: AgentSnapshot | undefined;
+      try {
+        await agent.run({ prompt: 'go' });
+      } catch (err) {
+        if (err instanceof AgentSuspendedError) snapshot = err.snapshot;
+      }
+      if (!snapshot) throw new Error('expected suspension');
+
+      expect(snapshot.version).toBe(CURRENT_SNAPSHOT_VERSION);
+      expect(snapshot.version).toBe(2);
+      expect(snapshot.resolvedSiblings).toHaveLength(1);
+      expect(snapshot.resolvedSiblings[0]?.parsedArgs).toEqual({ q: 'hello' });
+
+      // Resume reconstructs the synthesised tool-call step with the
+      // original validated args (not undefined).
+      const result = await agent.resume(snapshot, {
+        decisions: { c2: { decision: 'approve' } },
+      });
+      const synth = result.steps[0];
+      const cheapCall = synth?.toolCalls.find((c) => c.toolCallId === 'c1');
+      expect(cheapCall?.args).toEqual({ q: 'hello' });
+      const dangerousCall = synth?.toolCalls.find((c) => c.toolCallId === 'c2');
+      // dangerous was approved during resume — its synthesised arg now
+      // also flows from parsedInput on the PendingApproval.
+      expect(dangerousCall?.args).toEqual({ amount: 42 });
+    });
+
+    it('migrateSnapshot upgrades a v1 snapshot to v2 and resume tolerates missing parsedArgs', async () => {
+      const cheap = defineTool({
+        name: 'cheap',
+        input: z.object({}),
+        execute: () => 'cheap_done',
+      });
+      const dangerous = defineTool({
+        name: 'dangerous',
+        input: z.object({}),
+        requiresApproval: true,
+        execute: () => 'dangerous_done',
+      });
+      const agent = createAgent({
+        tools: { cheap, dangerous },
+        model: scriptedModel([
+          toolCallStep([
+            { id: 'c1', name: 'cheap', args: {} },
+            { id: 'c2', name: 'dangerous', args: {} },
+          ]),
+          finalText('done'),
+        ]),
+      });
+
+      let snapshot: AgentSnapshot | undefined;
+      try {
+        await agent.run({ prompt: 'go' });
+      } catch (err) {
+        if (err instanceof AgentSuspendedError) snapshot = err.snapshot;
+      }
+      if (!snapshot) throw new Error('expected suspension');
+
+      // Synthesise a v1-shaped snapshot the way a pre-v0.1.9 client
+      // would have produced (no parsedArgs on resolved siblings).
+      const v1: AgentSnapshot = {
+        ...snapshot,
+        version: 1,
+        resolvedSiblings: snapshot.resolvedSiblings.map((r) => {
+          const { parsedArgs: _parsedArgs, ...rest } = r;
+          return rest;
+        }),
+      };
+      expect(v1.resolvedSiblings[0]).not.toHaveProperty('parsedArgs');
+
+      const migrated = migrateSnapshot(v1);
+      expect(migrated.version).toBe(2);
+      // Migration is conservative: parsedArgs stays undefined for v1
+      // siblings (we cannot invent the missing data).
+      expect(migrated.resolvedSiblings[0]?.parsedArgs).toBeUndefined();
+
+      // Resume must still succeed (falls back to undefined args).
+      const result = await agent.resume(v1, {
+        decisions: { c2: { decision: 'approve' } },
+      });
+      expect(result.text).toBe('done');
+    });
+
+    it('migrateSnapshot rejects an unknown future version', () => {
+      const future = { version: 99 } as unknown as AgentSnapshot;
+      expect(() => migrateSnapshot(future)).toThrow(/version 99/);
+    });
   });
 });

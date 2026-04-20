@@ -154,7 +154,7 @@ ziro eval ./evals/*.ts --gate 0.95     # CI gate: fail merge if score < 95%
 | [`@ziro-agent/core`](packages/core) | shipped (v0.1.x) | Model interface, `generateText`, `streamText`, budget & cache primitives |
 | [`@ziro-agent/openai`](packages/providers-openai) | shipped (v0.1.x) | OpenAI provider |
 | [`@ziro-agent/anthropic`](packages/providers-anthropic) | shipped (v0.1.x) | Anthropic provider with explicit prompt-cache control |
-| `@ziro-agent/ollama` | planned (v0.1.9) | Local-first provider (sovereign mode) — first Sovereign-pillar package |
+| [`@ziro-agent/ollama`](packages/providers-ollama) | shipped (v0.1.9) | Local-first provider (sovereign mode) — first Sovereign-pillar package |
 | `@ziro-agent/google` | planned (v0.2) | Google Gemini provider |
 | `@ziro-agent/groq` | planned (v0.2) | Groq provider (fastest inference benchmark) |
 | [`@ziro-agent/tools`](packages/tools) | shipped (v0.1.x) | `defineTool`, parallel calls, JSON schema from Zod |
@@ -166,7 +166,8 @@ ziro eval ./evals/*.ts --gate 0.95     # CI gate: fail merge if score < 95%
 | [`@ziro-agent/tracing`](packages/tracing) | shipped (v0.1.x) | OpenTelemetry instrumentation |
 | [`@ziro-agent/cli`](packages/cli) | shipped (v0.1.x) | `ziroagent` CLI: `chat`, `run`, `eval`, `mcp`, `playground` |
 | `@ziro-agent/middleware` | planned (v0.2, [RFC 0005](rfcs/0005-language-model-middleware.md)) | `LanguageModelMiddleware`: retry, cache, redactPII, blockPromptInjection |
-| `@ziro-agent/checkpoint-memory` / `-postgres` / `-redis` | planned (v0.2, [RFC 0006](rfcs/0006-checkpointer.md)) | `Checkpointer` adapters for durable agent state |
+| [`@ziro-agent/checkpoint-memory`](packages/checkpoint-memory) | shipped (v0.1.9, [RFC 0006](rfcs/0006-checkpointer.md)) | Reference `Checkpointer` adapter (in-memory) — bootstrap for durable execution |
+| `@ziro-agent/checkpoint-postgres` / `-redis` | planned (v0.2, [RFC 0006](rfcs/0006-checkpointer.md)) | Production `Checkpointer` adapters for durable agent state |
 | `@ziro-agent/gateway` | planned (v0.2) | Routing + fallback + virtual keys (cost tracking via `@ziro-agent/middleware`) |
 | `@ziro-agent/temporal` | planned (v0.2) | Durable runtime adapter (Temporal) |
 | `@ziro-agent/inngest` | planned (v0.2) | Durable runtime adapter (Inngest) — TS-first, ships before Temporal |

@@ -23,16 +23,14 @@ interface BlogPage {
 }
 
 export default function BlogIndex(): ReactNode {
-  const posts = (blogSource.getPages() as unknown as BlogPage[])
-    .slice()
-    .sort((a, b) => {
-      const da = a.data.date;
-      const db = b.data.date;
-      if (!da && !db) return 0;
-      if (!da) return 1;
-      if (!db) return -1;
-      return new Date(db).getTime() - new Date(da).getTime();
-    });
+  const posts = (blogSource.getPages() as unknown as BlogPage[]).slice().sort((a, b) => {
+    const da = a.data.date;
+    const db = b.data.date;
+    if (!da && !db) return 0;
+    if (!da) return 1;
+    if (!db) return -1;
+    return new Date(db).getTime() - new Date(da).getTime();
+  });
 
   return (
     <HomeLayout {...baseOptions}>

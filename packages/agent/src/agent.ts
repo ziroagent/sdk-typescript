@@ -24,7 +24,13 @@ import {
   type ToolExecutionResult,
   toolsToModelDefinitions,
 } from '@ziro-agent/tools';
-import { type AgentResumeOptions, type AgentSnapshot, AgentSuspendedError } from './snapshot.js';
+import {
+  type AgentResumeOptions,
+  type AgentSnapshot,
+  AgentSuspendedError,
+  CURRENT_SNAPSHOT_VERSION,
+  migrateSnapshot,
+} from './snapshot.js';
 import type { StopWhen } from './stop-when.js';
 import type {
   AgentBudgetExceededInfo,
@@ -180,9 +186,16 @@ export function createAgent(options: CreateAgentOptions): Agent {
     },
 
     async resume(
-      snapshot: AgentSnapshot,
+      rawSnapshot: AgentSnapshot,
       resumeOptions: AgentResumeOptions,
     ): Promise<AgentRunResult> {
+      // Forward-migrate so the rest of this method only deals with the
+      // current snapshot shape. v1 snapshots persisted before v0.1.9
+      // resume transparently (their `resolvedSiblings[].parsedArgs` is
+      // simply undefined; `seedFromSnapshot` falls back to the pre-v2
+      // behaviour for those entries).
+      const snapshot = migrateSnapshot(rawSnapshot);
+
       // Build a `runOptions`-shaped object so the rest of the loop sees
       // a uniform interface. We keep the snapshot-derived budget as a
       // fallback if the caller didn't re-supply one.
@@ -412,7 +425,7 @@ export function createAgent(options: CreateAgentOptions): Agent {
         if (pending.length > 0) {
           const resolvedSiblings = toolResults.filter((r) => !r.pendingApproval);
           const snap: AgentSnapshot = {
-            version: 1,
+            version: CURRENT_SNAPSHOT_VERSION,
             __ziro_snapshot__: true,
             ...(ro.agentId !== undefined ? { agentId: ro.agentId } : {}),
             createdAt: new Date().toISOString(),
@@ -524,11 +537,15 @@ export function createAgent(options: CreateAgentOptions): Agent {
     // Reconstruct the toolCalls array from the snapshot's pending
     // approvals + the resolvedSiblings that already ran. Order: matches
     // the order of `resolvedResults`.
+    //
+    // v2: each ToolExecutionResult carries `parsedArgs` so we can echo
+    // the validated input the tool actually received. v1 snapshots lack
+    // it — `args` falls back to undefined (pre-v0.1.9 behaviour).
     const toolCalls: ToolCallPart[] = resolvedResults.map((r) => ({
       type: 'tool-call' as const,
       toolCallId: r.toolCallId,
       toolName: r.toolName,
-      args: undefined as unknown,
+      args: r.parsedArgs as unknown,
     }));
     const stepCap =
       snapshot.budgetSpec?.maxSteps !== undefined
@@ -674,6 +691,7 @@ async function applyDecisionToPending(
       },
       isError: true,
       durationMs: performance.now() - start,
+      parsedArgs: pending.parsedInput,
     };
   }
 
@@ -684,6 +702,7 @@ async function applyDecisionToPending(
       result: null,
       isError: false,
       durationMs: performance.now() - start,
+      parsedArgs: pending.parsedInput,
       pendingApproval: pending,
     };
   }
@@ -701,6 +720,7 @@ async function applyDecisionToPending(
         result: serializeError(err),
         isError: true,
         durationMs: performance.now() - start,
+        parsedArgs: pending.parsedInput,
       };
     }
   }
@@ -724,6 +744,7 @@ async function applyDecisionToPending(
       result: out,
       isError: false,
       durationMs: performance.now() - start,
+      parsedArgs: approvedInput,
     };
   } catch (err) {
     if (err instanceof BudgetExceededError) {
@@ -733,6 +754,7 @@ async function applyDecisionToPending(
         result: serializeError(err),
         isError: true,
         durationMs: performance.now() - start,
+        parsedArgs: approvedInput,
         budgetExceeded: {
           kind: err.kind,
           limit: err.limit,
@@ -747,6 +769,7 @@ async function applyDecisionToPending(
       result: serializeError(err),
       isError: true,
       durationMs: performance.now() - start,
+      parsedArgs: approvedInput,
     };
   }
 }
