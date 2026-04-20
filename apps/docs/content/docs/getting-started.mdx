@@ -5,15 +5,18 @@ description: Scaffold a new app and run your first generation in under a minute.
 
 ## 1. Scaffold
 
-Use the Ziro CLI to bootstrap a starter project:
+Use the create-script to bootstrap a starter project:
 
 ```bash
-pnpm dlx @ziro-agent/cli init my-agent
+npm create ziro@latest my-agent
 cd my-agent
 cp .env.example .env  # add your OPENAI_API_KEY
 pnpm install
 pnpm start
 ```
+
+Equivalent invocations: `pnpm create ziro@latest my-agent`,
+`yarn create ziro my-agent`, `bun create ziro my-agent`.
 
 ## 2. Generate text
 

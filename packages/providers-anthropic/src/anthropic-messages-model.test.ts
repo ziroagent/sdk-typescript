@@ -145,8 +145,10 @@ describe('Anthropic messages model — stream', () => {
 
 describe('Anthropic messages model — estimateCost', () => {
   it('returns sensible bounds for a known model id', async () => {
+    // claude-sonnet-4 is verified in the pricing table (v0.1.9 trust-recovery
+    // marked claude-haiku-4-5 / claude-sonnet-4-6 as `unverified: true`).
     const anthropic = createAnthropic({ apiKey: 'test' });
-    const model = anthropic('claude-haiku-4-5');
+    const model = anthropic('claude-sonnet-4');
     if (!model.estimateCost) throw new Error('estimateCost should be defined');
     const r = await model.estimateCost({
       messages: [{ role: 'user', content: [{ type: 'text', text: 'hello world' }] }],
@@ -160,12 +162,25 @@ describe('Anthropic messages model — estimateCost', () => {
 
   it('resolves date-stamped ids by stripping the date suffix', async () => {
     const anthropic = createAnthropic({ apiKey: 'test' });
-    const model = anthropic('claude-sonnet-4-6-20260101');
+    const model = anthropic('claude-sonnet-4-20260101');
     if (!model.estimateCost) throw new Error('estimateCost should be defined');
     const r = await model.estimateCost({
       messages: [{ role: 'user', content: [{ type: 'text', text: 'x' }] }],
     });
     expect(r.pricingAvailable).toBe(true);
+  });
+
+  it('returns pricingAvailable=false for an unverified speculative id by default', async () => {
+    // claude-sonnet-4-6 carries `unverified: true` in the pricing table since
+    // v0.1.9 (RFC 0004 §trust-recovery). Pre-flight enforcement must NOT
+    // trust the speculative rate.
+    const anthropic = createAnthropic({ apiKey: 'test' });
+    const model = anthropic('claude-sonnet-4-6');
+    if (!model.estimateCost) throw new Error('estimateCost should be defined');
+    const r = await model.estimateCost({
+      messages: [{ role: 'user', content: [{ type: 'text', text: 'x' }] }],
+    });
+    expect(r.pricingAvailable).toBe(false);
   });
 
   it('returns pricingAvailable=false for unknown id', async () => {

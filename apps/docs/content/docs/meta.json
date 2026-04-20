@@ -3,11 +3,20 @@
   "pages": [
     "index",
     "getting-started",
+    "---Core---",
     "agents",
     "tools",
     "memory",
     "workflow",
     "tracing",
+    "---Production safety---",
+    "budget-guard",
+    "hitl",
+    "evals",
+    "errors",
+    "---Reference---",
+    "comparison",
+    "migration",
     "api-reference"
   ]
 }

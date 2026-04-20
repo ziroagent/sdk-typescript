@@ -1,0 +1,180 @@
+---
+title: Budget Guard
+description: Throw before you burn cash — pre-flight cost enforcement that wraps every LLM call, tool call, and agent step.
+---
+
+Budget Guard (RFC 0001) is the first of Ziro's four production-safety pillars.
+It throws **`BudgetExceededError` before** any call that would push usage past
+a limit — no after-the-fact "we noticed you spent $12,400" notifications.
+
+> **Status.** Shipped in `@ziro-agent/core` v0.1.x. Unit-tested across
+> `generateText`, `streamText`, the agent loop, and HITL resume. See
+> [`packages/core/src/budget`](https://github.com/ziroagent/sdk-typescript/tree/main/packages/core/src/budget)
+> for the source of truth.
+
+## Why it exists
+
+The single most-cited reason agent projects fail in production is cost
+runaway: a tool loop that never converges, a `while(true)` retry on a 429,
+or a model that ignores `max_tokens`. Budget Guard makes it physically
+impossible for a Ziro call to exceed a stated USD / token / step / duration
+budget without throwing first.
+
+## Quick start
+
+```ts
+import { generateText } from '@ziro-agent/core';
+import { openai } from '@ziro-agent/openai';
+
+const { text, usage, costUsd } = await generateText({
+  model: openai('gpt-4o-mini'),
+  prompt: 'Summarise this article in three bullets.',
+  budget: { maxUsd: 0.05, maxTokens: 1_000 },
+});
+```
+
+If the **estimated** cost (input chars + reserved output tokens × pricing
+table) exceeds `maxUsd`, the call throws `BudgetExceededError` with
+`preflight: true` *before* any HTTP request goes out. If pricing is unknown
+for the model, the SDK falls back to a `chars / 4` heuristic — see
+[Pricing data](#pricing-data) below.
+
+## Scoped budgets — `withBudget`
+
+Budgets compose. A nested `withBudget` scope runs under the **intersection**
+of its own spec and every parent — tighter limits always win.
+
+```ts
+import { withBudget } from '@ziro-agent/core';
+
+await withBudget({ maxUsd: 1.0, maxSteps: 50 }, async () => {
+  // every call inside this callback sees the outer $1.00 / 50-step ceiling
+  await agent.run({ prompt: '...' });
+
+  await withBudget({ maxUsd: 0.10 }, async () => {
+    // tightened to $0.10 (still capped at 50 steps from the parent)
+    await generateText({ model, prompt: '...' });
+  });
+});
+```
+
+Scopes propagate via `AsyncLocalStorage`, so they survive `await`
+boundaries without you threading a context object.
+
+## All `BudgetSpec` fields
+
+| Field            | Hard limit on                      |
+| ---------------- | ---------------------------------- |
+| `maxUsd`         | Best-effort USD spent in scope     |
+| `maxTokens`      | Input + output + reasoning tokens  |
+| `maxLlmCalls`    | Number of LLM calls                |
+| `maxSteps`       | Agent steps (only via `agent.run`) |
+| `maxDurationMs`  | Wall-clock ms since scope opened   |
+| `warnAt`         | Soft thresholds — emit warnings, never throw |
+| `onExceed`       | `'throw'` (default) · `'truncate'` · function-form resolver |
+
+### `onExceed: 'truncate'`
+
+Only meaningful inside `agent.run`: the loop returns whatever was generated
+so far plus a `budgetExceeded` summary on the result. At the
+`generateText` / `streamText` layer this currently behaves as `'throw'`.
+
+### `onExceed: function` — fallback to a cheaper model
+
+```ts
+await generateText({
+  model: openai('gpt-4o'),
+  prompt,
+  budget: {
+    maxUsd: 0.05,
+    onExceed: async () => ({
+      handled: true,
+      replacement: await generateText({
+        model: openai('gpt-4o-mini'),
+        prompt,
+      }),
+    }),
+  },
+});
+```
+
+The resolver is responsible for returning a shape compatible with the
+calling function's result type. The SDK does **not** validate this at
+runtime today — type-parameterised `BudgetResolution<T>` is planned for v0.2.
+
+## Catching `BudgetExceededError`
+
+Always check via the brand-safe helper, not `instanceof` (errors may cross
+realms when persisted into a snapshot or thrown from a worker):
+
+```ts
+import { isZiroError } from '@ziro-agent/core';
+
+try {
+  await generateText({ model, prompt, budget: { maxUsd: 0.01 } });
+} catch (err) {
+  if (isZiroError(err) && err.code === 'budget_exceeded') {
+    console.log({
+      kind: err.kind,           // 'usd' | 'tokens' | 'llmCalls' | 'steps' | 'duration'
+      limit: err.limit,
+      observed: err.observed,
+      preflight: err.preflight, // true = thrown BEFORE any HTTP call
+      partialUsage: err.partialUsage,
+    });
+  }
+  throw err;
+}
+```
+
+## Resuming with preserved usage
+
+When an HITL approval suspends an agent (RFC 0002), the in-flight
+`BudgetUsage` is captured into the snapshot and re-applied on `agent.resume`.
+A multi-day pause cannot silently bypass `maxUsd`.
+
+```ts
+const snapshot = err.snapshot;
+// hours later, after a human approves the pending tool call:
+await agent.resume(snapshot, { decisions: [...] });
+// continues with the same budget scope, same accumulated usage
+```
+
+## Observability
+
+```ts
+import { setBudgetObserver } from '@ziro-agent/core';
+
+setBudgetObserver({
+  onScopeOpen: ({ scopeId, spec }) => metrics.gauge('budget.open', { scopeId }),
+  onScopeClose: ({ scopeId, used }) => metrics.observe('budget.usd', used.usd),
+  onWarn: ({ scopeId, threshold, used }) => pager.warn({ scopeId, threshold }),
+  onExceed: ({ scopeId, error }) => pager.error({ scopeId, error }),
+});
+```
+
+Tracing nests automatically: every LLM call span carries `ziro.budget.scope_id`,
+`ziro.budget.usd_used`, and (on throw) `ziro.budget.exceeded_kind`.
+
+## Pricing data
+
+Cost estimates use the pricing table at
+[`packages/core/src/pricing/data.ts`](https://github.com/ziroagent/sdk-typescript/blob/main/packages/core/src/pricing/data.ts),
+hand-maintained and weekly-checked by `pricing-drift.yml` in CI.
+
+- Verified entries (real provider IDs): `gpt-4o`, `gpt-4o-mini`,
+  `claude-opus-4`, `claude-opus-4-1`, `claude-sonnet-4`.
+- `unverified: true` entries (speculative / pre-release IDs): excluded from
+  pre-flight USD enforcement unless you opt in with
+  `getPricing(provider, modelId, { allowUnverified: true })`.
+- Unknown models: `getPricing` returns `undefined`; Budget Guard falls back
+  to the `chars / 4` heuristic for token estimation and skips USD pre-flight.
+
+## What it deliberately doesn't do
+
+- **No silent retry suppression.** A budget hit is loud — your CI fails,
+  your logs scream, your pager goes off if you wired one.
+- **No per-tenant chargeback engine.** That ships with
+  [`@ziro-agent/middleware`](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0005-language-model-middleware.md)
+  in v0.2.
+- **No cloud component.** Budget Guard is 100% in-process; nothing leaves
+  your runtime.

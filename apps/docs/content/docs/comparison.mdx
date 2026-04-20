@@ -1,0 +1,130 @@
+---
+title: Comparison
+description: Honest, blunt comparison vs. Vercel AI SDK, Mastra, LangGraph TS, and CrewAI / AutoGen — including where Ziro is the wrong choice.
+---
+
+> This page is the docs-site mirror of [`POSITIONING.md`](https://github.com/ziroagent/sdk-typescript/blob/main/POSITIONING.md)
+> in the repo root. The repo file is the source of truth; this page is
+> kept in sync per the v0.1.9 trust-recovery milestone (RFC 0004).
+
+## The one-line pitch
+
+**Ziro is the TypeScript agent runtime that survives crashes, throttles
+costs, and keeps audit trails — so your agent doesn't become the next
+$50K incident.**
+
+If your agent only ever runs for 10 seconds, calls one tool, and costs
+$0.001, you do not need Ziro — `fetch()` and `JSON.parse()` are fine.
+Ziro starts paying off the moment your agent runs for minutes/hours,
+calls real tools that move money or data, has a budget that matters, or
+is subject to compliance.
+
+## The market gap we target
+
+The 2026 enterprise agent stack has six layers:
+
+```
+6. Agent ↔ UI protocol           (AG-UI, custom SSE)
+5. Observability + Evals + Guards  (Langfuse, Braintrust, LangSmith)
+4. Durable execution               (Temporal, Inngest, Restate)
+3. Agent orchestration             (LangGraph, Mastra, Vercel AI SDK)
+2. AI / Agent gateway              (Kong, agentgateway, LiteLLM)
+1. Model + Tools (MCP)             (provider SDKs, MCP servers)
+```
+
+| Layer | Vercel AI SDK | Mastra | LangGraph | **Ziro** |
+| --- | --- | --- | --- | --- |
+| 1. Model + Tools + MCP | Strong | Strong | Python-first | Yes |
+| 2. Gateway | No | Basic | No | **target** |
+| 3. Orchestration | Basic | Good | Best | Yes |
+| 4. Durable Execution | No | Basic | via Cloud | **target** |
+| 5. Obs + Evals + Guards | DevTools only | Good | LangSmith | Yes |
+| 6. AG-UI | Custom | No | No | **target** |
+
+**Ziro's bet**: nobody in the TypeScript ecosystem covers Layer 2 + 4 + 6
+with first-class primitives in a single coherent SDK. That's the gap.
+
+## vs. Vercel AI SDK
+
+| | Vercel AI SDK | Ziro |
+| --- | --- | --- |
+| **Best at** | App/product SDK, React UI streaming, simple agent flows | Production-safe agents, durable workflows, sovereign deployment |
+| **Provider coverage** | Excellent (20+) | Focused (5-6, deep integration) |
+| **Type-safety** | Good | Equivalent (both use Zod) |
+| **Durable execution** | None | First-class (Temporal/Inngest adapters in v0.2) |
+| **Cost guardrails** | Manual | Built-in `BudgetExceededError` |
+| **MCP** | Client only (v6) | Server + Client (v0.2 plan) |
+| **Eval framework** | None | `defineEval` shipped (v0.1.x) |
+| **Sovereign mode** | Cloud-leaning | First-class Ollama/vLLM |
+| **Maintainer** | Vercel (commercial) | Independent OSS |
+
+**Use Vercel AI SDK if** you're building a Next.js chat app, you live
+inside the Vercel ecosystem, your agent is short-lived and stateless, you
+don't need durable execution.
+
+**Use Ziro if** your agent runs for minutes-to-days, costs matter, you
+need HITL approvals that survive deploys, you have compliance
+requirements, or you need to run on-prem.
+
+## vs. Mastra
+
+| | Mastra | Ziro |
+| --- | --- | --- |
+| **Best at** | Higher-level batteries-included framework, RAG + memory + workflow | Lower-level production primitives, durable + sovereign |
+| **Funding** | $13M YC W25 | Bootstrapped / community |
+| **Opinionated stack** | Yes (Mastra-way) | No (BYO Temporal, Langfuse, etc.) |
+| **Durable execution** | Basic in-process | Temporal/Inngest adapters (v0.2) |
+| **Sovereign / on-prem** | Cloud-first | First-class |
+| **MCP server** | Client-focused | Server + Client (v0.2) |
+| **Visual UI** | Mastra Playground (impressive) | Ziro Playground (focused on traces + evals) |
+
+**Use Mastra if** you want a fully assembled, opinionated agent stack
+with their playground, and cloud-first is fine.
+
+**Use Ziro if** you want unopinionated primitives you can swap (Temporal
+vs Inngest, Langfuse vs Braintrust, Ollama vs OpenAI), with sovereign
+deployment as a first-class concern.
+
+## vs. LangGraph (TS)
+
+| | LangGraph TS | Ziro |
+| --- | --- | --- |
+| **Best at** | Explicit graph state machines, stateful long-running agents | TypeScript-native DX, MCP-native, sovereign |
+| **Learning curve** | Steepest in the space | Closer to Vercel AI SDK |
+| **TS ergonomics** | Python-port feel | TS-native, strict types |
+| **Durable execution** | LangGraph Cloud (paid) | Temporal/Inngest (OSS adapters) |
+| **Ecosystem** | Massive (LangChain) | Focused, MCP-first |
+
+**Use LangGraph if** you need maximum explicit control over a complex
+graph, you're already in the LangChain ecosystem, you're OK paying for
+LangGraph Cloud for durability.
+
+**Use Ziro if** you want TS-native ergonomics, MCP-first distribution,
+and you'd rather use Temporal/Inngest directly than a proprietary cloud.
+
+## vs. CrewAI / AutoGen
+
+These are Python-first and role-play-multi-agent-focused. Ziro is not
+trying to compete here. If your problem is "marketing agent + writer
+agent + critic agent talking to each other," CrewAI is fine. Ziro is for
+"one agent that has to refund a real customer and not lose state when
+the box reboots."
+
+## When Ziro is the wrong choice (today)
+
+- **You need a 1-shot LLM call in a script.** Use `openai` SDK directly.
+- **You're prototyping in a Jupyter notebook.** Use Python + Pydantic AI.
+- **You need 30+ providers.** Vercel AI SDK has wider coverage today.
+- **You need a polished consumer chat UI out-of-the-box.** Use Vercel
+  AI SDK + Next.js starters.
+- **You need role-play multi-agent (CrewAI-style).** Wait for v0.4 or
+  use CrewAI.
+- **You can't tolerate v0.x churn.** Wait for v1.0 — see
+  [Migration policy](/docs/migration).
+
+## How to challenge this positioning
+
+If you read this and disagree, open an issue with the `positioning`
+label or a PR to [`POSITIONING.md`](https://github.com/ziroagent/sdk-typescript/blob/main/POSITIONING.md).
+Positioning is a living document. We update it every minor release based
+on what design partners and the community tell us we got wrong.

@@ -11,6 +11,11 @@ export const baseOptions: BaseLayoutProps = {
       active: 'nested-url',
     },
     {
+      text: 'Blog',
+      url: '/blog',
+      active: 'nested-url',
+    },
+    {
       text: 'GitHub',
       url: 'https://github.com/ziroagent/sdk-typescript',
       external: true,

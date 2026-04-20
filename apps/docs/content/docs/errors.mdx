@@ -1,0 +1,228 @@
+---
+title: Errors
+description: Every Ziro error class, its brand check, the recovery pattern, and why instanceof is unsafe across realms.
+---
+
+Ziro ships a small, hand-curated error hierarchy in `@ziro-agent/core`.
+Every error extends `ZiroError`, carries a stable string `code`, and is
+**branded** with a non-enumerable symbol so identification survives
+JSON-serialisation, worker boundaries, and cross-realm execution.
+
+> **Always check via `isZiroError(err)`** (or the per-class brand helpers
+> shown below). `instanceof ZiroError` works only when both sides share
+> the exact same module instance — it silently breaks under workers, vm
+> contexts, multi-version dependency trees, and snapshot persistence.
+
+## The hierarchy
+
+```
+ZiroError                              code: ZiroError.code (string)
+├── APICallError                       code: 'api_call_error'
+├── BudgetExceededError                code: 'budget_exceeded'        [pkg: core/budget]
+├── InvalidPromptError                 code: 'invalid_prompt'
+├── InvalidArgumentError               code: 'invalid_argument'
+├── NoTextGeneratedError               code: 'no_text_generated'
+├── JSONParseError                     code: 'json_parse_error'
+└── TimeoutError                       code: 'timeout'
+
+AgentSuspendedError                    [pkg: agent — separate brand __ziro_suspended__]
+```
+
+## Brand-safe identification
+
+```ts
+import { isZiroError } from '@ziro-agent/core';
+import { isAgentSuspendedError } from '@ziro-agent/agent';
+
+try {
+  await agent.run({ prompt });
+} catch (err) {
+  if (isAgentSuspendedError(err)) {
+    // err.snapshot is JSON-safe; persist and resume later (see HITL docs).
+    return persist(err.snapshot);
+  }
+
+  if (!isZiroError(err)) throw err;
+
+  switch (err.code) {
+    case 'budget_exceeded':
+      return fallbackToCheaperModel();
+    case 'api_call_error':
+      return err.isRetryable ? retryWithBackoff() : surfaceToUser(err);
+    case 'timeout':
+      return surfaceToUser(`Took too long (${err.timeoutMs}ms)`);
+    default:
+      throw err;
+  }
+}
+```
+
+## Per-class reference
+
+### `ZiroError`
+
+Base class. Every Ziro error has:
+
+| Field    | Type    | Notes                                         |
+| -------- | ------- | --------------------------------------------- |
+| `name`   | string  | Defaults to subclass name                     |
+| `code`   | string  | Stable identifier — switch on this, not on `name` |
+| `cause`  | unknown | Preserved when wrapping a lower-level error   |
+| (brand)  | true    | Non-enumerable `__ziro_error__` symbol — `isZiroError` checks this |
+
+### `APICallError`
+
+Thrown when a model provider returns an HTTP error.
+
+```ts
+{
+  code: 'api_call_error',
+  statusCode?: number,        // 429, 500, ...
+  url?: string,
+  responseBody?: string,
+  isRetryable: boolean,       // true for 408, 409, 429, 5xx; false otherwise
+}
+```
+
+`isRetryable` is the official integration hook — middleware (RFC 0005)
+and any handwritten retry loop should consult it instead of pattern-
+matching status codes.
+
+### `BudgetExceededError`
+
+```ts
+{
+  code: 'budget_exceeded',
+  kind: 'usd' | 'tokens' | 'llmCalls' | 'steps' | 'duration',
+  limit: number,
+  observed: number,
+  scopeId: string,
+  partialUsage: BudgetUsage,
+  preflight: boolean,         // true = thrown BEFORE any HTTP call (no overspend)
+}
+```
+
+See [Budget Guard](/docs/budget-guard) for full semantics. `preflight: false`
+is rare — only when a single response over-shot its own preflight estimate
+(e.g. a model emitted more reasoning tokens than the upper bound). The SDK
+still refuses to issue any further call in scope.
+
+### `InvalidPromptError` / `InvalidArgumentError`
+
+Validation errors thrown before reaching the model. `InvalidArgumentError`
+carries an `argument` field naming the offending parameter so you can
+surface a useful message to the user.
+
+### `NoTextGeneratedError`
+
+The model returned a valid response that contained no text content (e.g.
+only tool calls when the caller expected text). Handle by falling back to
+prompt-engineering or retrying with `tool_choice: 'none'`.
+
+### `JSONParseError`
+
+```ts
+{
+  code: 'json_parse_error',
+  text: string,               // the unparseable response, kept for debugging
+}
+```
+
+Thrown by `generateObject` and structured-output paths when the model's
+output isn't valid JSON. The `text` field is the raw response — log it,
+don't retry blindly.
+
+### `TimeoutError`
+
+```ts
+{
+  code: 'timeout',
+  timeoutMs: number,
+}
+```
+
+Thrown when an `AbortSignal` deadline fires inside a Ziro call. Distinct
+from `APICallError` with `statusCode: 408` — `TimeoutError` is **our**
+deadline, not the provider's.
+
+### `AgentSuspendedError`
+
+Lives in `@ziro-agent/agent`, not `@ziro-agent/core` (avoids a circular
+dep). Identification:
+
+```ts
+import { isAgentSuspendedError } from '@ziro-agent/agent';
+
+if (isAgentSuspendedError(err)) {
+  // err.snapshot: AgentSnapshot — JSON-safe, persist and resume later
+}
+```
+
+The brand symbol is `__ziro_suspended__`. The snapshot is the contract
+(see [HITL](/docs/hitl)).
+
+## Why brand-checking matters
+
+Three real-world cases where `instanceof` silently fails:
+
+1. **Snapshot persistence.** `JSON.stringify(err)` strips `instanceof`
+   information. Reading the snapshot back loses the prototype chain.
+2. **Worker threads / VM contexts.** Each realm has its own `ZiroError`
+   constructor. `err instanceof ZiroError` is `false` even when the error
+   was *created* by Ziro.
+3. **Multiple versions.** A monorepo with two pnpm-resolved versions of
+   `@ziro-agent/core` (one in a transitive dep) yields two distinct
+   classes; `instanceof` against one fails for instances created by the
+   other. The brand symbol is the same in both versions.
+
+`isZiroError` reads a non-enumerable property, which survives all three.
+
+## Recovery patterns
+
+### Retry idempotent transient failures
+
+```ts
+import { isZiroError } from '@ziro-agent/core';
+
+async function withRetry<T>(fn: () => Promise<T>, max = 3): Promise<T> {
+  let attempt = 0;
+  while (true) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (!isZiroError(err) || err.code !== 'api_call_error' || !err.isRetryable) throw err;
+      if (++attempt >= max) throw err;
+      await new Promise((r) => setTimeout(r, 250 * 2 ** attempt));
+    }
+  }
+}
+```
+
+(In v0.2, this becomes a one-liner: `wrapModel(model, [retry({ maxAttempts: 3 })])`.)
+
+### Fallback to a cheaper model on budget hit
+
+```ts
+try {
+  return await generateText({ model: openai('gpt-4o'), prompt });
+} catch (err) {
+  if (isZiroError(err) && err.code === 'budget_exceeded' && err.preflight) {
+    return generateText({ model: openai('gpt-4o-mini'), prompt });
+  }
+  throw err;
+}
+```
+
+### Surface a user-friendly message
+
+```ts
+function userMessage(err: unknown): string {
+  if (!isZiroError(err)) return 'Something went wrong. Please try again.';
+  switch (err.code) {
+    case 'budget_exceeded': return 'This request exceeded the cost limit.';
+    case 'timeout':         return 'The model took too long to respond.';
+    case 'api_call_error':  return err.isRetryable ? 'Service is busy. Retrying.' : 'Service error.';
+    default:                return 'Something went wrong. Please try again.';
+  }
+}
+```

@@ -2,20 +2,29 @@
  * Hardcoded pricing tables for the Budget Guard pre-flight estimator.
  *
  * Prices are USD per 1,000,000 tokens, matching how OpenAI / Anthropic
- * publish their rate cards. Verified 2026-04-20 against:
+ * publish their rate cards. Verified 2026-04-22 against:
  *   - https://openai.com/api/pricing/
  *   - https://www.anthropic.com/pricing
  *
- * Coverage policy: every entry below was cross-checked against the live
- * pricing page on the day of merge. We deliberately do NOT include models
- * we cannot verify (e.g. recently-rotated `o1-mini`/`o3-mini`/`gpt-4.1`
- * variants) — `getPricing()` returns `undefined` for those, Budget Guard
- * falls back to the chars/4 heuristic + post-call enforcement, and the user
- * is never surprised by a wildly wrong USD bound.
+ * Coverage policy:
+ * - Entries whose `validFrom` date AND model id can be cross-referenced
+ *   against the live provider pricing page on the day of merge are
+ *   verified (default; `unverified` omitted or `false`).
+ * - Entries for speculative / pre-release / NDA-only model IDs that
+ *   cannot be cross-referenced are marked `unverified: true`. They are
+ *   excluded from `getPricing()` by default — callers must opt in via
+ *   `getPricing(provider, modelId, { allowUnverified: true })`. Budget
+ *   Guard treats them as "no pricing" and falls back to the chars/4
+ *   heuristic + post-call enforcement, the same path as for unknown
+ *   models. The user is never surprised by a wildly wrong USD bound.
  *
- * Keeping this hand-maintained for v0.1.4. RFC §Adoption proposes a
- * scheduled GitHub Action to diff this table against each provider's
- * pricing page weekly — tracked as a follow-up issue.
+ * The `unverified` flag was introduced in v0.1.9 per RFC 0004's trust-
+ * recovery milestone — every entry whose `validFrom` cannot be tied to a
+ * live provider page must carry it.
+ *
+ * Keeping this hand-maintained for v0.1.x. Weekly drift check runs in
+ * `pricing-drift.yml`; the v0.2 plan is a scheduled GitHub Action that
+ * diffs this table against each provider's pricing page and opens a PR.
  */
 
 export interface ModelPricing {
@@ -36,14 +45,29 @@ export interface ModelPricing {
   reasoningMultiplier?: number;
   /** ISO date the pricing was verified against the provider's published page. */
   validFrom: string;
-  /** Free-form note (e.g. "legacy", "flagship"). */
+  /**
+   * `true` when the row's `modelId` and/or rate cannot currently be
+   * cross-referenced against the live provider pricing page (e.g.
+   * pre-release ids, NDA models, speculative future variants).
+   *
+   * `getPricing()` filters these out by default to prevent wildly-wrong
+   * USD pre-flight estimates leaking into production. Pass
+   * `{ allowUnverified: true }` to opt in.
+   *
+   * Added in v0.1.9 per RFC 0004 §v0.1.9 trust-recovery.
+   */
+  unverified?: boolean;
+  /** Free-form note (e.g. "legacy", "flagship", "speculative — see notes"). */
   notes?: string;
 }
 
-const VALID_FROM = '2026-04-20';
+const VALID_FROM = '2026-04-22';
 
 const ENTRIES: ModelPricing[] = [
-  // --- OpenAI: current flagships (verified 2026-04-20) -------------------
+  // --- OpenAI: speculative 2026 ids (unverified — pre-release) ----------
+  // These rows existed in v0.1.4 carrying a "verified" tag they could not
+  // honour against any public OpenAI pricing page. Marked `unverified` in
+  // v0.1.9 so pre-flight USD enforcement no longer trusts them silently.
   {
     provider: 'openai',
     modelId: 'gpt-5.4',
@@ -51,7 +75,8 @@ const ENTRIES: ModelPricing[] = [
     outputPer1M: 15.0,
     cachedInputPer1M: 0.25,
     validFrom: VALID_FROM,
-    notes: 'flagship',
+    unverified: true,
+    notes: 'speculative — flagship placeholder',
   },
   {
     provider: 'openai',
@@ -60,7 +85,8 @@ const ENTRIES: ModelPricing[] = [
     outputPer1M: 4.5,
     cachedInputPer1M: 0.075,
     validFrom: VALID_FROM,
-    notes: 'flagship-mini',
+    unverified: true,
+    notes: 'speculative — flagship-mini placeholder',
   },
   {
     provider: 'openai',
@@ -69,10 +95,11 @@ const ENTRIES: ModelPricing[] = [
     outputPer1M: 1.25,
     cachedInputPer1M: 0.02,
     validFrom: VALID_FROM,
-    notes: 'flagship-nano',
+    unverified: true,
+    notes: 'speculative — flagship-nano placeholder',
   },
 
-  // --- OpenAI: legacy still served on the API ----------------------------
+  // --- OpenAI: verified against https://openai.com/api/pricing/ ----------
   {
     provider: 'openai',
     modelId: 'gpt-4o',
@@ -80,7 +107,7 @@ const ENTRIES: ModelPricing[] = [
     outputPer1M: 10.0,
     cachedInputPer1M: 1.25,
     validFrom: VALID_FROM,
-    notes: 'legacy',
+    notes: 'flagship-stable',
   },
   {
     provider: 'openai',
@@ -89,10 +116,10 @@ const ENTRIES: ModelPricing[] = [
     outputPer1M: 0.6,
     cachedInputPer1M: 0.075,
     validFrom: VALID_FROM,
-    notes: 'legacy',
+    notes: 'flagship-mini',
   },
 
-  // --- Anthropic: current flagships (verified 2026-04-20) ----------------
+  // --- Anthropic: speculative ids (unverified — pre-release) -------------
   {
     provider: 'anthropic',
     modelId: 'claude-opus-4-7',
@@ -100,7 +127,8 @@ const ENTRIES: ModelPricing[] = [
     outputPer1M: 25.0,
     cachedInputPer1M: 0.5,
     validFrom: VALID_FROM,
-    notes: 'flagship',
+    unverified: true,
+    notes: 'speculative — flagship placeholder',
   },
   {
     provider: 'anthropic',
@@ -109,7 +137,8 @@ const ENTRIES: ModelPricing[] = [
     outputPer1M: 15.0,
     cachedInputPer1M: 0.3,
     validFrom: VALID_FROM,
-    notes: 'flagship',
+    unverified: true,
+    notes: 'speculative — flagship placeholder',
   },
   {
     provider: 'anthropic',
@@ -118,10 +147,9 @@ const ENTRIES: ModelPricing[] = [
     outputPer1M: 5.0,
     cachedInputPer1M: 0.1,
     validFrom: VALID_FROM,
-    notes: 'flagship',
+    unverified: true,
+    notes: 'speculative — flagship placeholder',
   },
-
-  // --- Anthropic: legacy still served on the API -------------------------
   {
     provider: 'anthropic',
     modelId: 'claude-opus-4-6',
@@ -129,7 +157,8 @@ const ENTRIES: ModelPricing[] = [
     outputPer1M: 25.0,
     cachedInputPer1M: 0.5,
     validFrom: VALID_FROM,
-    notes: 'legacy',
+    unverified: true,
+    notes: 'speculative — legacy placeholder',
   },
   {
     provider: 'anthropic',
@@ -138,17 +167,11 @@ const ENTRIES: ModelPricing[] = [
     outputPer1M: 15.0,
     cachedInputPer1M: 0.3,
     validFrom: VALID_FROM,
-    notes: 'legacy',
+    unverified: true,
+    notes: 'speculative — legacy placeholder',
   },
-  {
-    provider: 'anthropic',
-    modelId: 'claude-opus-4-5',
-    inputPer1M: 5.0,
-    outputPer1M: 25.0,
-    cachedInputPer1M: 0.5,
-    validFrom: VALID_FROM,
-    notes: 'legacy',
-  },
+
+  // --- Anthropic: verified against https://www.anthropic.com/pricing -----
   {
     provider: 'anthropic',
     modelId: 'claude-sonnet-4',
@@ -156,7 +179,7 @@ const ENTRIES: ModelPricing[] = [
     outputPer1M: 15.0,
     cachedInputPer1M: 0.3,
     validFrom: VALID_FROM,
-    notes: 'legacy',
+    notes: 'flagship-stable',
   },
   {
     provider: 'anthropic',
@@ -165,7 +188,7 @@ const ENTRIES: ModelPricing[] = [
     outputPer1M: 75.0,
     cachedInputPer1M: 1.5,
     validFrom: VALID_FROM,
-    notes: 'legacy',
+    notes: 'legacy-stable',
   },
   {
     provider: 'anthropic',
@@ -174,7 +197,7 @@ const ENTRIES: ModelPricing[] = [
     outputPer1M: 75.0,
     cachedInputPer1M: 1.5,
     validFrom: VALID_FROM,
-    notes: 'legacy',
+    notes: 'legacy-stable',
   },
 ];
 

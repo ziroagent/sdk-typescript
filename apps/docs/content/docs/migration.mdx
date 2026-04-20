@@ -1,0 +1,157 @@
+---
+title: Migration & v0.x churn policy
+description: How we manage breaking changes during v0.x, what stability guarantees you get today, and what changes when v1.0 ships.
+---
+
+Ziro is currently in **v0.x** — the foundation phase. This page documents
+exactly what we will and will not break, the upgrade contract, and the
+codemod / changeset playbook so you're never surprised on a `pnpm
+update`.
+
+## The two-line summary
+
+- **v0.x** — minor-version churn permitted in `@ziro-agent/*`. Patch
+  versions are bug-fix-only. We ship a [changeset](https://github.com/changesets/changesets)
+  on every PR; the next `Version Packages` PR contains the human
+  changelog. Breaking changes always come with a migration recipe.
+- **v1.0** — API frozen, semver-strict. Breaking changes only at major
+  versions and only with codemods shipped *alongside* the release (not
+  three weeks later — Vercel AI SDK v4→v5 is the cautionary tale).
+
+## What v0.x actually guarantees
+
+Even pre-v1.0 we hold ourselves to four lines:
+
+1. **No silent semantic changes within a minor.** If a function's
+   behaviour changes in a way that affects production correctness, the
+   minor version bumps and the changeset says exactly what changed.
+2. **Error `code` strings are stable.** `BudgetExceededError.code` will
+   always be `'budget_exceeded'`. New codes get added; existing codes
+   are never repurposed. See [Errors](/docs/errors).
+3. **Brand symbols are stable.** `__ziro_error__`, `__ziro_snapshot__`,
+   `__ziro_suspended__` survive any refactor. Cross-realm safety is the
+   contract.
+4. **`AgentSnapshot` is forward-compatible via `version`.** Snapshot
+   shape evolves with explicit `version` bumps and a
+   `migrateSnapshot(v_n → v_{n+1})` helper ships in the same release.
+   Snapshots persisted today will load on every later release; we never
+   silently drop fields.
+
+## What we may break in v0.x (with a recipe)
+
+These are domains where we have explicit room to evolve:
+
+- **Internal exports.** Anything not in a package's `index.ts` may move.
+  Don't deep-import `@ziro-agent/core/dist/internal/*`.
+- **Built-in graders' default options.** Defaults may tighten as we
+  learn from real evals. The `Grader` interface itself is stable.
+- **Tool execution result shape on error.** We may add fields. Existing
+  fields stay (`isError: true`, `result: { name, message }`).
+- **Pricing data shape.** New fields on `ModelPricing` (e.g. `unverified`
+  in v0.1.9) may appear. Existing fields stay typed identically.
+- **Tracing span attribute names.** Renames will go through one minor
+  with both names emitted before the old one is removed.
+
+Anything that changes ships with one of:
+
+- A row in `RELEASE_NOTES.md` under the relevant version.
+- A migration step in this page.
+- A codemod when the change touches >3 lines of user code.
+
+## Versioning by package, not by repo
+
+The monorepo uses [Changesets](https://github.com/changesets/changesets)
+in independent mode. `@ziro-agent/core` may be at v0.1.7 while
+`@ziro-agent/agent` is at v0.1.4 — they bump only when their own diff
+warrants it. The aggregate "Ziro release" you read about in the blog is
+a snapshot in time; the npm tarballs are independently versioned.
+
+```bash
+pnpm changeset                  # add a changeset for your PR
+pnpm changeset version          # local dry-run of what CI will publish
+```
+
+CI runs `changeset version` on `main` to open a "Version Packages" PR.
+Merging it triggers `changeset publish`, which publishes to npm with
+provenance and creates GitHub Releases.
+
+## v0.x → v1.0 contract
+
+When v1.0 ships:
+
+- **Every public type and function** in package `index.ts` is frozen.
+  Breaking it requires a v2.
+- **A compatibility table** maps every v0.x deprecation to its v1.0
+  replacement.
+- **Codemods** ship in `@ziro-agent/codemod` for every breaking change
+  that touches user code. Run via `npx @ziro-agent/codemod migrate-v1`.
+- **Deprecations** introduced in the v0.x → v1.0 window stay in the API
+  for one full minor of v1.x with runtime warnings before removal.
+
+Target date for v1.0: **~Q3 2026**, gated on three production design
+partners running v0.x for 3+ months without rollback.
+
+## Specific upgrades
+
+### v0.1.0 → v0.1.x
+
+The v0.1 line is additive. No breaking changes between patches. The
+`agent.run` shape, every error class, every grader, every Budget Guard
+field has been stable since v0.1.0.
+
+### v0.1.x → v0.1.9 (this milestone)
+
+One breaking change, plus one opt-in:
+
+- **Snapshot v1 → v2** (RFC 0004 §v0.1.9 trust-recovery). New field
+  `parsedArgs` on `AgentSnapshot.resolvedSiblings[]`. Older snapshots
+  load via `migrateSnapshot(v1)`; the SDK calls it transparently.
+  Persisted v1 snapshots remain readable for 12 months.
+- **Pricing data adds `unverified: true` flag.** `getPricing(provider,
+  modelId)` returns `undefined` for unverified entries by default — pass
+  `{ allowUnverified: true }` to opt in. Pre-flight USD enforcement
+  falls back to the chars/4 heuristic (same path as for unknown
+  models). No throw, no behaviour change unless you were depending on
+  the speculative `gpt-5.4` / `claude-opus-4-7` rows.
+
+### v0.1.x → v0.2 (planned, see [ROADMAP](https://github.com/ziroagent/sdk-typescript/blob/main/ROADMAP.md))
+
+Two new primitives ship — both additive:
+
+- `LanguageModelMiddleware` ([RFC 0005](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0005-language-model-middleware.md))
+  — wrap your model with `wrapModel(model, [retry(), cache(), redactPII()])`.
+  Existing model objects keep working unwrapped.
+- `Checkpointer` interface ([RFC 0006](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0006-checkpointer.md))
+  — `agent.run({ checkpoint: { adapter, threadId } })`. Existing
+  `agent.run({...})` calls without `checkpoint` are unchanged.
+
+No deprecations in v0.2.
+
+## What "v0.x churn" looks like in practice
+
+We log every breaking change and every API addition in
+[`RELEASE_NOTES.md`](https://github.com/ziroagent/sdk-typescript/blob/main/RELEASE_NOTES.md).
+Six v0.1.x releases shipped between v0.1.0 and v0.1.6:
+
+| Version | Type     | Net change to user code                           |
+| ------- | -------- | ------------------------------------------------- |
+| v0.1.0  | minor    | New SDK; no migration                             |
+| v0.1.1  | patch    | Bug fixes; no migration                           |
+| v0.1.2  | minor    | Added `BudgetSpec.warnAt`; additive               |
+| v0.1.3  | minor    | Added `agent.resume`; additive                    |
+| v0.1.4  | minor    | Added `costFromUsage` + pricing table; additive   |
+| v0.1.5  | minor    | Added `BudgetSpec.maxSteps`; additive             |
+| v0.1.6  | minor    | Added function-form `onExceed` resolver; additive |
+
+The cadence: roughly bi-weekly minors, additive, 0 breaking changes in
+the v0.1 line so far.
+
+## How to tell us you got broken
+
+Open an issue with the `migration` label and a 5-line repro. We treat
+"`pnpm update` broke a working production agent" as a P0; an out-of-band
+patch ships within 48 hours and the original PR gets reverted on `main`
+unless the breakage is intentional and documented.
+
+The whole point of v0.x is to find these *before* v1.0 freezes the
+contract. Tell us early.

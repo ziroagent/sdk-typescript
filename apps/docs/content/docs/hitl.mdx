@@ -1,0 +1,189 @@
+---
+title: Human-in-the-loop (HITL)
+description: Pause an agent for human approval, persist the snapshot anywhere, resume hours or days later — without losing budget usage or message fidelity.
+---
+
+Human-in-the-loop (RFC 0002) is the second production-safety pillar. Mark a
+tool with `requiresApproval`, supply an `Approver` callback, and the agent
+loop transparently routes those calls through a decision gate. If the
+approver chooses to **suspend**, the SDK serialises every byte of loop
+state into an `AgentSnapshot` so the run can resume on a different process,
+host, or day.
+
+> **Status.** Shipped in `@ziro-agent/agent` + `@ziro-agent/tools` v0.1.x.
+> Snapshot version `1` today; `version: 2` lands in v0.1.9 with
+> `parsedArgs` retained for `resolvedSiblings`. See
+> [`packages/agent/src/snapshot.ts`](https://github.com/ziroagent/sdk-typescript/blob/main/packages/agent/src/snapshot.ts).
+
+## Why it exists
+
+Most agent SDKs treat human approval as either (a) a synchronous blocking
+prompt that dies if the process dies, or (b) a higher-level workflow
+engine you have to adopt wholesale. Ziro's design splits the two: the
+approval *decision* is a function you supply; the suspend/resume
+*persistence* is your storage of choice (Redis, Postgres, S3, in-memory).
+
+## Quick start
+
+```ts
+import { defineTool } from '@ziro-agent/tools';
+import { createAgent } from '@ziro-agent/agent';
+import { openai } from '@ziro-agent/openai';
+import { z } from 'zod';
+
+const refundOrder = defineTool({
+  name: 'refundOrder',
+  description: 'Issue a refund. Always requires human approval.',
+  input: z.object({ orderId: z.string(), amountUsd: z.number().max(500) }),
+  requiresApproval: true,
+  execute: async ({ orderId, amountUsd }) => stripe.refunds.create({ /* ... */ }),
+});
+
+const agent = createAgent({
+  model: openai('gpt-4o'),
+  tools: { refundOrder },
+});
+
+const result = await agent.run({
+  prompt: 'Refund order #4231.',
+  approver: async (req) => {
+    const ok = await ui.askHuman({
+      tool: req.toolName,
+      input: req.input,
+      step: req.context.step,
+    });
+    return ok ? { decision: 'approve' } : { decision: 'reject', reason: 'denied' };
+  },
+});
+```
+
+Three exit shapes for the approver:
+
+| Decision   | What happens                                                       |
+| ---------- | ------------------------------------------------------------------ |
+| `approve`  | `tool.execute()` runs. `modifiedInput` (when present) is re-validated through the tool's Zod schema. |
+| `reject`   | `tool.execute()` is **not** called. The model sees an `ApprovalRejected` tool result and continues. |
+| `suspend`  | `tool.execute()` is **not** called. The agent throws `AgentSuspendedError` carrying a JSON-serialisable `AgentSnapshot`. |
+
+## Dynamic gating
+
+`requiresApproval` can be a function — useful for "approve only if the
+tool input crosses a threshold":
+
+```ts
+const refundOrder = defineTool({
+  name: 'refundOrder',
+  input: z.object({ orderId: z.string(), amountUsd: z.number() }),
+  requiresApproval: (input, ctx) => input.amountUsd > 100,
+  execute: async (input) => { /* ... */ },
+});
+```
+
+`false` (or omitted) is the default — zero overhead, no approver consulted.
+
+## Suspend & resume — the production case
+
+```ts
+import { isAgentSuspendedError } from '@ziro-agent/agent';
+
+let snapshot: AgentSnapshot | undefined;
+try {
+  await agent.run({
+    prompt: 'Refund order #4231.',
+    approver: async () => ({ decision: 'suspend' }),
+  });
+} catch (err) {
+  if (isAgentSuspendedError(err)) {
+    snapshot = err.snapshot;
+    await db.snapshots.put(snapshot.agentId ?? snapshot.createdAt, snapshot);
+  } else {
+    throw err;
+  }
+}
+
+// ... hours later, in a different process, after the human approves:
+const stored = await db.snapshots.get(id);
+await agent.resume(stored, {
+  decisions: [
+    { toolCallId: stored.pendingApprovals[0].toolCallId, decision: 'approve' },
+  ],
+});
+```
+
+The snapshot is JSON-serialisable by construction:
+
+- `messages` — full conversation up to (but not including) the pending tool result.
+- `steps` — every completed agent step before suspension.
+- `totalUsage` — accumulated token usage.
+- `budgetUsage` + `budgetSpec` — re-applied on resume so a multi-day pause
+  cannot silently bypass `maxUsd` (RFC 0001 ↔ RFC 0002 contract).
+- `pendingApprovals` — every tool call in the suspended batch.
+- `resolvedSiblings` — tool calls that already executed in the same batch
+  (their side-effects are already applied; their results merge with the
+  post-approval results into one tool message).
+
+## Cross-realm safety
+
+Always check with the brand helper — `instanceof` does not survive
+serialisation across workers / VM contexts:
+
+```ts
+import { isAgentSuspendedError } from '@ziro-agent/agent';
+import { isZiroError } from '@ziro-agent/core';
+
+if (isAgentSuspendedError(err)) {
+  // err.snapshot is safe to JSON.stringify and persist anywhere
+}
+
+if (isZiroError(err) && err.code === 'budget_exceeded') {
+  // brand survives JSON.parse(JSON.stringify(err))
+}
+```
+
+## Storage adapters
+
+Persist the snapshot with whatever you already operate. The shape is the
+contract; we don't ship adapters in v0.1.
+
+```ts
+// Redis
+await redis.set(`snapshot:${id}`, JSON.stringify(snapshot), 'EX', 86_400);
+
+// Postgres
+await db.query(
+  'INSERT INTO snapshots (id, payload, created_at) VALUES ($1, $2, $3)',
+  [id, snapshot, new Date()],
+);
+
+// S3
+await s3.putObject({ Bucket, Key: `snapshots/${id}`, Body: JSON.stringify(snapshot) });
+```
+
+A formal `Checkpointer` interface + `memory` / `postgres` / `redis`
+adapters lands in v0.2 — see
+[RFC 0006](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0006-checkpointer.md).
+
+## Observability
+
+```ts
+import { setApprovalObserver } from '@ziro-agent/core';
+
+setApprovalObserver({
+  onApprovalRequested: ({ toolCallId, toolName }) => metrics.inc('hitl.requested'),
+  onApprovalResolved: ({ toolCallId, decision }) => metrics.inc(`hitl.${decision}`),
+  onAgentSuspended: ({ scopeId }) => metrics.inc('hitl.suspended'),
+  onAgentResumed: ({ scopeId, snapshotAgeMs }) => metrics.observe('hitl.resume_lag_ms', snapshotAgeMs),
+});
+```
+
+OTel spans on the agent loop carry `ziro.agent.pending_approvals`,
+`ziro.agent.resumed_from_snapshot`, and `ziro.agent.snapshot_age_ms`.
+
+## What it deliberately doesn't do
+
+- **No approval UI.** Build it however you want — Slack approval button,
+  CLI prompt, web dashboard. The `Approver` callback is your seam.
+- **No notification engine.** You wire SES/SNS/Pagerduty in `setApprovalObserver`.
+- **No cloud orchestration today.** A run that suspends in process A
+  resumes in process B because *you* persisted the snapshot. Durable
+  adapters (Temporal, Inngest) layer on top in v0.2 for the cross-day case.

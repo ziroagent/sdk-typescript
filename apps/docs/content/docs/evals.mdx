@@ -1,0 +1,186 @@
+---
+title: Evals
+description: Eval-as-code with deterministic graders, weighted means, CI gates, and replay-from-trace — no hosted backend required.
+---
+
+Evals (RFC 0003) are the third production-safety pillar. Define cases,
+attach graders, run with `ziroagent eval` (or programmatically), and gate
+your CI on `meanScore` / `passRate` / per-grader thresholds. Everything is
+JSON-serialisable so eval runs persist, post to PRs, or stream to a hosted
+store without bespoke wiring.
+
+> **Status.** Shipped in `@ziro-agent/eval` v0.1.x. Replay-from-trace and
+> JSON/YAML datasets land in v0.2 Track 5 (RFC 0004 §v0.2). See
+> [`packages/eval/src`](https://github.com/ziroagent/sdk-typescript/tree/main/packages/eval/src).
+
+## Why it exists
+
+LLM behaviour drifts. Models get deprecated. Prompt edits regress
+silently. The cheapest way to catch this is the same way we catch every
+other regression: a test suite that runs in CI. Ziro's eval framework is
+deliberately small — six grader primitives, one runner, one gate format —
+so the abstraction never gets in the way of writing the next case.
+
+## Quick start
+
+```ts
+import { defineEval, exactMatch, costBudget, llmJudge } from '@ziro-agent/eval';
+import { openai } from '@ziro-agent/openai';
+import { agent } from './my-agent.ts';
+
+export default defineEval({
+  name: 'support-agent-v1',
+  cases: [
+    { id: 'refund-known-good', input: 'Refund order #4231', expected: { tool: 'refundOrder' } },
+    { id: 'refund-too-large',  input: 'Refund $100,000',     expected: { refused: true } },
+    { id: 'no-tool-needed',    input: 'What are your hours?', expected: 'Mon-Fri 9-5' },
+  ],
+  run: async (input) => agent.run({ prompt: input }),
+  graders: [
+    exactMatch({ extract: (out) => out.text }),
+    costBudget({ maxUsd: 0.05 }),
+    llmJudge({
+      model: openai('gpt-4o-mini'),
+      rubric: 'Did the agent address the customer politely and accurately?',
+    }),
+  ],
+  gate: { kind: 'meanScore', min: 0.85 },
+});
+```
+
+Run it:
+
+```bash
+ziroagent eval ./evals --gate 0.85
+```
+
+CI fails if the weighted mean across cases × graders is below `0.85`.
+
+## Built-in graders
+
+All exported from `@ziro-agent/eval`:
+
+| Grader            | Use it for                                       |
+| ----------------- | ------------------------------------------------ |
+| `exactMatch`      | String / numeric equality on an extracted field  |
+| `contains`        | Substring (case-insensitive option)              |
+| `regex`           | Regex pattern match                              |
+| `costBudget`      | Hard cap: pass iff `budgetUsage.usd <= maxUsd`   |
+| `latency`         | Hard cap on `durationMs`                         |
+| `noToolErrors`    | No tool call returned `isError: true`            |
+| `llmJudge`        | LLM-as-judge with a freeform rubric              |
+
+Custom graders are a 7-line interface:
+
+```ts
+import type { Grader } from '@ziro-agent/eval';
+
+const noPII: Grader = {
+  name: 'noPII',
+  weight: 2,
+  grade: (input, output) => {
+    const found = /\b\d{3}-\d{2}-\d{4}\b/.test(JSON.stringify(output));
+    return { score: found ? 0 : 1, passed: !found, reason: found ? 'SSN leaked' : 'clean' };
+  },
+};
+```
+
+## Per-case budget + timeout
+
+Cases inherit the eval-level `budget` and `timeoutMs`; per-case overrides
+intersect (tighter wins, mirroring `withBudget` from RFC 0001):
+
+```ts
+defineEval({
+  budget: { maxUsd: 0.10, maxDurationMs: 30_000 },
+  cases: [
+    { id: 'cheap-only', input: '...', budget: { maxUsd: 0.02 } },
+    { id: 'fast-only',  input: '...', timeoutMs: 5_000 },
+  ],
+  // ...
+});
+```
+
+If a case throws `BudgetExceededError`, that single case fails — the run
+continues. If it throws `AgentSuspendedError` (RFC 0002), the snapshot is
+exposed to graders via `GraderContext.agentSnapshot` so you can grade
+"did the agent correctly request approval?".
+
+## Gates
+
+Three gate kinds; pick the one that matches the property you actually
+care about:
+
+```ts
+// Fail if the weighted mean across all (case × grader) pairs drops below 0.9.
+gate: { kind: 'meanScore', min: 0.9 }
+
+// Fail if fewer than 95% of cases hit `passed: true`.
+gate: { kind: 'passRate', min: 0.95 }
+
+// Fail if any one grader's mean drops below a threshold (regression
+// detector for a single dimension — usually cost or latency).
+gate: { kind: 'every', grader: 'costBudget', min: 1.0 }
+```
+
+`evaluateGate(summary, gate)` is exported for programmatic use:
+
+```ts
+import { evaluateGate, runEval } from '@ziro-agent/eval';
+import spec from './evals/support-agent.eval.ts';
+
+const summary = await runEval(spec);
+const verdict = evaluateGate(summary, { kind: 'meanScore', min: 0.85 });
+if (!verdict.passed) {
+  console.error(verdict.reason);
+  process.exit(1);
+}
+```
+
+## Concurrency, abort, and back-pressure
+
+```ts
+defineEval({
+  // ...
+  concurrency: 4,                 // run 4 cases in parallel (default 1)
+  timeoutMs: 30_000,              // per-case wall-clock cap
+  maxFailures: 5,                 // stop the run early after 5 errored cases
+});
+```
+
+Every case gets its own `AbortController`; timeouts and `maxFailures`
+abort in-flight runs cleanly, including any model HTTP requests using
+the supplied `AbortSignal`.
+
+## Output
+
+`runEval` returns an `EvalRun` shape that's JSON-serialisable end-to-end:
+
+```ts
+const run = await runEval(spec);
+
+// Pretty-print to stdout (CLI default).
+console.log(formatTextReport(run));
+
+// Or persist as JSON for a PR comment / hosted store.
+await fs.writeFile('eval-run.json', JSON.stringify(toJSONReport(run), null, 2));
+```
+
+## Replay from production trace (v0.2)
+
+Track 5 of v0.2 (per RFC 0004) ships `samplingEval({ rate: 0.05 })`
+middleware that captures 5% of production OTel `ziro.agent.run` spans,
+materialises them as `EvalCase` rows, and lets you re-run new code against
+real production inputs. Until then, hand-roll a case from any captured
+trace by mapping `span.attributes['ziro.agent.input']` →
+`EvalCase.input`.
+
+## What it deliberately doesn't do
+
+- **No hosted eval store.** Persist `EvalRun` JSON wherever you already
+  store CI artefacts. Hosted store integrations (Langfuse, Braintrust)
+  are exporters you opt into via `setEvalObserver`.
+- **No automatic prompt-rewriting / DSPy-style optimization.** Out of
+  scope for v0.x; possibly never. Anti-roadmap entry.
+- **No notebook UI.** `ziroagent eval --watch` ships in v0.2 — same data
+  flow, no Jupyter dependency.

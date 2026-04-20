@@ -144,40 +144,59 @@ ziro eval ./evals/*.ts --gate 0.95     # CI gate: fail merge if score < 95%
 
 ## Packages
 
+> **Status legend.** `shipped (v0.1.x)` = published to npm under `@ziro-agent/*`
+> with current source under `packages/`. `planned (v0.x)` = scoped on
+> [`ROADMAP.md`](ROADMAP.md), no source published yet — `pnpm add` will 404.
+> Audited 2026-04-22 per RFC 0004 §v0.1.9 trust-recovery.
+
 | Package | Status | Description |
 | --- | --- | --- |
-| [`@ziro-agent/core`](packages/core) | v0.1 | Model interface, `generateText`, `streamText`, budget & cache primitives |
-| [`@ziro-agent/openai`](packages/providers-openai) | v0.1 | OpenAI provider |
-| [`@ziro-agent/anthropic`](packages/providers-anthropic) | v0.1 | Anthropic provider with explicit prompt-cache control |
-| [`@ziro-agent/ollama`](packages/providers-ollama) | v0.1 | Local-first provider (sovereign mode) |
-| [`@ziro-agent/google`](packages/providers-google) | v0.2 | Google Gemini provider |
-| [`@ziro-agent/tools`](packages/tools) | v0.1 | `defineTool` + MCP client |
-| [`@ziro-agent/mcp`](packages/mcp) | v0.1 | MCP **server** — expose your tools/agents to Claude/Cursor |
-| [`@ziro-agent/agent`](packages/agent) | v0.1 | Agent loop, HITL approval, step events |
-| [`@ziro-agent/gateway`](packages/gateway) | v0.2 | Routing, fallback, virtual keys, PII redaction, cost tracking |
-| [`@ziro-agent/temporal`](packages/temporal) | v0.2 | Durable runtime adapter (Temporal) |
-| [`@ziro-agent/inngest`](packages/inngest) | v0.2 | Durable runtime adapter (Inngest) |
-| [`@ziro-agent/eval`](packages/eval) | v0.2 | `defineEval`, LLM-judge, replay-from-trace |
-| [`@ziro-agent/memory`](packages/memory) | v0.1 | Vector store interface, in-memory + pgvector |
-| [`@ziro-agent/workflow`](packages/workflow) | v0.1 | Graph engine for multi-agent flows |
-| [`@ziro-agent/tracing`](packages/tracing) | v0.1 | OpenTelemetry instrumentation |
-| [`@ziro-agent/agui`](packages/agui) | v0.2 | AG-UI event emitter for streaming agent state to frontends |
-| [`@ziro-agent/cli`](packages/cli) | v0.1 | `ziro` CLI: `chat`, `run`, `eval`, `mcp`, `playground` |
+| [`@ziro-agent/core`](packages/core) | shipped (v0.1.x) | Model interface, `generateText`, `streamText`, budget & cache primitives |
+| [`@ziro-agent/openai`](packages/providers-openai) | shipped (v0.1.x) | OpenAI provider |
+| [`@ziro-agent/anthropic`](packages/providers-anthropic) | shipped (v0.1.x) | Anthropic provider with explicit prompt-cache control |
+| `@ziro-agent/ollama` | planned (v0.1.9) | Local-first provider (sovereign mode) — first Sovereign-pillar package |
+| `@ziro-agent/google` | planned (v0.2) | Google Gemini provider |
+| `@ziro-agent/groq` | planned (v0.2) | Groq provider (fastest inference benchmark) |
+| [`@ziro-agent/tools`](packages/tools) | shipped (v0.1.x) | `defineTool`, parallel calls, JSON schema from Zod |
+| `@ziro-agent/mcp` | planned (v0.2) | MCP **server** — expose your tools/agents to Claude/Cursor |
+| [`@ziro-agent/agent`](packages/agent) | shipped (v0.1.x) | Agent loop, HITL approval, suspend/resume, step events |
+| [`@ziro-agent/eval`](packages/eval) | shipped (v0.1.x) | `defineEval`, graders (exact/contains/regex/cost/latency/llm-judge), CI gate |
+| [`@ziro-agent/memory`](packages/memory) | shipped (v0.1.x) | Vector store interface, in-memory + pgvector |
+| [`@ziro-agent/workflow`](packages/workflow) | shipped (v0.1.x) | Graph engine for multi-agent flows |
+| [`@ziro-agent/tracing`](packages/tracing) | shipped (v0.1.x) | OpenTelemetry instrumentation |
+| [`@ziro-agent/cli`](packages/cli) | shipped (v0.1.x) | `ziroagent` CLI: `chat`, `run`, `eval`, `mcp`, `playground` |
+| `@ziro-agent/middleware` | planned (v0.2, [RFC 0005](rfcs/0005-language-model-middleware.md)) | `LanguageModelMiddleware`: retry, cache, redactPII, blockPromptInjection |
+| `@ziro-agent/checkpoint-memory` / `-postgres` / `-redis` | planned (v0.2, [RFC 0006](rfcs/0006-checkpointer.md)) | `Checkpointer` adapters for durable agent state |
+| `@ziro-agent/gateway` | planned (v0.2) | Routing + fallback + virtual keys (cost tracking via `@ziro-agent/middleware`) |
+| `@ziro-agent/temporal` | planned (v0.2) | Durable runtime adapter (Temporal) |
+| `@ziro-agent/inngest` | planned (v0.2) | Durable runtime adapter (Inngest) — TS-first, ships before Temporal |
+| `@ziro-agent/audit` | planned (v0.3) | Hash-chained audit log (EU AI Act friendly) |
+| `@ziro-agent/agui` | planned (v0.3) | AG-UI 17-event protocol emitter |
+| `@ziro-agent/react` | planned (v0.3) | `<Chat>`, `<TraceTimeline>`, `<ToolApproval>` components |
+| `@ziro-agent/vllm` / `-lmstudio` | planned (v0.3) | Sovereign mode providers |
+| `@ziro-agent/nestjs` | planned (v0.3) | NestJS integration (VN/SEA enterprise stack) |
 
 ## Apps
 
-- [`apps/playground`](apps/playground) — local Next.js dev playground with chat, trace timeline, tool inspector, replay.
-- [`apps/docs`](apps/docs) — public documentation site (Fumadocs).
+- [`apps/playground`](apps/playground) — local Next.js dev playground (planned v0.1).
+- [`apps/docs`](apps/docs) — public documentation site (Fumadocs) — shipped.
 
 ## Examples
 
-- [`examples/basic-chat`](examples/basic-chat) — minimal `generateText`.
-- [`examples/agent-with-tools`](examples/agent-with-tools) — agent + tools + budget guard.
-- [`examples/durable-support-agent`](examples/durable-support-agent) — Temporal-backed support agent with HITL.
-- [`examples/mcp-server`](examples/mcp-server) — expose tools to Claude Desktop.
-- [`examples/sovereign-ollama`](examples/sovereign-ollama) — fully on-prem agent, no internet.
-- [`examples/rag-pgvector`](examples/rag-pgvector) — RAG over Postgres.
-- [`examples/multi-agent-workflow`](examples/multi-agent-workflow) — graph workflow.
+| Example | Status | Description |
+| --- | --- | --- |
+| [`examples/basic-chat`](examples/basic-chat) | shipped | Minimal `generateText`. |
+| [`examples/agent-with-tools`](examples/agent-with-tools) | shipped | Agent + tools (no budget guard). |
+| [`examples/agent-with-budget`](examples/agent-with-budget) | shipped | Agent loop with `BudgetSpec` enforcement. |
+| [`examples/budget-guard`](examples/budget-guard) | shipped | Budget Guard standalone, fallback-on-exceed. |
+| [`examples/agent-with-approval`](examples/agent-with-approval) | shipped | HITL: `requiresApproval`, suspend/resume. |
+| [`examples/agent-with-evals`](examples/agent-with-evals) | shipped | `defineEval` + CI gate. |
+| [`examples/multi-agent-workflow`](examples/multi-agent-workflow) | shipped | Workflow graph. |
+| [`examples/rag-pgvector`](examples/rag-pgvector) | shipped | RAG over Postgres. |
+| `examples/durable-support-agent` | planned (v0.2) | Temporal/Inngest-backed support agent with HITL. |
+| `examples/mcp-server` | planned (v0.2) | Expose tools to Claude Desktop. |
+| `examples/sovereign-ollama` | planned (v0.1.9) | Fully on-prem agent, no internet. |
+| `examples/multi-agent-handoff` | planned (v0.3, [RFC 0007](rfcs/0007-handoffs-and-router.md)) | Replaces over-engineered `multi-agent-workflow` for the simple handoff case. |
 
 ## Benchmarks
 
