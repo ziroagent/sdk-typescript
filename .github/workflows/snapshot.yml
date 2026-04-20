@@ -7,47 +7,105 @@ name: Snapshot release
 # Resulting versions look like:   0.5.0-pr-123-20260420T1530.0
 # Resulting npm dist-tag:         pr-<number>
 # Install with:                   pnpm add @ziro-agent/agent@pr-123
+#
+# SECURITY MODEL:
+#   - Trigger is `pull_request: types: [labeled, synchronize]`. Snapshot only
+#     fires when a maintainer with `triage`+ permission applies the
+#     `release:snapshot` label.
+#   - We additionally gate on the label-applier's repository permission
+#     (`write` minimum) — this defends against an attacker who manages to
+#     get `triage` (label-only) access via a self-merged automation PR.
+#   - We checkout the PR head SHA via the merge-ref-bypass-safe pattern;
+#     `pull_request_target` is NOT used, so secrets are never exposed to
+#     fork PR code execution paths.
 
 on:
   pull_request:
     types: [labeled, synchronize]
     branches: [main]
 
+# One snapshot run per PR. Cancel in-flight if a new push lands so the
+# `pr-<n>` dist-tag always points at the latest commit.
 concurrency:
   group: snapshot-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 permissions:
   contents: read
-  pull-requests: write
-  id-token: write
 
 env:
   TURBO_TELEMETRY_DISABLED: 1
 
 jobs:
-  snapshot:
-    name: Publish PR snapshot
+  # --------------------------------------------------------------------------
+  # Authorize: hard guard before any code runs. Verifies the label-event
+  # was triggered by a user with at least `write` permission on the repo.
+  # If not, the workflow exits cleanly without leaking the trigger to logs.
+  # --------------------------------------------------------------------------
+  authorize:
+    name: Verify maintainer authorization
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
     if: |
       contains(github.event.pull_request.labels.*.name, 'release:snapshot')
+    permissions:
+      contents: read
+    outputs:
+      authorized: ${{ steps.check.outputs.authorized }}
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2
+        with:
+          egress-policy: audit
+      - id: check
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const actor = context.actor;
+            const { data: perm } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              username: actor,
+            });
+            const level = perm.permission;
+            const ok = ['admin', 'maintain', 'write'].includes(level);
+            core.setOutput('authorized', ok ? 'true' : 'false');
+            if (!ok) {
+              core.warning(`Snapshot blocked: actor "${actor}" has permission "${level}" — needs write+.`);
+              core.summary.addRaw([
+                '### Snapshot release blocked',
+                '',
+                `Actor \`${actor}\` has repository permission \`${level}\`.`,
+                'Snapshots require at least \`write\` permission. Ask a maintainer to apply the label.',
+              ].join('\n')).write();
+            }
+
+  snapshot:
+    name: Publish PR snapshot
+    needs: authorize
+    if: needs.authorize.outputs.authorized == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write  # for the install-instructions comment
+      id-token: write       # for future provenance support
     steps:
-      - uses: actions/checkout@v6
+      - name: Harden runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           # Need full history so `changeset version --snapshot` can resolve
           # the diff against the base branch when computing which packages
           # to bump.
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha }}
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 10.33.0
-      - uses: actions/setup-node@v6
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-pnpm-node
 
       - name: Verify a changeset exists
         run: |
@@ -69,19 +127,17 @@ jobs:
             echo "::error::NPM_TOKEN secret is not set"
             exit 1
           fi
-          {
-            echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}"
-            echo "registry=https://registry.npmjs.org/"
-            echo "always-auth=true"
-          } > "${HOME}/.npmrc"
-          chmod 600 "${HOME}/.npmrc"
+          umask 077
+          printf '//registry.npmjs.org/:_authToken=%s\nregistry=https://registry.npmjs.org/\nalways-auth=true\n' "${NPM_TOKEN}" > "${HOME}/.npmrc"
           npm whoami
 
       - name: Bump versions to snapshot
         id: bump
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
-          TAG="pr-${{ github.event.pull_request.number }}"
+          TAG="pr-${PR_NUMBER}"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           # `--snapshot <tag>` rewrites every consumed changeset's version into
           # `<base>-<tag>-<utc-timestamp>.<n>` and skips git tagging / changelog
@@ -91,15 +147,16 @@ jobs:
       - name: Publish snapshot to npm
         env:
           NPM_CONFIG_PROVENANCE: "false"
+          SNAPSHOT_TAG: ${{ steps.bump.outputs.tag }}
         run: |
           set -euo pipefail
           # `--no-git-tag` stops changesets from trying to push tags from a
           # detached PR-head checkout (would fail anyway without write perm).
           # `--tag <tag>` controls the dist-tag — install via @<tag>.
-          pnpm exec changeset publish --no-git-tag --tag "${{ steps.bump.outputs.tag }}"
+          pnpm exec changeset publish --no-git-tag --tag "${SNAPSHOT_TAG}"
 
       - name: Comment on PR with install instructions
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           script: |
             const tag = `pr-${context.payload.pull_request.number}`;

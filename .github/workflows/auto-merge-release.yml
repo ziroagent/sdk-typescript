@@ -9,14 +9,15 @@ name: Auto-merge release PR
 #   - opened by `app/github-actions` (the changesets bot)
 #   - source branch `changeset-release/main` (changesets/action default)
 #   - title starts with `chore(release): version packages`
+#   - head repository == base repository (defends against fork PRs that
+#     spoof the branch name)
 #
 # Any other PR — human-authored or otherwise — is ignored.
 #
 # Branch-protection requirement (recommended):
 #   To make auto-merge actually WAIT for CI green, configure
 #   Settings → Branches → main → "Require status checks to pass"
-#   and pick the CI jobs (`Lint & format`, `Build & test (...)`,
-#   `Package quality (attw + publint)`). Without branch protection,
+#   and pick `Validate / Validation summary`. Without branch protection,
 #   GitHub's auto-merge will merge as soon as the PR is mergeable
 #   (i.e. immediately) which defeats the purpose.
 #
@@ -49,22 +50,38 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   enable-auto-merge:
     name: Enable auto-merge
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
     # Hard guard: bail out before the API call when this PR is not the
     # changesets release PR. Saves a token and keeps logs clean for the
     # 99% of PRs this workflow doesn't care about.
+    #
+    # `head.repo.full_name == base.repo.full_name` defends against a fork
+    # PR that names its branch `changeset-release/main` to game the filter
+    # — fork PRs always have a different head repo.
     if: >-
       github.event.pull_request.user.login == 'github-actions[bot]' &&
       github.event.pull_request.head.ref == 'changeset-release/main' &&
+      github.event.pull_request.head.repo.full_name == github.event.pull_request.base.repo.full_name &&
       startsWith(github.event.pull_request.title, 'chore(release): version packages')
     steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2
+        with:
+          egress-policy: audit
+          # Only api.github.com is needed for `gh pr merge --auto`.
+          allowed-endpoints: >
+            api.github.com:443
+            github.com:443
+
       - name: Enable auto-merge (squash)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

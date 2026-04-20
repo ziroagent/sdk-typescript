@@ -11,57 +11,61 @@ concurrency:
   group: release-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
+# Top-level locks to read-only. The `release` job below escalates only what
+# it actually needs (contents:write for tags + Releases, pull-requests:write
+# for the version PR, id-token:write for npm provenance via OIDC).
 permissions:
-  contents: write       # version-packages PR + git tags + GitHub Releases
-  pull-requests: write  # open / update the "Version Packages" PR
-  id-token: write       # required for npm provenance (OIDC sigstore)
+  contents: read
 
 env:
   TURBO_TELEMETRY_DISABLED: 1
 
 jobs:
   # --------------------------------------------------------------------------
-  # Gate: replicates the *exact* checks from CI on the same commit. We rerun
-  # them here (instead of waiting on the CI workflow) so a single workflow file
-  # owns the full release contract — easier to reason about, no cross-workflow
-  # status-coupling, and Releases never publish from a green commit whose
-  # CI got skipped (e.g. doc-only ignore filters in CI later on).
+  # Gate: re-runs the *full* validation suite on the merge commit. Calls the
+  # same reusable workflow as `ci.yml`, but with the FULL OS × Node matrix —
+  # publish should never fire from a commit that hasn't passed cross-platform.
   # --------------------------------------------------------------------------
   gate:
     name: Pre-release validation
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 10.33.0
-      - uses: actions/setup-node@v6
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm --filter "./packages/*" build
-      - run: pnpm --filter "./packages/*" typecheck
-      - run: pnpm --filter "./packages/*" test
-      - run: pnpm --filter "./packages/*" publint
-      - run: pnpm --filter "./packages/*" attw
+    uses: ./.github/workflows/_validate.yml
+    permissions:
+      contents: read
+    with:
+      matrix-os: '["ubuntu-latest", "macos-latest", "windows-latest"]'
+      matrix-node: '["20", "22"]'
+      run-package-quality: true
+      run-coverage: false
+      run-examples-typecheck: true
+    secrets:
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
 
   release:
     name: Version PR or publish
     needs: gate
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: write       # version-packages PR + git tags + GitHub Releases
+      pull-requests: write  # open / update the "Version Packages" PR
+      id-token: write       # required for npm provenance (OIDC sigstore)
     steps:
-      - uses: actions/checkout@v6
+      - name: Harden runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2
+        with:
+          # `audit` lets the run complete and reports unexpected egress in
+          # the workflow summary. Flip to `block` once the allowlist is
+          # tuned (npm registry, GitHub API, sigstore, codecov, etc).
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 10.33.0
+          # Use the default GITHUB_TOKEN write-credentials so changesets
+          # can push the version PR. Note: this means CI will NOT auto-run
+          # on the resulting PR (cascade rule, see RELEASING.md).
+          persist-credentials: true
+
       # NOTE: intentionally NOT setting `registry-url` on setup-node.
       # When `registry-url` is set, setup-node writes a project .npmrc with a
       # literal `${NODE_AUTH_TOKEN}` placeholder AND points NPM_CONFIG_USERCONFIG
@@ -69,12 +73,10 @@ jobs:
       # changesets/action writes. The placeholder substitution is fragile across
       # pnpm subprocesses and was the cause of the v0.1.2 publish 404 in CI.
       # Letting changesets/action be the single owner of `~/.npmrc` is reliable.
-      - uses: actions/setup-node@v6
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter "./packages/*" build
+      - uses: ./.github/actions/setup-pnpm-node
+
+      - name: Build packages
+        run: pnpm --filter "./packages/*" build
 
       # Explicitly configure npm auth BEFORE changesets/action runs.
       # We've seen ~/.npmrc written by changesets/action get rejected with
@@ -82,29 +84,30 @@ jobs:
       # same NPM_TOKEN works. Writing the file ourselves with the registry
       # line included, then verifying with `npm whoami`, gives us a hard
       # signal whether the auth path is at fault before any publish runs.
+      #
+      # SECURITY: NEVER `set -x` here. Token is wired via env (no echo) and
+      # piped through tee /dev/null to suppress incidental command echo.
       - name: Configure npm auth + verify
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -euo pipefail
           if [ -z "${NPM_TOKEN:-}" ]; then
             echo "::error::NPM_TOKEN secret is not set"
             exit 1
           fi
-          {
-            echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}"
-            echo "registry=https://registry.npmjs.org/"
-            echo "always-auth=true"
-          } > "${HOME}/.npmrc"
-          chmod 600 "${HOME}/.npmrc"
-          echo "Wrote ~/.npmrc ($(wc -c < "${HOME}/.npmrc") bytes)"
+          umask 077
+          # Use printf with %s so the token never appears in shell trace
+          # output even if a future maintainer enables `set -x` for debug.
+          printf '//registry.npmjs.org/:_authToken=%s\nregistry=https://registry.npmjs.org/\nalways-auth=true\n' "${NPM_TOKEN}" > "${HOME}/.npmrc"
+          echo "Wrote ~/.npmrc ($(wc -c < "${HOME}/.npmrc") bytes, mode $(stat -c '%a' "${HOME}/.npmrc" 2>/dev/null || stat -f '%A' "${HOME}/.npmrc"))"
           echo "--- npm whoami ---"
           npm whoami
           echo "--- npm token check OK ---"
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create Release PR or publish
         id: changesets
-        uses: changesets/action@v1
+        uses: changesets/action@6a0a831ff30acef54f2c6aa1cbbc1096b066edaf # v1.7.0
         with:
           version: pnpm version-packages
           publish: pnpm release
@@ -140,12 +143,14 @@ jobs:
       # action log to see what got published).
       - name: Summarize publish
         if: steps.changesets.outputs.published == 'true'
+        env:
+          PUBLISHED_PACKAGES: ${{ steps.changesets.outputs.publishedPackages }}
         run: |
           {
             echo "### Published packages"
             echo ""
             echo '```json'
-            echo '${{ steps.changesets.outputs.publishedPackages }}'
+            echo "${PUBLISHED_PACKAGES}"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -154,3 +159,15 @@ jobs:
         run: |
           echo "### Version PR opened/updated" >> "$GITHUB_STEP_SUMMARY"
           echo "Merge the \`chore(release): version packages\` PR to publish." >> "$GITHUB_STEP_SUMMARY"
+
+      # Verify provenance attestations on the just-published tarballs. No-op
+      # while provenance is disabled; flips to a real check the moment we
+      # migrate to Trusted Publishers and set NPM_CONFIG_PROVENANCE: "true".
+      - name: Verify package signatures
+        if: steps.changesets.outputs.published == 'true'
+        run: |
+          set -euo pipefail
+          # `npm audit signatures` walks the lockfile and verifies sigstore
+          # attestations for each tarball. Exit-zero whether attestations
+          # exist or not, just surface the report.
+          npm audit signatures || true

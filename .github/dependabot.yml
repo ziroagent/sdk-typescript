@@ -1,17 +1,96 @@
 version: 2
+
+# Dependabot config notes:
+#   - npm grouping reduces PR churn — major bumps still come as solo PRs.
+#   - github-actions ecosystem is critical: every action used in workflows
+#     is locked by SHA in the workflow file, so dependabot's job here is
+#     to bump the SHA + comment-tag annotation atomically. Keep limit
+#     low so we don't drown in micro-bumps.
+#   - For pnpm specifically, dependabot uses the npm-compatible
+#     resolution layer; lockfile updates happen via `pnpm install`.
+
 updates:
+  # ----------------------------------------------------------------------
+  # npm — every package + the workspace root via shared lockfile.
+  # ----------------------------------------------------------------------
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: 'Etc/UTC'
     open-pull-requests-limit: 5
+    versioning-strategy: increase
+    labels:
+      - dependencies
+      - npm
+    commit-message:
+      prefix: chore(deps)
+      prefix-development: chore(deps-dev)
+      include: scope
     groups:
       types:
+        applies-to: version-updates
         patterns:
           - "@types/*"
+        update-types:
+          - patch
+          - minor
       dev-deps:
+        applies-to: version-updates
         dependency-type: development
+        update-types:
+          - patch
+          - minor
+      # Build / test toolchain bumps land together so we only validate
+      # the matrix once per week.
+      tooling:
+        applies-to: version-updates
+        patterns:
+          - "tsup"
+          - "turbo"
+          - "vitest"
+          - "@vitest/*"
+          - "typescript"
+          - "@biomejs/*"
+        update-types:
+          - patch
+          - minor
+    ignore:
+      # Avoid auto-bumping pnpm itself across majors — pnpm 11.x broke
+      # us once on a node:sqlite import (see comment in setup composite).
+      - dependency-name: "pnpm"
+        update-types: ["version-update:semver-major"]
+
+  # ----------------------------------------------------------------------
+  # GitHub Actions — bumps SHA pin + version comment in lockstep.
+  # ----------------------------------------------------------------------
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: 'Etc/UTC'
+    open-pull-requests-limit: 3
+    labels:
+      - dependencies
+      - github-actions
+    commit-message:
+      prefix: chore(actions)
+      include: scope
+    groups:
+      actions-minor:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - patch
+          - minor
+
+  # ----------------------------------------------------------------------
+  # Same config for the composite action's pinned actions — dependabot
+  # walks `.github/actions/**/action.yml` automatically when this entry
+  # exists at the repo root.
+  # ----------------------------------------------------------------------

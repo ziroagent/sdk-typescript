@@ -1,0 +1,55 @@
+name: Setup pnpm + Node
+description: |
+  Composite action that sets up pnpm at the exact version declared in
+  package.json#packageManager and Node from .nvmrc (or an override),
+  enables pnpm cache via setup-node, and runs a frozen-lockfile install.
+
+  Used by every workflow in this repo so the install path is identical.
+  If you bump pnpm or Node, change them here ONCE.
+
+inputs:
+  node-version:
+    description: |
+      Optional Node version override. When unset, .nvmrc is used (preferred).
+      Set this only for matrix jobs that need to test multiple Node versions.
+    required: false
+    default: ''
+  pnpm-version:
+    description: |
+      pnpm version to install. MUST match package.json#packageManager.
+      Pinned explicitly (instead of resolving to "latest") because pnpm 11.x
+      imports node:sqlite and breaks on Node 20 + Node 22 minor releases
+      without --experimental-sqlite.
+    required: false
+    default: '10.33.0'
+  install:
+    description: 'Run `pnpm install --frozen-lockfile` after setup. Set to "false" to skip.'
+    required: false
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    - name: Setup pnpm
+      uses: pnpm/action-setup@71c92474e7e4f5bca283fb17ef80fba9cdb2b4b1 # v6
+      with:
+        version: ${{ inputs.pnpm-version }}
+
+    - name: Setup Node (from .nvmrc)
+      if: inputs.node-version == ''
+      uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      with:
+        node-version-file: .nvmrc
+        cache: pnpm
+
+    - name: Setup Node (override)
+      if: inputs.node-version != ''
+      uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: pnpm
+
+    - name: Install dependencies
+      if: inputs.install == 'true'
+      shell: bash
+      run: pnpm install --frozen-lockfile

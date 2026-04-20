@@ -39,9 +39,9 @@ concurrency:
   group: sync-main-to-dev
   cancel-in-progress: true
 
+# Top-level read-only; the single job below escalates only what it needs.
 permissions:
-  contents: write       # push to dev (fast-forward path) + create branch (PR fallback)
-  pull-requests: write  # open the fallback PR
+  contents: read
 
 env:
   TURBO_TELEMETRY_DISABLED: 1
@@ -51,8 +51,19 @@ jobs:
     name: Fast-forward dev or open PR
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: write       # push to dev (fast-forward path) + create branch (PR fallback)
+      pull-requests: write  # open the fallback PR
     steps:
-      - uses: actions/checkout@v6
+      - name: Harden runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2
+        with:
+          egress-policy: audit
+          allowed-endpoints: >
+            api.github.com:443
+            github.com:443
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           # Need full history so the fast-forward attempt and PR diff
           # both have all commits available locally.

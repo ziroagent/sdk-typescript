@@ -1,41 +1,64 @@
 name: Pricing drift
 
+# Detects when entries in `packages/core/src/pricing/data.ts` are stale —
+# providers update their token pricing periodically and we need a forcing
+# function to re-verify before quotes drift away from reality.
+#
+# Outcomes:
+#   - Schedule (Mon 09:00 UTC): if drift detected, open OR comment on a
+#     `pricing-drift` tracking issue (one open at a time, deduped).
+#   - Manual dispatch: same as schedule but with overridable threshold.
+#   - Pull request (touching pricing files): annotate the diff with a
+#     warning so the reviewer sees freshness alongside the change. Never
+#     fails — this is signal, not a blocker.
+
 on:
-  # Weekly nudge — runs every Monday at 09:00 UTC.
   schedule:
     - cron: '0 9 * * 1'
-  # Manual trigger from the Actions tab when you want an ad-hoc check.
   workflow_dispatch:
     inputs:
       staleness_days:
         description: 'Override the default staleness threshold (days).'
         required: false
         default: '60'
-  # Run on PRs that touch the pricing table so reviewers see the staleness
-  # status alongside their diff. Targets both `dev` (where pricing edits
-  # land first via feature PRs) and `main` (where the dev -> main release
-  # PR re-runs the check before publish).
   pull_request:
-    branches: [main, dev]
     paths:
       - 'packages/core/src/pricing/data.ts'
       - 'scripts/check-pricing-drift.ts'
 
 permissions:
   contents: read
-  issues: write
 
 jobs:
   check:
     name: Check pricing freshness
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write   # only used by the schedule path to file/refresh tracking issue
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - name: Harden runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2
         with:
-          # Native --experimental-strip-types lands in Node 22.6+.
-          node-version: '22'
+          egress-policy: audit
+          allowed-endpoints: >
+            api.github.com:443
+            github.com:443
+            nodejs.org:443
+            registry.npmjs.org:443
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      # NOTE: we deliberately use .nvmrc (Node 22.13.0) instead of a hardcoded
+      # `node-version: '22'` so this job can't drift away from the rest of
+      # the matrix. `--experimental-strip-types` requires Node 22.6+.
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: .nvmrc
+
       - name: Run drift check
         id: drift
         env:
@@ -44,15 +67,17 @@ jobs:
           set +e
           node --experimental-strip-types scripts/check-pricing-drift.ts | tee drift.log
           echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
       - name: Annotate stale entries
         if: steps.drift.outputs.exit_code == '1'
         run: |
           echo "::warning title=Pricing drift detected::One or more entries in packages/core/src/pricing/data.ts are older than the staleness threshold. See logs."
           # Intentionally do NOT fail the job — drift is a reminder, not a
           # blocker. The annotation surfaces in the PR Files-changed view.
+
       - name: Open / refresh tracking issue (scheduled runs only)
         if: steps.drift.outputs.exit_code == '1' && github.event_name == 'schedule'
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           script: |
             const fs = require('fs');
@@ -91,6 +116,7 @@ jobs:
                 labels: ['pricing-drift'],
               });
             }
+
       - name: Fail the job on script error
         if: steps.drift.outputs.exit_code == '2'
         run: |

@@ -48,15 +48,23 @@ release PR merge.
 
 ## Workflows
 
+See `.github/workflows/README.md` for the full inventory, security
+model, and required repo configuration. Quick map of the publish path:
+
 | File                                             | Trigger                              | What it does                                                                                                |
 | ------------------------------------------------ | ------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| `.github/workflows/ci.yml`                       | push/PR to `main` or `dev`           | Lint + matrix build/test/typecheck + publint + attw                                                         |
-| `.github/workflows/changeset-status.yml`         | PR to `main` or `dev`                | Soft warning if PR touches `packages/*` without a changeset                                                 |
-| `.github/workflows/release.yml`                  | push to `main`                       | **Gate** (re-runs full CI suite) → opens version PR or publishes + creates GitHub Releases                  |
+| `.github/workflows/_validate.yml`                | `workflow_call` (reusable)           | Lint + matrix build/test/typecheck + publint + attw + coverage + examples typecheck (single source of truth) |
+| `.github/workflows/ci.yml`                       | push/PR to `main`                    | Calls `_validate` with PR-trimmed matrix (1 OS × 2 Node) + Codecov upload                                   |
+| `.github/workflows/release.yml`                  | push to `main`                       | Calls `_validate` with FULL matrix (3 OS × 2 Node) → opens version PR or publishes + creates GitHub Releases |
 | `.github/workflows/auto-merge-release.yml`       | PR opened/updated to `main`          | Detects the changesets `chore(release): version packages` PR and enables GitHub native auto-merge on it     |
-| `.github/workflows/snapshot.yml`                 | PR labeled `release:snapshot` (→ `main`) | Publishes ephemeral preview build under dist-tag `pr-<number>`; comments install instructions on the PR  |
+| `.github/workflows/snapshot.yml`                 | PR labeled `release:snapshot` (→ `main`) | Publishes ephemeral preview build under dist-tag `pr-<number>`; comments install instructions on the PR. Gated by maintainer-permission check. |
+| `.github/workflows/changeset-status.yml`         | PR to `main`                         | Soft warning if PR touches `packages/*` without a changeset                                                 |
 | `.github/workflows/sync-main-to-dev.yml`         | push to `main`                       | Fast-forwards `dev` to `main`, or opens a back-merge PR if the branches diverged                            |
 | `.github/workflows/pricing-drift.yml`            | scheduled / PR touching pricing data | Detects unverified pricing entries (unrelated to publishing)                                                |
+| `.github/workflows/nightly.yml`                  | cron 04:30 UTC daily                 | Full 3 OS × 2 Node matrix + provider integration tests + signature audit + outdated report                  |
+| `.github/workflows/codeql.yml`                   | push/PR + cron Sun                   | CodeQL static analysis (security-and-quality query suite)                                                   |
+| `.github/workflows/scorecard.yml`                | push `main` / cron Tue / branch-protection-rule | OpenSSF Scorecard → public Scorecard API + Security tab                                          |
+| `.github/workflows/osv-scanner.yml`              | push/PR + cron Mon                   | OSV.dev vulnerability scan → Security tab                                                                   |
 
 ---
 
@@ -102,11 +110,14 @@ without them.
 2. **Settings → Branches → Branch protection rule for `main`**:
    - **Require a pull request before merging** ✅
    - **Require status checks to pass before merging** ✅
-     - Add: `Lint & format`, `Build & test (ubuntu-latest / Node 20)`,
-       `Build & test (ubuntu-latest / Node 22)`,
-       `Package quality (attw + publint)`
+     - Add: `Validate / Validation summary` (the aggregate check from
+       `_validate.yml` — picks up matrix changes automatically so
+       toggling OS/Node combos doesn't require touching repo settings).
+     - Recommended also: `Analyze (javascript-typescript)` (CodeQL),
+       `Vulnerability scan` (OSV).
    - **Require branches to be up to date before merging** — optional
      but recommended; auto-merge will rebase as needed.
+   - **Include administrators** ✅ — so bot PRs go through the same gate.
 
 Without branch protection, GitHub's auto-merge fires immediately on PR
 open (the PR is "mergeable" before CI even starts), which defeats the
@@ -256,6 +267,40 @@ half-publishes.
    package).
 
 ---
+
+## Performance notes
+
+- All actions are pinned by 40-char SHA; dependabot bumps them weekly.
+  Pin updates land grouped to keep PR churn low (see `.github/dependabot.yml`).
+- Setup logic (pnpm + Node + install) lives in
+  `.github/actions/setup-pnpm-node/action.yml`. Bump pnpm or Node
+  versions there and every workflow picks them up.
+- `_validate.yml` uploads `dist/` from the build-test job and
+  `package-quality` + `examples-typecheck` reuse it via
+  `download-artifact` — saves ~3 min per release run versus rebuilding.
+- **Turbo Remote Cache**: set repo secret `TURBO_TOKEN` and repo
+  variable `TURBO_TEAM` to enable cache hits between runs. Cold build
+  drops from ~90s to ~5s when the cache is warm. Free tier on
+  Vercel covers this comfortably.
+
+## Security hardening
+
+The release path enforces several supply-chain controls. Audit them in
+the workflow files:
+
+| Control | Where |
+| ------- | ----- |
+| `permissions: contents: read` top-level | every workflow |
+| `step-security/harden-runner` (audit mode) | every job |
+| Actions pinned by 40-char SHA + version comment | every `uses:` |
+| `persist-credentials: false` on checkout | every read-only job |
+| Token never echoed to shell (printf %s, no `set -x`) | `release.yml`, `snapshot.yml` |
+| Maintainer-permission gate before label-triggered publish | `snapshot.yml authorize` job |
+| `head.repo == base.repo` filter for bot-PR auto-merge | `auto-merge-release.yml` |
+| CodeQL static analysis (security-and-quality query suite) | `codeql.yml` |
+| OpenSSF Scorecard | `scorecard.yml` |
+| OSV-Scanner against lockfile | `osv-scanner.yml` |
+| `npm audit signatures` against published tarballs | `release.yml` post-publish + `nightly.yml` |
 
 ## What we deliberately do **not** automate
 
