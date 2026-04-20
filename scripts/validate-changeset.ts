@@ -29,7 +29,7 @@
  *   expectations.
  */
 
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { appendFileSync, existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -201,10 +201,9 @@ function annotate(level: 'error' | 'warning' | 'notice', msg: string): void {
 function summary(lines: string[]): void {
   const out = process.env.GITHUB_STEP_SUMMARY;
   if (!out) return;
-  // Lazy import to keep top-of-file imports minimal — this runs only
-  // inside GitHub Actions where GITHUB_STEP_SUMMARY is set.
-  const fs = require('node:fs');
-  fs.appendFileSync(out, `${lines.join('\n')}\n`);
+  // Use the static import from node:fs — this file runs as ESM under
+  // `node --experimental-strip-types`, where `require` is unavailable.
+  appendFileSync(out, `${lines.join('\n')}\n`);
 }
 
 function fatal(msg: string): never {
