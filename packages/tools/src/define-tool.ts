@@ -54,6 +54,14 @@ export interface Tool<TInput = unknown, TOutput = unknown> {
    * `DefineToolOptions.requiresApproval` below.
    */
   readonly requiresApproval?: RequiresApproval;
+  /**
+   * When `true`, the tool is treated as mutating external state (writes,
+   * deletes, payments, etc.). `defineTool` defaults `requiresApproval` to
+   * `true` if you set `mutates: true` and omit `requiresApproval` — v0.5
+   * default-deny (see ROADMAP §v0.5 C1). Set `requiresApproval: false` to
+   * opt out explicitly (document why in your tool description).
+   */
+  readonly mutates?: boolean;
   execute(input: TInput, ctx: ToolExecutionContext): Promise<TOutput> | TOutput;
 }
 
@@ -66,6 +74,8 @@ export interface DefineToolOptions<TInput, TOutput> {
   budget?: BudgetSpec;
   /** See {@link Tool.requiresApproval}. */
   requiresApproval?: RequiresApproval<TInput>;
+  /** See {@link Tool.mutates}. */
+  mutates?: boolean;
   execute(input: TInput, ctx: ToolExecutionContext): Promise<TOutput> | TOutput;
 }
 
@@ -78,6 +88,11 @@ export function defineTool<TInput, TOutput>(
 ): Tool<TInput, TOutput> {
   const input = normalizeToolSchema(options.input);
   const output = options.output !== undefined ? normalizeToolSchema(options.output) : undefined;
+  const mutates = options.mutates;
+  const requiresApproval =
+    mutates === true && options.requiresApproval === undefined
+      ? true
+      : (options.requiresApproval as RequiresApproval | undefined);
   return {
     __ziro_tool__: true,
     name: options.name,
@@ -85,8 +100,9 @@ export function defineTool<TInput, TOutput>(
     input,
     ...(output !== undefined ? { output } : {}),
     ...(options.budget !== undefined ? { budget: options.budget } : {}),
-    ...(options.requiresApproval !== undefined
-      ? { requiresApproval: options.requiresApproval as RequiresApproval }
+    ...(mutates !== undefined ? { mutates } : {}),
+    ...(requiresApproval !== undefined
+      ? { requiresApproval: requiresApproval as RequiresApproval }
       : {}),
     execute: options.execute,
   } as Tool<TInput, TOutput>;

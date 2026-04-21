@@ -45,6 +45,15 @@ describe('withBudget', () => {
     const v = await withBudget({}, async () => 42);
     expect(v).toBe(42);
   });
+
+  it('exposes merged tenantId on getCurrentBudget', async () => {
+    await withBudget({ tenantId: 't1', maxUsd: 10 }, async () => {
+      await withBudget({ maxUsd: 1 }, async () => {
+        expect(getCurrentBudget()?.tenantId).toBe('t1');
+        expect(getCurrentBudget()?.spec.tenantId).toBe('t1');
+      });
+    });
+  });
 });
 
 describe('intersectSpecs', () => {
@@ -59,5 +68,33 @@ describe('intersectSpecs', () => {
     const r = intersectSpecs({}, {});
     expect(r.maxUsd).toBeUndefined();
     expect(r.maxTokens).toBeUndefined();
+  });
+
+  it('inherits tenantId from parent when child omits it', () => {
+    const r = intersectSpecs({ tenantId: 't_acme' }, { maxUsd: 1 });
+    expect(r.tenantId).toBe('t_acme');
+  });
+
+  it('child tenantId overrides parent', () => {
+    const r = intersectSpecs({ tenantId: 'parent' }, { tenantId: 'child', maxUsd: 2 });
+    expect(r.tenantId).toBe('child');
+  });
+
+  it('forces onExceed to throw when either side is hard and base would truncate', () => {
+    const r = intersectSpecs({ hard: true, maxUsd: 1 }, { onExceed: 'truncate' });
+    expect(r.hard).toBe(true);
+    expect(r.onExceed).toBe('throw');
+  });
+
+  it('forces onExceed to throw when hard and base is a function', () => {
+    const r = intersectSpecs({ hard: true }, { onExceed: async () => ({ handled: false }) });
+    expect(r.hard).toBe(true);
+    expect(r.onExceed).toBe('throw');
+  });
+
+  it('preserves truncate when neither side is hard', () => {
+    const r = intersectSpecs({}, { onExceed: 'truncate' });
+    expect(r.hard).toBeUndefined();
+    expect(r.onExceed).toBe('truncate');
   });
 });

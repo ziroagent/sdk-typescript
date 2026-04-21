@@ -14,6 +14,25 @@ import {
 import { parseAsync } from 'zod';
 import type { Tool } from './define-tool.js';
 
+/** Context passed to {@link RepairToolCall} (v0.6 / RFC 0015). */
+export type RepairToolCallContext = {
+  toolName: string;
+  toolCallId: string;
+  step?: number;
+  metadata?: Record<string, unknown>;
+};
+
+/**
+ * Optional hook when Zod input parsing fails for a tool call. Return a
+ * repaired {@link ToolCallPart} (same `toolCallId` / `toolName`) to retry
+ * parsing once, or `null` to keep the original error behaviour.
+ */
+export type RepairToolCall = (
+  call: ToolCallPart,
+  error: unknown,
+  ctx: RepairToolCallContext,
+) => ToolCallPart | null | Promise<ToolCallPart | null>;
+
 export interface ToolExecutionResult {
   toolCallId: string;
   toolName: string;
@@ -90,6 +109,15 @@ interface ExecuteOptions {
    * number; for direct `executeToolCalls` callers it can stay undefined.
    */
   approvalContext?: { step: number; messages: ReadonlyArray<unknown> };
+  /**
+   * When tool argument parsing fails, invoked once with the parse error.
+   * Return a repaired call to retry validation, or `null` to surface the error.
+   *
+   * @see {@link RepairToolCall}
+   */
+  repairToolCall?: RepairToolCall;
+  /** Agent step index for repair / approval context (optional for direct callers). */
+  step?: number;
 }
 
 /**
@@ -114,6 +142,8 @@ export async function executeToolCalls(options: ExecuteOptions): Promise<ToolExe
     toolBudget,
     approver,
     approvalContext,
+    repairToolCall,
+    step,
   } = options;
 
   const tasks = toolCalls.map(async (call): Promise<ToolExecutionResult> => {
@@ -131,21 +161,36 @@ export async function executeToolCalls(options: ExecuteOptions): Promise<ToolExe
       };
     }
 
+    let workingCall: ToolCallPart = call;
     let parsedInput: unknown;
-    try {
-      parsedInput = await parseAsync(tool.input, call.args);
-    } catch (err) {
-      // No `parsedArgs` here — input validation failed, so we surface the
-      // raw `call.args` instead so a snapshot can still echo what the
-      // model actually emitted.
-      return {
-        toolCallId: call.toolCallId,
-        toolName: call.toolName,
-        result: serializeError(err),
-        isError: true,
-        durationMs: performance.now() - start,
-        parsedArgs: call.args,
-      };
+    for (let parseAttempt = 0; parseAttempt < 2; parseAttempt++) {
+      try {
+        parsedInput = await parseAsync(tool.input, workingCall.args);
+        break;
+      } catch (err) {
+        if (parseAttempt === 0 && repairToolCall) {
+          const repaired = await Promise.resolve(
+            repairToolCall(workingCall, err, {
+              toolName: call.toolName,
+              toolCallId: call.toolCallId,
+              ...(step !== undefined ? { step } : {}),
+              ...(metadata !== undefined ? { metadata } : {}),
+            }),
+          );
+          if (repaired !== null && repaired !== undefined) {
+            workingCall = repaired;
+            continue;
+          }
+        }
+        return {
+          toolCallId: call.toolCallId,
+          toolName: call.toolName,
+          result: serializeError(err),
+          isError: true,
+          durationMs: performance.now() - start,
+          parsedArgs: workingCall.args,
+        };
+      }
     }
 
     // Approval gate (RFC 0002). Evaluated AFTER input parsing so the
@@ -159,7 +204,7 @@ export async function executeToolCalls(options: ExecuteOptions): Promise<ToolExe
         toolName: call.toolName,
         ...(tool.description !== undefined ? { toolDescription: tool.description } : {}),
         input: parsedInput,
-        rawArgs: call.args,
+        rawArgs: workingCall.args,
         context: {
           step: approvalContext?.step ?? 0,
           messages: approvalContext?.messages ?? [],
@@ -176,7 +221,7 @@ export async function executeToolCalls(options: ExecuteOptions): Promise<ToolExe
           toolName: call.toolName,
           ...(tool.description !== undefined ? { toolDescription: tool.description } : {}),
           parsedInput,
-          rawArgs: call.args,
+          rawArgs: workingCall.args,
         };
         fireApprovalResolved(req, { decision: 'suspend' });
         return {
@@ -226,7 +271,7 @@ export async function executeToolCalls(options: ExecuteOptions): Promise<ToolExe
           toolName: call.toolName,
           ...(tool.description !== undefined ? { toolDescription: tool.description } : {}),
           parsedInput,
-          rawArgs: call.args,
+          rawArgs: workingCall.args,
         };
         return {
           toolCallId: call.toolCallId,

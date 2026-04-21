@@ -98,6 +98,28 @@ export class JSONParseError extends ZiroError {
   }
 }
 
+/** Thrown by {@link generateObject} when JSON is invalid or fails Zod validation after optional repair. */
+export class ObjectValidationError extends ZiroError {
+  override readonly name = 'ObjectValidationError';
+  readonly text: string;
+  readonly repairAttempted: boolean;
+  readonly zodIssues?: readonly { path: (string | number)[]; message: string; code?: string }[];
+
+  constructor(options: {
+    message: string;
+    text: string;
+    repairAttempted: boolean;
+    zodIssues?: readonly { path: (string | number)[]; message: string; code?: string }[];
+    cause?: unknown;
+  }) {
+    super(options.message, { code: 'object_validation_error', cause: options.cause });
+    this.text = options.text;
+    this.repairAttempted = options.repairAttempted;
+    if (options.zodIssues !== undefined) this.zodIssues = options.zodIssues;
+    brand(this);
+  }
+}
+
 export class TimeoutError extends ZiroError {
   override readonly name = 'TimeoutError';
   readonly timeoutMs: number;

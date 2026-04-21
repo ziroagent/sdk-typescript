@@ -199,6 +199,8 @@ This milestone exists because the 12-SDK review (RFC 0004) surfaced eight gaps w
 
 **Goal**: ship the structural safety primitives that turn the existing heuristic middlewares into an auditable governance layer.
 
+**P0 status:** C1 + C4 + C2 implemented in-repo — publish to npm via changeset + `dev` → `main` per [`RELEASING.md`](./RELEASING.md) (no manual `npm publish`).
+
 ### Adoption matrix
 
 | Inspired by                                  | Keep                                                                                                  | Reject                                                                                                |
@@ -209,9 +211,9 @@ This milestone exists because the 12-SDK review (RFC 0004) surfaced eight gaps w
 | Adversarial eval research                    | `@ziro-agent/eval/safety` ships red-team prompt suites with version pinning                           | Auto-running adversarial evals on every PR — opt-in via `pnpm eval --suite=safety`                    |
 
 ### Tracks (P0 only)
-- [ ] **C1** — Default-deny for mutating tools (`mutates: true` heuristic)
-- [ ] **C4** — Structured output enforcement (`generateObject` with auto-repair)
-- [ ] **C2** — Per-tenant budget hard cap (promoted from P1 if design-partner pull)
+- [x] **C1** — Default-deny for mutating tools — `defineTool({ mutates: true })` sets `requiresApproval: true` when `requiresApproval` is omitted; explicit `requiresApproval: false` opts out; `mutates` is stored on the tool for audit
+- [x] **C4** — Structured output — `generateObject({ model, schema, prompt | messages })` validates with Zod, strips ```json fences, one repair pass by default (`repair: false` to disable); `budget` wraps both attempts; throws `JSONParseError` / `ObjectValidationError` / `NoTextGeneratedError`
+- [x] **C2** — Per-tenant budget — `BudgetSpec.tenantId` + `hard: true` (nested `intersectSpecs` coerces function/`truncate` `onExceed` to `'throw'`); `BudgetContext.tenantId`; `@ziro-agent/tracing` sets `ziroagent.budget.tenant_id` / `ziroagent.budget.spec.hard` on budget spans; snapshot serialization includes both fields
 
 ---
 
@@ -219,20 +221,22 @@ This milestone exists because the 12-SDK review (RFC 0004) surfaced eight gaps w
 
 **Goal**: the SDK survives provider outages, malformed completions, flaky tools, and process crashes — without operator intervention.
 
+**P0 slice (in-repo):** `withFallbackChain`, `repairToolCall` on `executeToolCalls` / `createAgent` / `resume`, `createReplayLanguageModel` — JSONL `recordRun`, circuit-breaker tuning, and Temporal (G5) remain follow-up.
+
 ### Adoption matrix
 
 | Inspired by                                  | Keep                                                                                | Reject                                                                                                |
 | -------------------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| LiteLLM / Provider fallback chain            | `wrapModel(primary, fallback([anthropic, openai]))` with circuit breaker            | LiteLLM's per-call routing config file — keep configuration in code                                   |
-| OpenAI Agents JS / `repairToolCall`          | `repairToolCall(call, error, ctx) => repairedCall \| null` hook on `agent.run`      | Auto-repair via second LLM call by default — opt-in, cost-aware                                       |
-| LangSmith / Trace replay                     | `recordRun()` → JSONL trace + tool I/O; `replayRun(trace)` reuses recorded responses | Vendor-locked replay format — emit OTel-compatible JSON                                               |
+| LiteLLM / Provider fallback chain            | `withFallbackChain([primary, ...fallbacks])` + optional `shouldFallback` (default: retryable `APICallError`, `TimeoutError`) | LiteLLM's per-call routing config file — keep configuration in code                                   |
+| OpenAI Agents JS / `repairToolCall`          | `repairToolCall` on `executeToolCalls` + agent `run` / `resume` (one retry after repair)      | Auto-repair via second LLM call by default — opt-in, cost-aware                                       |
+| LangSmith / Trace replay                     | `createReplayLanguageModel` from recorded `generate()` results; `recordLanguageModel` unchanged | Vendor-locked replay format — emit OTel-compatible JSON                                               |
 | Speculative execution (Cursor, Vercel)       | (deferred to P2)                                                                    | Premature optimisation — re-evaluate when 3+ design partners cite p99 latency                         |
 
 ### Tracks (P0 only)
-- [ ] **K3** — Model fallback chain — see [RFC 0015](./rfcs/0015-resilience.md)
-- [ ] **L1** — Snapshot record / replay
+- [x] **K3** — Model fallback — `withFallbackChain` in `@ziro-agent/core` (static ordering; default retryable/timeout fallback) — [RFC 0015](./rfcs/0015-resilience.md)
+- [x] **L1** — *slice*: `createReplayLanguageModel` + `ReplayExhaustedError` in `@ziro-agent/core/testing`; full JSONL record/replay pipeline deferred
 - [ ] **G5** — `@ziro-agent/temporal` durable adapter (promoted from P1 if pulled)
-- [ ] `repairToolCall` hook on `agent.run` (carried over from RFC 0004 v0.2 Track 4)
+- [x] **`repairToolCall`** — `executeToolCalls({ repairToolCall, step })`; `createAgent` / `AgentRunOptions` / `AgentResumeOptions` — RFC 0004 carry-over
 
 ---
 
