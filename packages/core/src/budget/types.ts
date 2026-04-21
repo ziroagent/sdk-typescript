@@ -77,6 +77,19 @@ export interface BudgetResolution {
 
 /** Public, user-facing budget specification. Every field is optional. */
 export interface BudgetSpec {
+  /**
+   * Opaque tenant / org id for cost attribution in traces (`BudgetContext`
+   * and `@ziro-agent/tracing` span attributes). Nesting: inner `tenantId`
+   * overrides the parent when set — see `intersectSpecs`.
+   */
+  tenantId?: string;
+  /**
+   * When `true`, this scope is a **hard** cap: nested composition cannot
+   * soften enforcement via `onExceed` function handlers or `'truncate'` —
+   * `intersectSpecs` coerces those to `'throw'`. Pair with numeric `max*`
+   * limits for per-tenant ceilings (v0.5 C2 / ROADMAP).
+   */
+  hard?: boolean;
   /** Hard ceiling in USD for the entire scope. */
   maxUsd?: number;
   /** Hard ceiling in input + output (+ reasoning) tokens. */
@@ -96,6 +109,8 @@ export interface BudgetSpec {
 /** Snapshot of a scope's current state, passed to `onExceed` callbacks. */
 export interface BudgetContext {
   readonly spec: BudgetSpec;
+  /** Convenience mirror of `spec.tenantId` when set (merged scope). */
+  readonly tenantId?: string;
   readonly used: BudgetUsage;
   readonly remaining: { usd?: number; tokens?: number; llmCalls?: number; durationMs?: number };
   readonly scopeId: string;

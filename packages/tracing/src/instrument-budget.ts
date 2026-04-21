@@ -108,6 +108,8 @@ function scopeStartAttrs(ctx: BudgetContext): Record<string, AttrValue> {
   if (s.maxLlmCalls !== undefined) out[ATTR.BudgetSpecMaxLlmCalls] = s.maxLlmCalls;
   if (s.maxSteps !== undefined) out[ATTR.BudgetSpecMaxSteps] = s.maxSteps;
   if (s.maxDurationMs !== undefined) out[ATTR.BudgetSpecMaxDurationMs] = s.maxDurationMs;
+  if (s.tenantId !== undefined) out[ATTR.BudgetTenantId] = s.tenantId;
+  if (s.hard === true) out[ATTR.BudgetSpecHard] = true;
   return out;
 }
 

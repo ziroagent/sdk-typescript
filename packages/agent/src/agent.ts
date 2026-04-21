@@ -1129,6 +1129,8 @@ function addUsageInPlace(target: TokenUsage, add: TokenUsage): void {
  */
 function serializeBudgetSpec(spec: BudgetSpec): SerializableBudgetSpec {
   const out: SerializableBudgetSpec = {};
+  if (spec.tenantId !== undefined) out.tenantId = spec.tenantId;
+  if (spec.hard !== undefined) out.hard = spec.hard;
   if (spec.maxUsd !== undefined) out.maxUsd = spec.maxUsd;
   if (spec.maxTokens !== undefined) out.maxTokens = spec.maxTokens;
   if (spec.maxLlmCalls !== undefined) out.maxLlmCalls = spec.maxLlmCalls;
