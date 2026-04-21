@@ -32,4 +32,13 @@ describe('assertProviderMapsUserMultimodalParts', () => {
       ),
     ).toThrow(UnsupportedPartError);
   });
+
+  it('throws UnsupportedPartError for video', () => {
+    expect(() =>
+      assertProviderMapsUserMultimodalParts(
+        [{ type: 'video', video: 'https://cdn.example.com/clip.mp4', mimeType: 'video/mp4' }],
+        'ollama',
+      ),
+    ).toThrow(UnsupportedPartError);
+  });
 });

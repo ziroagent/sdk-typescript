@@ -25,11 +25,11 @@ import {
   type RepairToolCall,
   type Tool,
   type ToolExecutionResult,
-  toolsToModelDefinitions,
 } from '@ziro-agent/tools';
 import { instrumentTools } from '@ziro-agent/tracing';
-import type { Checkpointer, CheckpointId } from './checkpointer.js';
+import type { Checkpointer, CheckpointId, CheckpointMeta } from './checkpointer.js';
 import { buildHandoffTool, type Handoff, handoffStore } from './handoff.js';
+import { type PrepareStep, resolvePrepareForStep } from './prepare-step.js';
 import {
   type AgentResumeOptions,
   type AgentSnapshot,
@@ -83,6 +83,12 @@ export interface CreateAgentOptions {
    * Combine with `stepCountIs`, `totalTokensExceeds`, etc.
    */
   stopWhen?: StopWhen;
+  /**
+   * Invoked before each LLM step. Return a partial result to swap `model`,
+   * replace the first system message for that call, or restrict which tool
+   * names are exposed (RFC 0004 `prepareStep` adoption matrix).
+   */
+  prepareStep?: PrepareStep;
   /** Default temperature for every step. */
   temperature?: number;
   /** Per-step LLM call timeout. Set 0 / undefined to disable. */
@@ -136,6 +142,11 @@ export interface AgentRunOptions {
   abortSignal?: AbortSignal;
   /** Subscribe to fine-grained step events while the agent runs. */
   onEvent?: StepEventListener;
+  /**
+   * Per-run override of {@link CreateAgentOptions.prepareStep}. When both are
+   * set, this wins.
+   */
+  prepareStep?: PrepareStep;
   /**
    * Budget enforced across the entire run: every nested `generateText` and
    * `executeToolCalls` invocation participates in the same scope via
@@ -247,6 +258,14 @@ export interface Agent {
     threadId: string,
     options: ResumeFromCheckpointOptions,
   ): Promise<AgentRunResult>;
+  /**
+   * Lists checkpoint metadata for a thread (newest first). Delegates to
+   * {@link Checkpointer.list}; use this when you only hold the `Agent`
+   * reference.
+   *
+   * Requires `createAgent({ checkpointer })`.
+   */
+  listCheckpoints(threadId: string, opts?: { limit?: number }): Promise<CheckpointMeta[]>;
 }
 
 /**
@@ -335,7 +354,6 @@ export function createAgent(options: CreateAgentOptions): Agent {
     }
   }
   const tools = options.traceTools === true ? instrumentTools(baseTools) : baseTools;
-  const toolDefs = Object.keys(tools).length > 0 ? toolsToModelDefinitions(tools) : undefined;
   const agentRepairDefault = options.repairToolCall;
 
   /**
@@ -426,6 +444,9 @@ export function createAgent(options: CreateAgentOptions): Agent {
           ? { abortSignal: resumeOptions.abortSignal }
           : {}),
         ...(resumeOptions.onEvent !== undefined ? { onEvent: resumeOptions.onEvent } : {}),
+        ...(resumeOptions.prepareStep !== undefined
+          ? { prepareStep: resumeOptions.prepareStep }
+          : {}),
         ...(resumeOptions.metadata !== undefined ? { metadata: resumeOptions.metadata } : {}),
         ...(resumeRepair ? { repairToolCall: resumeRepair } : {}),
         ...(snapshot.agentId !== undefined ? { agentId: snapshot.agentId } : {}),
@@ -519,6 +540,15 @@ export function createAgent(options: CreateAgentOptions): Agent {
       // stays clean.
       const { checkpointId: _ignored, ...rest } = resumeOptions;
       return await this.resume(snap, rest);
+    },
+
+    async listCheckpoints(threadId: string, opts?: { limit?: number }): Promise<CheckpointMeta[]> {
+      if (!checkpointer) {
+        throw new Error(
+          'agent.listCheckpoints() requires a `checkpointer` on createAgent({ checkpointer }).',
+        );
+      }
+      return checkpointer.list(threadId, opts);
     },
   };
 
@@ -638,12 +668,21 @@ export function createAgent(options: CreateAgentOptions): Agent {
       const stepIndex = i + 1;
       await emit({ type: 'step-start', index: stepIndex });
 
+      const baseMsgs = await buildLlmMessages(state, ro, stepIndex);
+      const prepare = ro.prepareStep ?? options.prepareStep;
+      const {
+        messages: stepMsgs,
+        model: stepModel,
+        toolsForStep,
+        toolDefs: stepToolDefs,
+      } = await resolvePrepareForStep(prepare, stepIndex, baseMsgs, options.model, tools);
+
       let llmResult: Awaited<ReturnType<typeof generateText>>;
       try {
         llmResult = await generateText({
-          model: options.model,
-          messages: await buildLlmMessages(state, ro, stepIndex),
-          ...(toolDefs ? { tools: toolDefs } : {}),
+          model: stepModel,
+          messages: stepMsgs,
+          ...(stepToolDefs ? { tools: stepToolDefs } : {}),
           ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
           ...(ro.abortSignal ? { abortSignal: ro.abortSignal } : {}),
         });
@@ -686,7 +725,7 @@ export function createAgent(options: CreateAgentOptions): Agent {
         const frame = handoffStore.getStore();
         if (frame) frame.messages = [...state.messages];
         toolResults = await executeToolCalls({
-          tools,
+          tools: toolsForStep,
           toolCalls: llmResult.toolCalls,
           step: stepIndex,
           ...(ro.abortSignal ? { abortSignal: ro.abortSignal } : {}),

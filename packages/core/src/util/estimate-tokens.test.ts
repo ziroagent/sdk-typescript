@@ -60,6 +60,22 @@ describe('estimateTokensFromMessages', () => {
     expect(withFile - textOnly).toBe(256);
   });
 
+  it('adds fixed overhead for video parts', () => {
+    const textOnly = estimateTokensFromMessages([
+      { role: 'user', content: [{ type: 'text', text: 'x' }] },
+    ]);
+    const withVideo = estimateTokensFromMessages([
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: 'x' },
+          { type: 'video', video: 'https://x/y.mp4', mimeType: 'video/mp4' },
+        ],
+      },
+    ]);
+    expect(withVideo - textOnly).toBe(512);
+  });
+
   it('counts tool-call args and tool-result payloads', () => {
     const n = estimateTokensFromMessages([
       {

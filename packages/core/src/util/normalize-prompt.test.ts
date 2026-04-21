@@ -86,4 +86,39 @@ describe('normalizePrompt', () => {
       filename: 'b.pdf',
     });
   });
+
+  it('normalizes reserved video parts', () => {
+    const out = normalizePrompt({
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'describe' },
+            { type: 'video', video: 'https://example.com/c.mp4', mimeType: 'video/mp4' },
+          ],
+        },
+      ],
+    });
+    expect(out[0]?.content[1]).toEqual({
+      type: 'video',
+      video: 'https://example.com/c.mp4',
+      mimeType: 'video/mp4',
+    });
+  });
+
+  it('normalizes video parts with optional filename', () => {
+    const out = normalizePrompt({
+      messages: [
+        {
+          role: 'user',
+          content: [{ type: 'video', video: 'file-vid-1', filename: 'take.mp4' }],
+        },
+      ],
+    });
+    expect(out[0]?.content[0]).toEqual({
+      type: 'video',
+      video: 'file-vid-1',
+      filename: 'take.mp4',
+    });
+  });
 });

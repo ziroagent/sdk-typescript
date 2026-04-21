@@ -196,7 +196,7 @@ ziro eval ./evals/*.ts --gate 0.95     # CI gate: fail merge if score < 95%
 | [`examples/agent-with-evals`](examples/agent-with-evals) | shipped | `defineEval` + CI gate. |
 | [`examples/multi-agent-workflow`](examples/multi-agent-workflow) | shipped | Workflow graph. |
 | [`examples/rag-pgvector`](examples/rag-pgvector) | shipped | RAG over Postgres. |
-| `examples/durable-support-agent` | planned (v0.2) | Temporal/Inngest-backed support agent with HITL. |
+| [`examples/durable-support-agent`](examples/durable-support-agent) | shipped | Inngest-style durable run + `MemoryCheckpointer` + HITL resume. |
 | `examples/mcp-server` | planned (v0.2) | Expose tools to Claude Desktop. |
 | `examples/sovereign-ollama` | planned (v0.1.9) | Fully on-prem agent, no internet. |
 | `examples/multi-agent-handoff` | planned (v0.3, [RFC 0007](rfcs/0007-handoffs-and-router.md)) | Replaces over-engineered `multi-agent-workflow` for the simple handoff case. |

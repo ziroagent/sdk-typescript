@@ -121,11 +121,12 @@ This milestone exists because the 12-SDK review (RFC 0004) surfaced eight gaps w
 - [x] `LanguageModelMiddleware` interface + `wrapModel(model, middleware[])` in `@ziro-agent/core`
 - [x] **`@ziro-agent/middleware`** new package: `retry()`, `cache()` (in-memory LRU + pluggable adapter), `redactPII()` (heuristic adapter, Presidio adapter pending), `blockPromptInjection()` (heuristic + adapter interface)
 - [x] Tracing instrumentation reuses existing `instrumentModel()` — middleware spans nest under model spans
+- [x] **`prepareStep`** on `createAgent` / `run` / `resume` — per-step `model` / `system` / `activeTools` overrides before each `generateText` (RFC 0004 adoption matrix)
 
 ### Track 2 — Checkpointer + resumable streams (week 3-4) — see RFC 0006
 - [x] `Checkpointer` interface in `@ziro-agent/agent`
 - [x] `@ziro-agent/checkpoint-memory`, [x] `@ziro-agent/checkpoint-postgres`, [x] `@ziro-agent/checkpoint-redis`
-- [x] `agent.resumeFromCheckpoint(threadId, options)` — shipped (`createAgent({ checkpointer })` + `checkpointer.get` + `agent.resume`); thin `agent.listCheckpoints(threadId)` sugar still **v0.9** (call `checkpointer.list(threadId)` today)
+- [x] `agent.resumeFromCheckpoint(threadId, options)` — shipped (`createAgent({ checkpointer })` + `checkpointer.get` + `agent.resume`); thin **`agent.listCheckpoints(threadId, opts?)`** delegates to `checkpointer.list` when you only hold the agent reference
 - [ ] `streamText({ resumeKey, resumeFromIndex })` with cached event log — moved to v0.6 (RFC 0015 resilience)
 - [x] **Mental model rename**: durable is the *default* (any checkpointer); Temporal/Inngest become the long-running adapters
 
@@ -139,7 +140,7 @@ This milestone exists because the 12-SDK review (RFC 0004) surfaced eight gaps w
 - [x] **`@ziro-agent/inngest` first** — TS-first DX, ~1 week ship
 - [ ] `@ziro-agent/temporal` — moved to v0.6 per RFC 0008 (G5 promoted from P1 if pulled)
 - [ ] (Restate adapter deferred to v0.3 — no design-partner demand yet)
-- [ ] `examples/durable-support-agent` end-to-end with Inngest
+- [x] `examples/durable-support-agent` end-to-end with Inngest
 
 ### Track 5 — Evals polish (parallel, throughout)
 - [ ] **Replay-from-trace** (deferred from RFC 0003 §Q4) — folded into RFC 0015 (v0.6)
@@ -191,7 +192,7 @@ This milestone exists because the 12-SDK review (RFC 0004) surfaced eight gaps w
 - [x] **E2** — Citation-first RAG output type — `buildTextWithCitations()`, `TextWithCitations`, `RetrievedChunk` / `toRetrievedChunk()` in `@ziro-agent/memory`
 - [x] **E3** — Hybrid search — `MemoryVectorStore` (BM25 + dense + RRF) and `PgVectorStore` (Postgres FTS + dense + RRF); `defaultSearchStrategy: 'hybrid'` on both when lexical + dense are configured — [RFC 0012](./rfcs/0012-rag-hardening.md)
 - [x] **E4** — Reranker pipeline — `retrieve({ store, query, reranker })` plus `createCohereReranker` / `createVoyageReranker` (`RerankerAdapter`)
-- [x] **E5** — *slice*: `loadDocument()` (local path or `file:` URL) for UTF-8 `.txt` / `.md` / `.csv` / `.json` and `.pdf` when `pdf-parse` is installed; DOCX / image OCR / URI registry still follow-up
+- [x] **E5** — *slice*: `loadDocument()` (local path or `file:` URL) for UTF-8 `.txt` / `.md` / `.csv` / `.json`, `.pdf` when `pdf-parse` is installed, and `.docx` when `mammoth` is installed; image OCR / URI registry still follow-up
 
 ---
 

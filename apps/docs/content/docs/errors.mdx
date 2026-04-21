@@ -23,6 +23,7 @@ ZiroError                              code: ZiroError.code (string)
 ├── InvalidArgumentError               code: 'invalid_argument'
 ├── NoTextGeneratedError               code: 'no_text_generated'
 ├── JSONParseError                     code: 'json_parse_error'
+├── UnsupportedPartError               code: 'unsupported_part'   (multimodal parts)
 └── TimeoutError                       code: 'timeout'
 
 AgentSuspendedError                    [pkg: agent — separate brand __ziro_suspended__]
@@ -51,6 +52,8 @@ try {
       return err.isRetryable ? retryWithBackoff() : surfaceToUser(err);
     case 'timeout':
       return surfaceToUser(`Took too long (${err.timeoutMs}ms)`);
+    case 'unsupported_part':
+      return surfaceToUser('That media part is not supported for this model.');
     default:
       throw err;
   }
@@ -131,6 +134,22 @@ prompt-engineering or retrying with `tool_choice: 'none'`.
 Thrown by `generateObject` and structured-output paths when the model's
 output isn't valid JSON. The `text` field is the raw response — log it,
 don't retry blindly.
+
+### `UnsupportedPartError`
+
+```ts
+{
+  code: 'unsupported_part',
+  partType: string,           // e.g. 'audio', 'file', 'video' (if unmapped)
+  provider: string,           // e.g. 'ollama', 'anthropic'
+}
+```
+
+Thrown when a **`UserMessage` content part** is not implemented for the
+selected provider (e.g. `audio` on Anthropic chat, `file` on Ollama). Recovery:
+strip or rewrite the part, switch providers, or gate uploads with
+`assertProviderMapsUserMultimodalParts` before calling the model. See
+[Multimodal](/docs/multimodal).
 
 ### `TimeoutError`
 

@@ -291,6 +291,13 @@ function openAiGuessFilename(mime?: string): string {
   return 'document.bin';
 }
 
+function openAiGuessVideoFilename(mime?: string): string {
+  const m = (mime ?? '').toLowerCase();
+  if (m.includes('webm')) return 'clip.webm';
+  if (m.includes('quicktime')) return 'clip.mov';
+  return 'clip.mp4';
+}
+
 function mapOpenAiUserContentPart(p: ContentPart): unknown {
   if (p.type === 'text') return { type: 'text', text: p.text };
   if (p.type === 'image') {
@@ -346,6 +353,33 @@ function mapOpenAiUserContentPart(p: ContentPart): unknown {
       file: {
         file_data: r.base64,
         filename: p.filename ?? openAiGuessFilename(r.mimeType ?? p.mimeType),
+      },
+    };
+  }
+  if (p.type === 'video') {
+    if (typeof p.video === 'string' && p.video.startsWith('file-')) {
+      return {
+        type: 'file',
+        file: {
+          file_id: p.video,
+          ...(p.filename !== undefined ? { filename: p.filename } : {}),
+        },
+      };
+    }
+    const r = resolveMediaInput(p.video);
+    if ('url' in r) {
+      throw new UnsupportedPartError({
+        partType: 'video',
+        provider: 'openai',
+        message:
+          'OpenAI video parts need a Files API id (`file-…`), or inline bytes / a base64 `data:` URL. The SDK does not fetch remote URLs.',
+      });
+    }
+    return {
+      type: 'file',
+      file: {
+        file_data: r.base64,
+        filename: p.filename ?? openAiGuessVideoFilename(r.mimeType ?? p.mimeType),
       },
     };
   }

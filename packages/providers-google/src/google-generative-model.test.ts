@@ -46,6 +46,48 @@ describe('Google Gemini model — generate', () => {
     expect(result.usage).toMatchObject({ promptTokens: 4, completionTokens: 3, totalTokens: 7 });
   });
 
+  it('maps video user parts to Gemini fileData (https URL)', async () => {
+    server.use(
+      http.post(`${BASE}/models/gemini-2.0-flash:generateContent`, async ({ request }) => {
+        const body = (await request.json()) as {
+          contents?: Array<{ parts?: unknown[] }>;
+        };
+        const parts = body.contents?.[0]?.parts;
+        expect(parts).toEqual(
+          expect.arrayContaining([
+            {
+              fileData: {
+                mimeType: 'video/mp4',
+                fileUri: 'https://cdn.example.com/clip.mp4',
+              },
+            },
+          ]),
+        );
+        return HttpResponse.json({
+          candidates: [
+            { content: { role: 'model', parts: [{ text: 'clip summary' }] }, finishReason: 'STOP' },
+          ],
+          usageMetadata: { promptTokenCount: 2, candidatesTokenCount: 2, totalTokenCount: 4 },
+        });
+      }),
+    );
+
+    const google = createGoogle({ apiKey: 'test' });
+    const result = await generateText({
+      model: google('gemini-2.0-flash'),
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'What happens in this video?' },
+            { type: 'video', video: 'https://cdn.example.com/clip.mp4', mimeType: 'video/mp4' },
+          ],
+        },
+      ],
+    });
+    expect(result.text).toBe('clip summary');
+  });
+
   it('parses functionCall parts as tool calls and synthesizes ids', async () => {
     server.use(
       http.post(`${BASE}/models/gemini-2.5-flash:generateContent`, () =>

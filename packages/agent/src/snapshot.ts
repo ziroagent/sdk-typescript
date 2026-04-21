@@ -9,6 +9,7 @@ import type {
   TokenUsage,
 } from '@ziro-agent/core';
 import type { RepairToolCall, ToolExecutionResult } from '@ziro-agent/tools';
+import type { PrepareStep } from './prepare-step.js';
 import type { StopWhen } from './stop-when.js';
 import type { AgentFinishReason, AgentStep, StepEventListener } from './types.js';
 
@@ -179,6 +180,8 @@ export interface AgentResumeOptions {
   metadata?: Record<string, unknown>;
   /** Per-resume override of {@link CreateAgentOptions.repairToolCall}. */
   repairToolCall?: RepairToolCall;
+  /** Per-resume override of {@link CreateAgentOptions.prepareStep}. */
+  prepareStep?: PrepareStep;
 }
 
 /**

@@ -1,4 +1,4 @@
-import type { Agent, AgentRunOptions, CheckpointId } from '@ziro-agent/agent';
+import type { Agent, AgentResumeOptions, AgentRunOptions, CheckpointId } from '@ziro-agent/agent';
 import {
   type InngestStepLike,
   type ResumeAsStepOptions,
@@ -49,7 +49,7 @@ export interface CreateInngestAgentOptions {
    * `ziro/agent.run.requested`. Event payload shape:
    *
    * ```ts
-   * { name, data: { threadId, prompt?, messages?, metadata? } }
+   * { name, data: { threadId, prompt?, messages?, metadata?, budget?, toolBudget? } }
    * ```
    */
   runEvent?: string;
@@ -58,7 +58,7 @@ export interface CreateInngestAgentOptions {
    * `ziro/agent.resume.requested`. Event payload shape:
    *
    * ```ts
-   * { name, data: { threadId, decisions, checkpointId? } }
+   * { name, data: { threadId, decisions, checkpointId?, budget?, toolBudget? } }
    * ```
    */
   resumeEvent?: string;
@@ -102,6 +102,8 @@ export function createInngestAgent(options: CreateInngestAgentOptions): {
         ...(data.messages !== undefined ? { messages: data.messages } : {}),
         ...(data.threadId !== undefined ? { threadId: data.threadId } : {}),
         ...(data.metadata !== undefined ? { metadata: data.metadata } : {}),
+        ...(data.budget !== undefined ? { budget: data.budget } : {}),
+        ...(data.toolBudget !== undefined ? { toolBudget: data.toolBudget } : {}),
       };
       return runAsStep(step, options.agent, runOptions);
     },
@@ -124,6 +126,8 @@ export function createInngestAgent(options: CreateInngestAgentOptions): {
         const resumeOptions: ResumeAsStepOptions & { checkpointId?: CheckpointId } = {
           decisions: data.decisions ?? {},
           ...(data.checkpointId !== undefined ? { checkpointId: data.checkpointId } : {}),
+          ...(data.budget !== undefined ? { budget: data.budget } : {}),
+          ...(data.toolBudget !== undefined ? { toolBudget: data.toolBudget } : {}),
         };
         return resumeAsStep(step, options.agent, data.threadId, resumeOptions);
       },
@@ -140,6 +144,9 @@ export interface RunEventData {
   prompt?: AgentRunOptions['prompt'];
   messages?: AgentRunOptions['messages'];
   metadata?: AgentRunOptions['metadata'];
+  /** Forwarded to `agent.run({ budget })` — avoids uncapped-run warnings in durable workflows. */
+  budget?: AgentRunOptions['budget'];
+  toolBudget?: AgentRunOptions['toolBudget'];
 }
 
 /** Shape of the payload your producer should `inngest.send(...)` to resume. */
@@ -147,4 +154,6 @@ export interface ResumeEventData {
   threadId: string;
   decisions?: Parameters<Agent['resume']>[1]['decisions'];
   checkpointId?: CheckpointId;
+  budget?: AgentResumeOptions['budget'];
+  toolBudget?: AgentResumeOptions['toolBudget'];
 }

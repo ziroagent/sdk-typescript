@@ -369,6 +369,14 @@ function mapAnthropicUserBlock(p: ContentPart): unknown {
       message: `Anthropic supports PDF (base64 or URL) or plain text (base64) document blocks; got "${p.mimeType ?? r.mimeType ?? 'unknown'}".`,
     });
   }
+  if (p.type === 'video') {
+    throw new UnsupportedPartError({
+      partType: 'video',
+      provider: 'anthropic',
+      message:
+        'Video `UserMessage` parts are reserved (RFC 0014) — the Claude Messages adapter does not map them yet.',
+    });
+  }
   throw new UnsupportedPartError({
     partType: (p as { type?: string }).type ?? 'unknown',
     provider: 'anthropic',

@@ -151,7 +151,13 @@ describe('createInngestAgent', () => {
     await runFn.handler({
       event: {
         name: 'ziro/agent.run.requested',
-        data: { prompt: 'hi', threadId: 't1', metadata: { user: 'u1' } },
+        data: {
+          prompt: 'hi',
+          threadId: 't1',
+          metadata: { user: 'u1' },
+          budget: { maxUsdPerRun: 0.5 },
+          toolBudget: { maxUsdPerRun: 0.1 },
+        },
       },
       step: memoStep(),
     });
@@ -160,6 +166,8 @@ describe('createInngestAgent', () => {
       prompt: 'hi',
       threadId: 't1',
       metadata: { user: 'u1' },
+      budget: { maxUsdPerRun: 0.5 },
+      toolBudget: { maxUsdPerRun: 0.1 },
     });
   });
 
@@ -180,6 +188,8 @@ describe('createInngestAgent', () => {
           threadId: 't1',
           decisions: { tc1: { decision: 'approve' } },
           checkpointId: 'cp-7',
+          budget: { maxUsdPerRun: 1 },
+          toolBudget: { maxUsdPerRun: 0.2 },
         },
       },
       step: memoStep(),
@@ -187,6 +197,8 @@ describe('createInngestAgent', () => {
     expect(spy).toHaveBeenCalledWith('t1', {
       decisions: { tc1: { decision: 'approve' } },
       checkpointId: 'cp-7',
+      budget: { maxUsdPerRun: 1 },
+      toolBudget: { maxUsdPerRun: 0.2 },
     });
   });
 });

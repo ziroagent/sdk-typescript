@@ -11,7 +11,7 @@ export function assertProviderMapsUserMultimodalParts(
   provider: string,
 ): void {
   for (const p of parts) {
-    if (p.type === 'audio' || p.type === 'file') {
+    if (p.type === 'audio' || p.type === 'file' || p.type === 'video') {
       throw new UnsupportedPartError({ partType: p.type, provider });
     }
   }

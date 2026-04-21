@@ -39,6 +39,8 @@ function estimateTokensFromContent(content: unknown): number {
       n += 128;
     } else if (p.type === 'file') {
       n += 256;
+    } else if (p.type === 'video') {
+      n += 512;
     } else if (p.type === 'tool-call') {
       n += estimateTokensFromString(JSON.stringify(p.args ?? {}));
     } else if (p.type === 'tool-result') {

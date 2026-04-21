@@ -1,12 +1,14 @@
 /**
  * A piece of content within a message. Multimodal: `text`, `image`, `audio`,
- * `file`, and tool parts; `video` reserved for a later RFC.
+ * `file`, `video` (Gemini maps it; OpenAI maps via the `file` content part; other
+ * providers may still reject), and tool parts.
  */
 export type ContentPart =
   | TextPart
   | ImagePart
   | AudioPart
   | FilePart
+  | VideoPart
   | ToolCallPart
   | ToolResultPart;
 
@@ -35,6 +37,21 @@ export interface FilePart {
   /** Same conventions as {@link AudioPart.audio} — URL/handle preferred for large payloads (RFC 0014). */
   file: string | URL | Uint8Array;
   mimeType?: string;
+  filename?: string;
+}
+
+/**
+ * User video attachment (RFC 0014 P2). Normalises like other media; **Gemini**
+ * maps to `inlineData` / `fileData`. **OpenAI** maps to the chat `file` part
+ * (`file_id` or `file_data`; no remote URL fetch — same constraints as {@link FilePart}).
+ * Anthropic and Ollama still throw {@link UnsupportedPartError}.
+ */
+export interface VideoPart {
+  type: 'video';
+  /** URL, `data:` URL, or raw bytes — same transport conventions as {@link ImagePart.image}. */
+  video: string | URL | Uint8Array;
+  mimeType?: string;
+  /** Optional display name for providers that accept it (e.g. OpenAI `file.filename`). */
   filename?: string;
 }
 

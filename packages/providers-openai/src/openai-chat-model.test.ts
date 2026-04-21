@@ -143,6 +143,97 @@ describe('OpenAI chat model — generate (msw)', () => {
     });
   });
 
+  it('serializes video as OpenAI `file` part (inline data URL)', async () => {
+    let body: { messages?: Array<{ content?: unknown }> } | undefined;
+    server.use(
+      http.post(`${BASE}/chat/completions`, async ({ request }) => {
+        body = (await request.json()) as { messages?: Array<{ content?: unknown }> };
+        return HttpResponse.json({
+          id: 'chatcmpl-video',
+          choices: [{ message: { role: 'assistant', content: 'ok' }, finish_reason: 'stop' }],
+          usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+        });
+      }),
+    );
+    const vidB64 = 'AAAAIGZ0eXBpc29t';
+    const openai = createOpenAI({ apiKey: 'test' });
+    await generateText({
+      model: openai('gpt-4o-mini'),
+      messages: [
+        {
+          role: 'user',
+          content: [{ type: 'video', video: `data:video/mp4;base64,${vidB64}` }],
+        },
+      ],
+    });
+    const content = body?.messages?.[0]?.content as unknown[];
+    expect(content).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'file',
+          file: expect.objectContaining({
+            file_data: vidB64,
+            filename: 'clip.mp4',
+          }),
+        }),
+      ]),
+    );
+  });
+
+  it('serializes video Files API id as OpenAI `file` part', async () => {
+    let body: { messages?: Array<{ content?: unknown }> } | undefined;
+    server.use(
+      http.post(`${BASE}/chat/completions`, async ({ request }) => {
+        body = (await request.json()) as { messages?: Array<{ content?: unknown }> };
+        return HttpResponse.json({
+          id: 'chatcmpl-vidfile',
+          choices: [{ message: { role: 'assistant', content: 'ok' }, finish_reason: 'stop' }],
+          usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+        });
+      }),
+    );
+    const openai = createOpenAI({ apiKey: 'test' });
+    await generateText({
+      model: openai('gpt-4o-mini'),
+      messages: [
+        {
+          role: 'user',
+          content: [{ type: 'video', video: 'file-vid-abc123', filename: 'take.mp4' }],
+        },
+      ],
+    });
+    const content = body?.messages?.[0]?.content as unknown[];
+    expect(content).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'file',
+          file: { file_id: 'file-vid-abc123', filename: 'take.mp4' },
+        }),
+      ]),
+    );
+  });
+
+  it('rejects remote video URLs on OpenAI (no implicit fetch)', async () => {
+    const openai = createOpenAI({ apiKey: 'test' });
+    await expect(
+      generateText({
+        model: openai('gpt-4o-mini'),
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'video', video: 'https://cdn.example.com/c.mp4', mimeType: 'video/mp4' },
+            ],
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({
+      name: 'UnsupportedPartError',
+      partType: 'video',
+      provider: 'openai',
+    });
+  });
+
   it('throws APICallError on non-2xx', async () => {
     server.use(
       http.post(`${BASE}/chat/completions`, () =>

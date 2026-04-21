@@ -40,10 +40,14 @@ const { runFn, resumeFn } = createInngestAgent({ inngest, agent });
 // pass to inngest's HTTP serve
 export const functions = [runFn, resumeFn].filter(Boolean);
 
-// trigger a run
+// trigger a run (optional `budget` / `toolBudget` mirror `agent.run` / `resume`)
 await inngest.send({
   name: 'ziro/agent.run.requested',
-  data: { threadId: 'user:42', prompt: 'Refund order #123' },
+  data: {
+    threadId: 'user:42',
+    prompt: 'Refund order #123',
+    budget: { maxUsdPerRun: 0.5 },
+  },
 });
 ```
 
@@ -63,6 +67,7 @@ await inngest.send({
   data: {
     threadId: 'user:42',
     decisions: { tc_abc: { decision: 'approve' } },
+    budget: { maxUsdPerRun: 0.5 },
   },
 });
 ```

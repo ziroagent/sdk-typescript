@@ -1,0 +1,25 @@
+---
+title: Durable agent runs with Inngest
+description: Wrap createAgent in createInngestAgent so step.run memoizes LLM work and HITL resumes cross deploys.
+---
+
+[`@ziro-agent/inngest`](https://www.npmjs.com/package/@ziro-agent/inngest) registers two Inngest functions:
+
+- **`ziro/agent.run.requested`** — runs `agent.run(...)` inside `step.run` (retry-safe memoization).
+- **`ziro/agent.resume.requested`** — calls `agent.resumeFromCheckpoint(threadId, { decisions, ... })` after a human approves.
+
+Pass a **`Checkpointer`** (Redis, Postgres, or in-memory for tests) on `createAgent`. On suspension the adapter persists the snapshot and throws `InngestAgentSuspendedError` with a `checkpointId`.
+
+Event payloads can include **`budget`** and **`toolBudget`** (same shapes as `agent.run` / `resume`) so durable runs stay capped without uncapped-run warnings.
+
+## Runnable example
+
+The monorepo ships **`examples/durable-support-agent`**: a scripted mock model, one mutating tool that requires approval, and a tiny local Inngest stub so you can run the full suspend → resume flow without `inngest dev`:
+
+```bash
+pnpm --filter @ziro-agent/example-durable-support-agent start
+```
+
+For production, use `new Inngest({ id })`, pass the returned functions to `serve`, and `inngest.send({ name, data })` from your API or approval UI. See the package [README](https://github.com/ziroagent/sdk-typescript/blob/main/packages/inngest/README.md).
+
+Related: [HITL](../hitl), [Budget guard](../budget-guard), [Migration](../migration).

@@ -25,9 +25,25 @@ function extToMime(ext: string): string {
       return 'application/pdf';
     case '.json':
       return 'application/json';
+    case '.docx':
+      return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     default:
       return 'application/octet-stream';
   }
+}
+
+async function parseDocxBuffer(buf: Buffer): Promise<string> {
+  let extractRawText: (opts: { buffer: Buffer }) => Promise<{ value: string }>;
+  try {
+    const mod = await import('mammoth');
+    extractRawText = mod.extractRawText as (opts: { buffer: Buffer }) => Promise<{ value: string }>;
+  } catch {
+    throw new Error(
+      'DOCX ingestion requires the optional dependency `mammoth`. Install it in your project: `pnpm add mammoth` (or npm/yarn equivalent).',
+    );
+  }
+  const res = await extractRawText({ buffer: buf });
+  return (res.value ?? '').trim();
 }
 
 async function parsePdfBuffer(buf: Buffer): Promise<string> {
@@ -52,7 +68,8 @@ function resolveFsPath(uri: string | URL): string {
 
 /**
  * Load a local file into a {@link Document}. Supports `.txt`, `.md`,
- * `.csv`, `.json` (as UTF-8 text), and `.pdf` when `pdf-parse` is installed.
+ * `.csv`, `.json` (as UTF-8 text), `.pdf` when `pdf-parse` is installed, and
+ * `.docx` when `mammoth` is installed.
  *
  * @param uri `file:` URL or filesystem path (absolute or cwd-relative).
  */
@@ -74,6 +91,11 @@ export async function loadDocument(uri: string | URL): Promise<LoadedDocument> {
 
   if (mime === 'application/pdf') {
     base.text = await parsePdfBuffer(buf);
+    return base;
+  }
+
+  if (mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+    base.text = await parseDocxBuffer(buf);
     return base;
   }
 

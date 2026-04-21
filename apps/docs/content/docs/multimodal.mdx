@@ -1,0 +1,80 @@
+---
+title: Multimodal inputs
+description: User messages with image, audio, and file parts — provider support matrix and resolveMediaInput.
+---
+
+`UserMessage.content` can mix **`text`**, **`image`**, **`audio`**, **`file`**, and
+**`video`** parts (see types in `@ziro-agent/core`). **`video`** is wired like
+other media parts (RFC 0014 P2): it normalises everywhere; **Google Gemini** maps
+to `inlineData` / `fileData`, and **OpenAI** maps to the chat **`file`** part
+(`file_id` / `file_data`, no remote URL fetch). **Anthropic** and **Ollama** still
+throw **`UnsupportedPartError`** for `video`.
+
+Use multimodal messages for vision, short voice clips, and PDFs / documents
+without leaving the normal `generateText` / `createAgent` message list.
+
+Design background: [RFC 0014](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0014-multimodal-content-parts.md).
+
+## Part shapes
+
+```ts
+import type { UserMessage } from '@ziro-agent/core';
+
+const msg: UserMessage = {
+  role: 'user',
+  content: [
+    { type: 'text', text: 'Summarise the attachment.' },
+    {
+      type: 'file',
+      file: 'https://example.com/report.pdf',
+      mimeType: 'application/pdf',
+      filename: 'report.pdf',
+    },
+    {
+      type: 'audio',
+      audio: 'data:audio/wav;base64,…',
+      mimeType: 'audio/wav',
+    },
+    { type: 'image', image: 'https://example.com/shot.png', mimeType: 'image/png' },
+    { type: 'video', video: 'https://example.com/clip.mp4', mimeType: 'video/mp4' }, // Gemini: URL OK; OpenAI: data URL or file-… id
+  ],
+};
+```
+
+`image` / `audio` / `file` accept **`Uint8Array`**, **`URL`**, **`string`** (URL or
+`data:` URL). Prefer **HTTPS or `file:` URLs** for large payloads so providers
+can fetch instead of inlining megabytes of base64.
+
+## `resolveMediaInput`
+
+`resolveMediaInput` from `@ziro-agent/core` normalises a single media field to
+**inline base64** or a **remote URL** for providers — it does **not** perform
+network I/O.
+
+```ts
+import { resolveMediaInput } from '@ziro-agent/core';
+
+const resolved = resolveMediaInput(myUint8Array);
+// { base64: '...' } or { url: 'https://...' }
+```
+
+## Provider support (chat completion)
+
+| Provider | `image` | `audio` | `file` (e.g. PDF) | `video` |
+| -------- | ------- | ------- | ----------------- | ------- |
+| **OpenAI** (`@ziro-agent/openai`) | Yes | Yes (`input_audio`) | Yes (`file` / `file_data`) | Yes (same `file` part; inline / `file-…` id only) |
+| **Google** (`@ziro-agent/google`) | Yes | Yes | Yes (`inlineData` / `fileData`) | Yes (`inlineData` / `fileData`) |
+| **Anthropic** (`@ziro-agent/anthropic`) | Yes | **No** — `UnsupportedPartError` | Yes (PDF / text `document`) | **No** — `UnsupportedPartError` |
+| **Ollama** (`@ziro-agent/ollama`) | Yes (`images[]`) | **No** | **No** | **No** — `UnsupportedPartError` |
+
+Ollama chat is image-only today; **`assertProviderMapsUserMultimodalParts`**
+(from `@ziro-agent/core`) can be called before hitting Ollama so `audio` /
+`file` / **`video`** fail fast with **`UnsupportedPartError`** instead of an
+opaque daemon error.
+
+## Agents and tools
+
+`createAgent` uses the same message pipeline: pass **`messages`** on
+`agent.run` with multimodal `user` turns. Tool definitions are unchanged.
+
+Related: [Errors](/docs/errors) (`unsupported_part`), [Sandbox & browser](/docs/sandbox-browser).

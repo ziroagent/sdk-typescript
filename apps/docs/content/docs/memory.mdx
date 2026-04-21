@@ -9,6 +9,9 @@ description: Vector stores, chunking, and embeddings for retrieval-augmented gen
   and `PgVectorStore` (Postgres + pgvector).
 - A recursive `chunkText()` splitter.
 - An OpenAI-compatible embedder factory.
+- **`loadDocument(uri)`** — load `.txt` / `.md` / `.csv` / `.json`, `.pdf`
+  (optional `pdf-parse`), and `.docx` (optional `mammoth`) into a `Document`
+  for chunking / ingestion.
 
 ## Index documents in memory
 

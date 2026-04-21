@@ -77,6 +77,13 @@ function normalizeMessage(msg: ChatMessage): NormalizedMessage {
               ...(p.mimeType !== undefined ? { mimeType: p.mimeType } : {}),
               ...(p.filename !== undefined ? { filename: p.filename } : {}),
             };
+          case 'video':
+            return {
+              type: 'video',
+              video: p.video,
+              ...(p.mimeType !== undefined ? { mimeType: p.mimeType } : {}),
+              ...(p.filename !== undefined ? { filename: p.filename } : {}),
+            };
           default: {
             const _exhaustive: never = p;
             return _exhaustive;
