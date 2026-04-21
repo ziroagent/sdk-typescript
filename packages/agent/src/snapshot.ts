@@ -8,7 +8,7 @@ import type {
   SerializableBudgetSpec,
   TokenUsage,
 } from '@ziro-agent/core';
-import type { ToolExecutionResult } from '@ziro-agent/tools';
+import type { RepairToolCall, ToolExecutionResult } from '@ziro-agent/tools';
 import type { StopWhen } from './stop-when.js';
 import type { AgentFinishReason, AgentStep, StepEventListener } from './types.js';
 
@@ -177,6 +177,8 @@ export interface AgentResumeOptions {
    * during the resumed run.
    */
   metadata?: Record<string, unknown>;
+  /** Per-resume override of {@link CreateAgentOptions.repairToolCall}. */
+  repairToolCall?: RepairToolCall;
 }
 
 /**

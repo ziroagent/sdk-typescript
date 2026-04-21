@@ -1,4 +1,5 @@
 export type { AgentMemoryConfig } from '@ziro-agent/memory';
+export type { RepairToolCall, RepairToolCallContext } from '@ziro-agent/tools';
 export {
   type Agent,
   type AgentRunOptions,
