@@ -17,7 +17,8 @@ references instead of base64 inlining.
 ## Scope
 
 - `Part` union extension: `AudioPart`, `FilePart` (P0); **`VideoPart`** (P2 —
-  type + normalization ship today; provider mapping still future work).
+  type + normalization; **Google Gemini** maps to `inlineData` / `fileData`;
+  OpenAI / Anthropic / Ollama still emit `UnsupportedPartError`).
 - `FileHandle` type: opaque URL or upload-and-reference handle; providers
   resolve via signed-URL fetch.
 - Provider parity: every shipped provider (`@ziro-agent/openai`, `anthropic`,

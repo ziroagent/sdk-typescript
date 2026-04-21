@@ -337,12 +337,12 @@ function mapGeminiUserPart(p: ContentPart): unknown {
     return { inlineData: { mimeType: mime, data: r.base64 } };
   }
   if (p.type === 'video') {
-    throw new UnsupportedPartError({
-      partType: 'video',
-      provider: 'google',
-      message:
-        'Video `UserMessage` parts are reserved (RFC 0014) — the Gemini chat adapter does not map them yet.',
-    });
+    const r = resolveMediaInput(p.video);
+    const mime = p.mimeType ?? ('url' in r ? undefined : r.mimeType) ?? 'video/mp4';
+    if ('url' in r) {
+      return { fileData: { mimeType: mime, fileUri: r.url } };
+    }
+    return { inlineData: { mimeType: mime, data: r.base64 } };
   }
   throw new UnsupportedPartError({
     partType: (p as { type?: string }).type ?? 'unknown',

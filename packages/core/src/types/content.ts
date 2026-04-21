@@ -1,6 +1,6 @@
 /**
  * A piece of content within a message. Multimodal: `text`, `image`, `audio`,
- * `file`, `video` (reserved — not mapped to providers yet), and tool parts.
+ * `file`, `video` (Gemini maps it; other chat providers may still reject), and tool parts.
  */
 export type ContentPart =
   | TextPart
@@ -40,8 +40,9 @@ export interface FilePart {
 }
 
 /**
- * Reserved user-media part (RFC 0014 P2). Carried through normalization; every
- * chat provider currently rejects it with {@link UnsupportedPartError}.
+ * User video attachment (RFC 0014 P2). Normalises like other media; **Gemini**
+ * maps it to `inlineData` / `fileData`. Other chat adapters still throw
+ * {@link UnsupportedPartError} until they gain upstream support.
  */
 export interface VideoPart {
   type: 'video';
