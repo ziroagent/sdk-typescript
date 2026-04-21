@@ -28,7 +28,7 @@ import {
   toolsToModelDefinitions,
 } from '@ziro-agent/tools';
 import { instrumentTools } from '@ziro-agent/tracing';
-import type { Checkpointer, CheckpointId } from './checkpointer.js';
+import type { Checkpointer, CheckpointId, CheckpointMeta } from './checkpointer.js';
 import { buildHandoffTool, type Handoff, handoffStore } from './handoff.js';
 import {
   type AgentResumeOptions,
@@ -247,6 +247,14 @@ export interface Agent {
     threadId: string,
     options: ResumeFromCheckpointOptions,
   ): Promise<AgentRunResult>;
+  /**
+   * Lists checkpoint metadata for a thread (newest first). Delegates to
+   * {@link Checkpointer.list}; use this when you only hold the `Agent`
+   * reference.
+   *
+   * Requires `createAgent({ checkpointer })`.
+   */
+  listCheckpoints(threadId: string, opts?: { limit?: number }): Promise<CheckpointMeta[]>;
 }
 
 /**
@@ -519,6 +527,15 @@ export function createAgent(options: CreateAgentOptions): Agent {
       // stays clean.
       const { checkpointId: _ignored, ...rest } = resumeOptions;
       return await this.resume(snap, rest);
+    },
+
+    async listCheckpoints(threadId: string, opts?: { limit?: number }): Promise<CheckpointMeta[]> {
+      if (!checkpointer) {
+        throw new Error(
+          'agent.listCheckpoints() requires a `checkpointer` on createAgent({ checkpointer }).',
+        );
+      }
+      return checkpointer.list(threadId, opts);
     },
   };
 

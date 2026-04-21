@@ -590,6 +590,31 @@ describe('createAgent — HITL suspend/resume (RFC 0002)', () => {
       );
     });
 
+    it('listCheckpoints delegates to checkpointer.list', async () => {
+      let listed: { threadId: string; limit?: number } | undefined;
+      const cp: Checkpointer = {
+        async put() {
+          return 'id1' as CheckpointId;
+        },
+        async get() {
+          return null;
+        },
+        async list(threadId, opts) {
+          listed = { threadId, limit: opts?.limit };
+          return [];
+        },
+        async delete() {},
+      };
+      const agent = createAgent({ model: scriptedModel([finalText('x')]), checkpointer: cp });
+      await agent.listCheckpoints('tid', { limit: 5 });
+      expect(listed).toEqual({ threadId: 'tid', limit: 5 });
+    });
+
+    it('listCheckpoints requires a checkpointer at construction time', async () => {
+      const agent = createAgent({ model: scriptedModel([finalText('hi')]) });
+      await expect(agent.listCheckpoints('t1')).rejects.toThrow(/requires a `checkpointer`/);
+    });
+
     it('checkpointer.put failure does NOT mask the original AgentSuspendedError', async () => {
       const dangerous = defineTool({
         name: 'dangerous',

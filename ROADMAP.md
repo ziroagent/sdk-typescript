@@ -125,7 +125,7 @@ This milestone exists because the 12-SDK review (RFC 0004) surfaced eight gaps w
 ### Track 2 — Checkpointer + resumable streams (week 3-4) — see RFC 0006
 - [x] `Checkpointer` interface in `@ziro-agent/agent`
 - [x] `@ziro-agent/checkpoint-memory`, [x] `@ziro-agent/checkpoint-postgres`, [x] `@ziro-agent/checkpoint-redis`
-- [x] `agent.resumeFromCheckpoint(threadId, options)` — shipped (`createAgent({ checkpointer })` + `checkpointer.get` + `agent.resume`); thin `agent.listCheckpoints(threadId)` sugar still **v0.9** (call `checkpointer.list(threadId)` today)
+- [x] `agent.resumeFromCheckpoint(threadId, options)` — shipped (`createAgent({ checkpointer })` + `checkpointer.get` + `agent.resume`); thin **`agent.listCheckpoints(threadId, opts?)`** delegates to `checkpointer.list` when you only hold the agent reference
 - [ ] `streamText({ resumeKey, resumeFromIndex })` with cached event log — moved to v0.6 (RFC 0015 resilience)
 - [x] **Mental model rename**: durable is the *default* (any checkpointer); Temporal/Inngest become the long-running adapters
 

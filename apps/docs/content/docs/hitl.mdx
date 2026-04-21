@@ -160,8 +160,10 @@ await s3.putObject({ Bucket, Key: `snapshots/${id}`, Body: JSON.stringify(snapsh
 ```
 
 A formal `Checkpointer` interface + `memory` / `postgres` / `redis`
-adapters lands in v0.2 — see
+adapters ships in v0.2 — see
 [RFC 0006](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0006-checkpointer.md).
+Use **`agent.listCheckpoints(threadId)`** as a thin wrapper over
+`checkpointer.list(threadId)` when your code only keeps the `Agent` handle.
 
 ## Observability
 
