@@ -1,6 +1,6 @@
 {
   "name": "@ziro-agent/browser-browserbase",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Connect Playwright to Browserbase sessions for ZiroAgent browser tools (RFC 0013).",
   "license": "Apache-2.0",
   "homepage": "https://ziroagent.com",

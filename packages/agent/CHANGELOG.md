@@ -1,5 +1,41 @@
 # @ziro-agent/agent
 
+## 0.9.0
+
+### Minor Changes
+
+- [#42](https://github.com/ziroagent/sdk-typescript/pull/42) [`15fb70f`](https://github.com/ziroagent/sdk-typescript/commit/15fb70f142d8e481f365bd44cf09e28730d4fdce) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Add `prepareStep` hook on `createAgent`, `agent.run`, and `agent.resume` for per-iteration `model`, `system`, and `activeTools` overrides (RFC 0004).
+
+- [`019b2cd`](https://github.com/ziroagent/sdk-typescript/commit/019b2cdee2edb1acb213b22b86d3dedef4146252) - **v0.5 — Safety & governance (C1, C2, C4)**
+
+  - **@ziro-agent/core** — `generateObject()` with Zod validation and optional one-shot repair; `ObjectValidationError`; `BudgetSpec.tenantId` and `hard` (nested scopes coerce soft `onExceed` to `'throw'`); `BudgetContext.tenantId`.
+  - **@ziro-agent/tools** — `defineTool({ mutates: true })` sets `requiresApproval: true` when `requiresApproval` is omitted; `mutates` stored on the tool.
+  - **@ziro-agent/tracing** — Budget scope attributes `ziroagent.budget.tenant_id` and `ziroagent.budget.spec.hard`.
+  - **@ziro-agent/agent** — `serializeBudgetSpec` persists `tenantId` and `hard` on snapshots.
+
+  ROADMAP §v0.5 P0 (C1, C2, C4) marked complete.
+
+- [`fb35dc0`](https://github.com/ziroagent/sdk-typescript/commit/fb35dc0e04a6e802e4bf141108d39b703f5a74c7) - **v0.6 resilience slice (K3 + L1 + repairToolCall)**
+
+  - **@ziro-agent/core** — `withFallbackChain([primary, ...])` for `generate`/`stream`; optional `shouldFallback`; export from package root.
+  - **@ziro-agent/core/testing** — `createReplayLanguageModel` + `ReplayExhaustedError` for deterministic tests.
+  - **@ziro-agent/tools** — `executeToolCalls({ repairToolCall, step })` with one repair retry after Zod parse failure; exported `RepairToolCall` / `RepairToolCallContext`.
+  - **@ziro-agent/agent** — `repairToolCall` on `createAgent`, `run`, and `resume`; re-export repair types from package root.
+
+  ROADMAP §v0.6: K3, L1 slice, and `repairToolCall` track marked complete; G5 / full JSONL record-replay deferred.
+
+### Patch Changes
+
+- [#42](https://github.com/ziroagent/sdk-typescript/pull/42) [`15fb70f`](https://github.com/ziroagent/sdk-typescript/commit/15fb70f142d8e481f365bd44cf09e28730d4fdce) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Add `agent.listCheckpoints(threadId, opts?)` — delegates to the agent's `Checkpointer.list` for UI / pagination without holding the checkpointer separately.
+
+- [#40](https://github.com/ziroagent/sdk-typescript/pull/40) [`3f3695d`](https://github.com/ziroagent/sdk-typescript/commit/3f3695d760ba00daaf1850ff4970c9069e42533d) Thanks [@vokhoadev](https://github.com/vokhoadev)! - **`createAgent({ traceTools: true })`** — optionally wraps all tools with `instrumentTools` from `@ziro-agent/tracing` (default remains off to avoid double-wrapping).
+
+- Updated dependencies [[`15fb70f`](https://github.com/ziroagent/sdk-typescript/commit/15fb70f142d8e481f365bd44cf09e28730d4fdce), [`15fb70f`](https://github.com/ziroagent/sdk-typescript/commit/15fb70f142d8e481f365bd44cf09e28730d4fdce), [`15fb70f`](https://github.com/ziroagent/sdk-typescript/commit/15fb70f142d8e481f365bd44cf09e28730d4fdce), [`15fb70f`](https://github.com/ziroagent/sdk-typescript/commit/15fb70f142d8e481f365bd44cf09e28730d4fdce), [`019b2cd`](https://github.com/ziroagent/sdk-typescript/commit/019b2cdee2edb1acb213b22b86d3dedef4146252), [`fb35dc0`](https://github.com/ziroagent/sdk-typescript/commit/fb35dc0e04a6e802e4bf141108d39b703f5a74c7), [`683efc4`](https://github.com/ziroagent/sdk-typescript/commit/683efc4051d4713487a71da2be0d2ea4a40f6bb5), [`e726cda`](https://github.com/ziroagent/sdk-typescript/commit/e726cdaa6684b02409a64d63bf59ca4a6e63c127), [`0f58843`](https://github.com/ziroagent/sdk-typescript/commit/0f588430fa422c2711c2614daa9634e31f7abba3)]:
+  - @ziro-agent/core@0.7.0
+  - @ziro-agent/memory@0.2.2
+  - @ziro-agent/tools@0.6.0
+  - @ziro-agent/tracing@0.6.0
+
 ## 0.8.0
 
 ### Minor Changes
