@@ -1,6 +1,6 @@
 {
   "name": "@ziro-agent/sandbox-e2b",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "E2B code-interpreter adapter for ZiroAgent `SandboxAdapter` (RFC 0013).",
   "license": "Apache-2.0",
   "homepage": "https://ziroagent.com",
