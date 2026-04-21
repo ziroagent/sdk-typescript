@@ -1,0 +1,20 @@
+{
+  "name": "@ziro-agent/example-browse-intent",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx index.ts"
+  },
+  "dependencies": {
+    "@ziro-agent/agent": "workspace:*",
+    "@ziro-agent/core": "workspace:*",
+    "@ziro-agent/openai": "workspace:*",
+    "@ziro-agent/tools": "workspace:*",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.3"
+  }
+}

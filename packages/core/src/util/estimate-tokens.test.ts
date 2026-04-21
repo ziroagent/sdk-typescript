@@ -34,6 +34,32 @@ describe('estimateTokensFromMessages', () => {
     expect(n).toBeGreaterThanOrEqual(90);
   });
 
+  it('adds fixed overhead for audio and file parts', () => {
+    const textOnly = estimateTokensFromMessages([
+      { role: 'user', content: [{ type: 'text', text: 'x' }] },
+    ]);
+    const withAudio = estimateTokensFromMessages([
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: 'x' },
+          { type: 'audio', audio: 'data:audio/wav;base64,AA' },
+        ],
+      },
+    ]);
+    const withFile = estimateTokensFromMessages([
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: 'x' },
+          { type: 'file', file: 'https://x/y.pdf', mimeType: 'application/pdf' },
+        ],
+      },
+    ]);
+    expect(withAudio - textOnly).toBe(128);
+    expect(withFile - textOnly).toBe(256);
+  });
+
   it('counts tool-call args and tool-result payloads', () => {
     const n = estimateTokensFromMessages([
       {

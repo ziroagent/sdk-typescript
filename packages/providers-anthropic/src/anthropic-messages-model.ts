@@ -1,3 +1,4 @@
+import type { ContentPart } from '@ziro-agent/core';
 import {
   APICallError,
   type CostEstimate,
@@ -8,8 +9,10 @@ import {
   type ModelGenerateResult,
   type ModelStreamPart,
   type NormalizedMessage,
+  resolveMediaInput,
   type TokenUsage,
   type ToolCallPart,
+  UnsupportedPartError,
 } from '@ziro-agent/core';
 import { getPricing } from '@ziro-agent/core/pricing';
 import { parseSSEWithEvent, type SSEEvent } from './util/sse.js';
@@ -284,29 +287,99 @@ function splitSystem(messages: NormalizedMessage[]): {
   return { system: text, messages: rest };
 }
 
+function utf8FromInlineBase64(b64: string): string {
+  if (typeof Buffer !== 'undefined') return Buffer.from(b64, 'base64').toString('utf8');
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder('utf-8').decode(bytes);
+}
+
+function mapAnthropicUserBlock(p: ContentPart): unknown {
+  if (p.type === 'text') return { type: 'text', text: p.text };
+  if (p.type === 'image') {
+    if (typeof p.image === 'string') {
+      if (p.image.startsWith('data:')) {
+        const resolved = resolveMediaInput(p.image);
+        if ('url' in resolved) {
+          throw new UnsupportedPartError({
+            partType: 'image',
+            provider: 'anthropic',
+            message: 'Unexpected URL resolution for a data: image URL.',
+          });
+        }
+        return {
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: p.mimeType ?? resolved.mimeType ?? 'image/png',
+            data: resolved.base64,
+          },
+        };
+      }
+      return { type: 'image', source: { type: 'url', url: p.image } };
+    }
+    return {
+      type: 'image',
+      source: {
+        type: 'base64',
+        media_type: p.mimeType ?? 'image/png',
+        data: uint8ToBase64(p.image as Uint8Array),
+      },
+    };
+  }
+  if (p.type === 'audio') {
+    throw new UnsupportedPartError({
+      partType: 'audio',
+      provider: 'anthropic',
+      message:
+        'Claude Messages API does not yet ship a first-class audio input block. Transcribe to text, or use OpenAI / Gemini for native audio.',
+    });
+  }
+  if (p.type === 'file') {
+    const r = resolveMediaInput(p.file);
+    const mime = (p.mimeType ?? ('url' in r ? undefined : r.mimeType) ?? '').toLowerCase();
+    if ('url' in r) {
+      if (mime.includes('pdf') || r.url.toLowerCase().split('?')[0]?.endsWith('.pdf')) {
+        return { type: 'document', source: { type: 'url', url: r.url } };
+      }
+      throw new UnsupportedPartError({
+        partType: 'file',
+        provider: 'anthropic',
+        message:
+          'Anthropic URL document sources are limited to PDF (`application/pdf` or `.pdf` URL).',
+      });
+    }
+    const effMime = mime || r.mimeType?.toLowerCase() || '';
+    if (effMime.includes('pdf')) {
+      return {
+        type: 'document',
+        source: { type: 'base64', media_type: 'application/pdf', data: r.base64 },
+      };
+    }
+    if (effMime.includes('plain')) {
+      return {
+        type: 'document',
+        source: { type: 'text', media_type: 'text/plain', data: utf8FromInlineBase64(r.base64) },
+      };
+    }
+    throw new UnsupportedPartError({
+      partType: 'file',
+      provider: 'anthropic',
+      message: `Anthropic supports PDF (base64 or URL) or plain text (base64) document blocks; got "${p.mimeType ?? r.mimeType ?? 'unknown'}".`,
+    });
+  }
+  throw new UnsupportedPartError({
+    partType: (p as { type?: string }).type ?? 'unknown',
+    provider: 'anthropic',
+    message: 'Unexpected content part in user message.',
+  });
+}
+
 function toAnthropicMessage(m: NormalizedMessage): unknown {
   switch (m.role) {
     case 'user': {
-      const blocks = m.content.map((p) => {
-        if (p.type === 'text') return { type: 'text', text: p.text };
-        if (p.type === 'image') {
-          if (typeof p.image === 'string' && p.image.startsWith('http')) {
-            return { type: 'image', source: { type: 'url', url: p.image } };
-          }
-          if (typeof p.image === 'string') {
-            return { type: 'image', source: { type: 'url', url: p.image } };
-          }
-          return {
-            type: 'image',
-            source: {
-              type: 'base64',
-              media_type: p.mimeType ?? 'image/png',
-              data: uint8ToBase64(p.image as Uint8Array),
-            },
-          };
-        }
-        return p;
-      });
+      const blocks = m.content.map((p) => mapAnthropicUserBlock(p));
       return { role: 'user', content: blocks };
     }
     case 'assistant': {

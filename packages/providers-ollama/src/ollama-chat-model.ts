@@ -1,5 +1,6 @@
 import {
   APICallError,
+  assertProviderMapsUserMultimodalParts,
   type CostEstimate,
   estimateTokensFromMessages,
   type FinishReason,
@@ -228,6 +229,7 @@ function toOllamaMessage(m: NormalizedMessage): unknown {
   switch (m.role) {
     case 'system':
     case 'user': {
+      assertProviderMapsUserMultimodalParts(m.content, 'ollama');
       const text = m.content
         .filter((p) => p.type === 'text')
         .map((p) => (p as { text: string }).text)

@@ -54,9 +54,35 @@ function normalizeMessage(msg: ChatMessage): NormalizedMessage {
       if (typeof msg.content === 'string') {
         return { role: 'user', content: [{ type: 'text', text: msg.content }] };
       }
-      const parts: ContentPart[] = msg.content.map((p) =>
-        p.type === 'text' ? p : { type: 'image', image: p.image },
-      );
+      const parts: ContentPart[] = msg.content.map((p) => {
+        switch (p.type) {
+          case 'text':
+            return p;
+          case 'image':
+            return {
+              type: 'image',
+              image: p.image,
+              ...(p.mimeType !== undefined ? { mimeType: p.mimeType } : {}),
+            };
+          case 'audio':
+            return {
+              type: 'audio',
+              audio: p.audio,
+              ...(p.mimeType !== undefined ? { mimeType: p.mimeType } : {}),
+            };
+          case 'file':
+            return {
+              type: 'file',
+              file: p.file,
+              ...(p.mimeType !== undefined ? { mimeType: p.mimeType } : {}),
+              ...(p.filename !== undefined ? { filename: p.filename } : {}),
+            };
+          default: {
+            const _exhaustive: never = p;
+            return _exhaustive;
+          }
+        }
+      });
       return { role: 'user', content: parts };
     }
 

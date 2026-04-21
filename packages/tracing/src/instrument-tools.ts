@@ -1,4 +1,4 @@
-import { ATTR } from './attributes.js';
+import { ATTR, type AttrValue } from './attributes.js';
 import { getTracer } from './tracer.js';
 
 /**
@@ -15,16 +15,34 @@ export interface ToolLike<TArgs = unknown, TResult = unknown> {
   execute(args: TArgs, ctx?: unknown): Promise<TResult> | TResult;
 }
 
+/** Optional fields from `@ziro-agent/tools` `Tool` (RFC 0013). */
+type ToolWithTraceMeta = ToolLike & {
+  capabilities?: readonly string[];
+  spanName?: string;
+  traceAttributes?: Readonly<Record<string, string>>;
+};
+
 export function instrumentTool<T extends ToolLike>(tool: T): T {
   const original = tool.execute.bind(tool);
+  const meta = tool as T & ToolWithTraceMeta;
   return {
     ...tool,
     async execute(args: unknown, ctx?: unknown) {
       const tracer = getTracer();
+      const spanName = meta.spanName ?? `gen_ai.tool.${tool.name}`;
       return tracer.withSpan(
-        `gen_ai.tool.${tool.name}`,
+        spanName,
         async (span) => {
-          span.setAttributes({ [ATTR.ToolName]: tool.name });
+          const attrs: Record<string, AttrValue> = { [ATTR.ToolName]: tool.name };
+          if (meta.capabilities !== undefined && meta.capabilities.length > 0) {
+            attrs[ATTR.ToolCapabilities] = [...meta.capabilities];
+          }
+          if (meta.traceAttributes !== undefined) {
+            for (const [k, v] of Object.entries(meta.traceAttributes)) {
+              attrs[k] = v as AttrValue;
+            }
+          }
+          span.setAttributes(attrs);
           try {
             const out = await original(args as never, ctx);
             return out;

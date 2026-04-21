@@ -35,6 +35,10 @@ function estimateTokensFromContent(content: unknown): number {
     } else if (p.type === 'image') {
       // OpenAI bills detail=auto images at ~85 base tokens; a safe lower bound.
       n += 85;
+    } else if (p.type === 'audio') {
+      n += 128;
+    } else if (p.type === 'file') {
+      n += 256;
     } else if (p.type === 'tool-call') {
       n += estimateTokensFromString(JSON.stringify(p.args ?? {}));
     } else if (p.type === 'tool-result') {

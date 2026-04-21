@@ -1,5 +1,35 @@
 # @ziro-agent/agent
 
+## 0.8.0
+
+### Minor Changes
+
+- [#36](https://github.com/ziroagent/sdk-typescript/pull/36) [`8cbcd93`](https://github.com/ziroagent/sdk-typescript/commit/8cbcd93ca9a1797a14790d886dade9860990896d) Thanks [@vokhoadev](https://github.com/vokhoadev)! - **v0.5 — Safety & governance (C1, C2, C4)**
+
+  - **@ziro-agent/core** — `generateObject()` with Zod validation and optional one-shot repair; `ObjectValidationError`; `BudgetSpec.tenantId` and `hard` (nested scopes coerce soft `onExceed` to `'throw'`); `BudgetContext.tenantId`.
+  - **@ziro-agent/tools** — `defineTool({ mutates: true })` sets `requiresApproval: true` when `requiresApproval` is omitted; `mutates` stored on the tool.
+  - **@ziro-agent/tracing** — Budget scope attributes `ziroagent.budget.tenant_id` and `ziroagent.budget.spec.hard`.
+  - **@ziro-agent/agent** — `serializeBudgetSpec` persists `tenantId` and `hard` on snapshots.
+
+  ROADMAP §v0.5 P0 (C1, C2, C4) marked complete.
+
+- [#36](https://github.com/ziroagent/sdk-typescript/pull/36) [`8cbcd93`](https://github.com/ziroagent/sdk-typescript/commit/8cbcd93ca9a1797a14790d886dade9860990896d) Thanks [@vokhoadev](https://github.com/vokhoadev)! - **v0.6 resilience slice (K3 + L1 + repairToolCall)**
+
+  - **@ziro-agent/core** — `withFallbackChain([primary, ...])` for `generate`/`stream`; optional `shouldFallback`; export from package root.
+  - **@ziro-agent/core/testing** — `createReplayLanguageModel` + `ReplayExhaustedError` for deterministic tests.
+  - **@ziro-agent/tools** — `executeToolCalls({ repairToolCall, step })` with one repair retry after Zod parse failure; exported `RepairToolCall` / `RepairToolCallContext`.
+  - **@ziro-agent/agent** — `repairToolCall` on `createAgent`, `run`, and `resume`; re-export repair types from package root.
+
+  ROADMAP §v0.6: K3, L1 slice, and `repairToolCall` track marked complete; G5 / full JSONL record-replay deferred.
+
+### Patch Changes
+
+- Updated dependencies [[`8cbcd93`](https://github.com/ziroagent/sdk-typescript/commit/8cbcd93ca9a1797a14790d886dade9860990896d), [`8cbcd93`](https://github.com/ziroagent/sdk-typescript/commit/8cbcd93ca9a1797a14790d886dade9860990896d)]:
+  - @ziro-agent/core@0.6.0
+  - @ziro-agent/tools@0.5.0
+  - @ziro-agent/tracing@0.5.0
+  - @ziro-agent/memory@0.2.1
+
 ## 0.7.0
 
 ### Minor Changes

@@ -254,10 +254,10 @@ This milestone exists because the 12-SDK review (RFC 0004) surfaced eight gaps w
 | ElevenLabs / Whisper / OpenAI TTS            | (P1) `speak(text, voice)` + `transcribe(audio)` model interfaces                    | Bundling TTS / STT into the chat agent loop — separate model surface                                  |
 
 ### Tracks (P0 only)
-- [ ] **I2** — Audio input parts — see [RFC 0014](./rfcs/0014-multimodal-content-parts.md)
-- [ ] **I3** — File / PDF parts
-- [ ] **H4** — Code interpreter sandbox — see [RFC 0013](./rfcs/0013-sandbox-tools.md)
-- [ ] **H5** — Browser tool
+- [x] **I2** — *slice*: `AudioPart` + `resolveMediaInput`; **OpenAI** `input_audio` (wav/mp3 inline / data URL); **Gemini** `inlineData` / `fileData`; **Anthropic** + **Ollama** reject with `UnsupportedPartError` (Messages API has no audio block yet; Ollama chat is image-only) — [RFC 0014](./rfcs/0014-multimodal-content-parts.md)
+- [x] **I3** — *slice*: `FilePart` — **OpenAI** `file` (`file-…` id or base64 `file_data`); **Anthropic** `document` (PDF base64/URL, plain text base64); **Gemini** `inlineData` / `fileData`; **Ollama** unsupported (vision `images[]` only)
+- [x] **H4** — *slice*: `SandboxAdapter` + `createStubSandboxAdapter()` in core; `createCodeInterpreterTool({ sandbox })` in `@ziro-agent/tools` (`mutates: true`); reference adapters `@ziro-agent/sandbox-e2b`, `@ziro-agent/sandbox-daytona`, `@ziro-agent/sandbox-modal` — [RFC 0013](./rfcs/0013-sandbox-tools.md)
+- [x] **H5** — *slice*: `BrowserAdapter` + stub + `createBrowserGotoTool` / `createBrowserScreenshotTool`; reference adapters `@ziro-agent/browser-playwright`, `@ziro-agent/browser-browserbase` — other managed browser SKUs still optional
 
 ---
 

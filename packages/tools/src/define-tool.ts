@@ -62,6 +62,18 @@ export interface Tool<TInput = unknown, TOutput = unknown> {
    * opt out explicitly (document why in your tool description).
    */
   readonly mutates?: boolean;
+  /**
+   * Declared capability tags for marketplaces / policy engines (RFC 0013).
+   * Example: `['network', 'fs:write:/tmp']`.
+   */
+  readonly capabilities?: readonly string[];
+  /**
+   * When set, `instrumentTool()` from `@ziro-agent/tracing` uses this span
+   * name instead of `gen_ai.tool.<name>` (e.g. `ziro.sandbox.execute`).
+   */
+  readonly spanName?: string;
+  /** Extra span attributes (string values) for this tool instance. */
+  readonly traceAttributes?: Readonly<Record<string, string>>;
   execute(input: TInput, ctx: ToolExecutionContext): Promise<TOutput> | TOutput;
 }
 
@@ -76,6 +88,12 @@ export interface DefineToolOptions<TInput, TOutput> {
   requiresApproval?: RequiresApproval<TInput>;
   /** See {@link Tool.mutates}. */
   mutates?: boolean;
+  /** See {@link Tool.capabilities}. */
+  capabilities?: readonly string[];
+  /** See {@link Tool.spanName}. */
+  spanName?: string;
+  /** See {@link Tool.traceAttributes}. */
+  traceAttributes?: Readonly<Record<string, string>>;
   execute(input: TInput, ctx: ToolExecutionContext): Promise<TOutput> | TOutput;
 }
 
@@ -104,6 +122,9 @@ export function defineTool<TInput, TOutput>(
     ...(requiresApproval !== undefined
       ? { requiresApproval: requiresApproval as RequiresApproval }
       : {}),
+    ...(options.capabilities !== undefined ? { capabilities: options.capabilities } : {}),
+    ...(options.spanName !== undefined ? { spanName: options.spanName } : {}),
+    ...(options.traceAttributes !== undefined ? { traceAttributes: options.traceAttributes } : {}),
     execute: options.execute,
   } as Tool<TInput, TOutput>;
 }

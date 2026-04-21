@@ -45,6 +45,23 @@ export type {
   RequiresApproval,
   SerializableBudgetSpec,
 } from './hitl/types.js';
+export {
+  createStubBrowserAdapter,
+  type StubBrowserAdapterResult,
+} from './sandbox/stub-browser-adapter.js';
+export {
+  createStubSandboxAdapter,
+  type StubSandboxAdapterOptions,
+} from './sandbox/stub-sandbox-adapter.js';
+export type {
+  BrowserAdapter,
+  BrowserNavigateOptions,
+  SandboxAdapter,
+  SandboxExecuteOptions,
+  SandboxExecuteResult,
+  SandboxFileArtifact,
+  SandboxLanguage,
+} from './sandbox/types.js';
 export * from './stream-text.js';
 export * from './streaming/text-stream.js';
 export * from './types/content.js';
@@ -55,5 +72,8 @@ export * from './types/model.js';
 export * from './types/usage.js';
 export { estimateTokensFromMessages, estimateTokensFromString } from './util/estimate-tokens.js';
 export { type FallbackChainOptions, withFallbackChain } from './util/fallback-model.js';
+export type { InlineMediaBytes, RemoteMediaUrl, ResolvedMedia } from './util/multimodal-encode.js';
+export { resolveMediaInput } from './util/multimodal-encode.js';
 export * from './util/normalize-prompt.js';
+export { assertProviderMapsUserMultimodalParts } from './util/provider-user-content.js';
 export { wrapModel } from './util/wrap-model.js';

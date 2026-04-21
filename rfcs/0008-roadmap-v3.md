@@ -197,8 +197,8 @@ Status reflects the codebase as of 2026-04-20 (post RFC 0004-0007 merges).
 | H1  | MCP client adapter                                   | OK       | —    | `@ziro-agent/tools/mcp`           |
 | H2  | MCP server (`ziroagent mcp serve`)                   | GAP      | P0   | RFC 0009                          |
 | H3  | OpenAPI → tools generator                            | GAP      | P0   | RFC 0010                          |
-| H4  | Code interpreter sandbox (E2B / Modal)               | GAP      | P0   | RFC 0013                          |
-| H5  | Browser tool (Playwright / Browserbase)              | GAP      | P0   | RFC 0013                          |
+| H4  | Code interpreter sandbox (E2B / Modal)               | PARTIAL  | P0   | `@ziro-agent/sandbox-e2b`, `@ziro-agent/sandbox-daytona`, `@ziro-agent/sandbox-modal` — RFC 0013 |
+| H5  | Browser tool (Playwright / Browserbase)              | PARTIAL  | P0   | `@ziro-agent/browser-playwright`, `@ziro-agent/browser-browserbase` — RFC 0013 |
 | H6  | Tool capability manifest (signed marketplace)        | GAP      | P2   | v2.0+ (marketplace product)       |
 
 #### Group I — Multi-modal

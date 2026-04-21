@@ -1,4 +1,4 @@
-import { type ToolCallPart } from '@ziro-agent/core';
+import type { ToolCallPart } from '@ziro-agent/core';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { defineTool } from './define-tool.js';

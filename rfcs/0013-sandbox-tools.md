@@ -2,8 +2,8 @@
 
 - Start date: 2026-04-20
 - Authors: @ziro-agent/maintainers
-- Status: **stub** (detailed design TBD before v0.7 milestone start)
-- Affected packages: `@ziro-agent/sandbox-e2b` (new), `@ziro-agent/browser-playwright` (new), `@ziro-agent/tools`
+- Status: **slice shipped** (core interfaces + tools + reference adapters; detailed cookbook / `browse(url, intent)` TBD)
+- Affected packages: `@ziro-agent/sandbox-e2b`, `@ziro-agent/sandbox-daytona`, `@ziro-agent/sandbox-modal`, `@ziro-agent/browser-playwright`, `@ziro-agent/browser-browserbase`, `@ziro-agent/tools`, `@ziro-agent/core`
 - Parent: [RFC 0008 — Roadmap v3](./0008-roadmap-v3.md) §C (v0.7) and §A rows H4, H5
 
 ## Summary
@@ -17,14 +17,19 @@ Ship adapter packages for the two most-cited "missing" agent tools in 2026:
 
 - `SandboxAdapter` interface: `execute(code, language, options)` →
   `{ stdout, stderr, exitCode, files }`.
-- `@ziro-agent/sandbox-e2b` reference adapter wrapping the E2B SDK; ships
-  with `codeInterpreter()` tool factory that an agent can `defineTool`-style
-  receive.
+- `@ziro-agent/sandbox-e2b` reference adapter (`createE2bSandboxAdapter`) wrapping
+  `@e2b/code-interpreter` `Sandbox`; combine with `createCodeInterpreterTool({ sandbox })` from `@ziro-agent/tools`.
+- `@ziro-agent/sandbox-daytona` (`createDaytonaSandboxAdapter`) and **`@ziro-agent/sandbox-modal`**
+  (`createModalSandboxAdapter`) for Daytona and Modal sandboxes.
 - `BrowserAdapter` interface: page primitive (`goto`, `click`, `type`,
   `screenshot`, `evaluate`).
-- `@ziro-agent/browser-playwright` reference adapter wrapping Playwright
-  directly; ships with low-level page tools + a high-level `browse(url, intent)`
-  tool that drives an agent loop over the page.
+- `@ziro-agent/browser-playwright` reference adapter (`createPlaywrightBrowserAdapter`)
+  wrapping Playwright `Page`; use with `createBrowserGotoTool` /
+  `createBrowserScreenshotTool` from `@ziro-agent/tools`.
+- `@ziro-agent/browser-browserbase` — `connectBrowserbasePlaywrightPage()` for CDP sessions,
+  then compose with `createPlaywrightBrowserAdapter` as above.
+- High-level **`browse(url, intent)`** is a cookbook pattern (e.g. `examples/browse-intent`):
+  one `createAgent` loop over the low-level tools — non-goal: NL-to-action in-box.
 - Capability declaration for marketplace forward-compat: every sandbox tool
   declares `capabilities: ['network', 'fs:read:/tmp', 'fs:write:/tmp']`.
 - HITL integration: code execution and navigation are `mutates: true` by

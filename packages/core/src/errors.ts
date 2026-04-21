@@ -129,3 +129,21 @@ export class TimeoutError extends ZiroError {
     brand(this);
   }
 }
+
+/** Thrown when a {@link ContentPart} type is not implemented for the chosen provider yet (e.g. audio/file before v0.7 provider parity). */
+export class UnsupportedPartError extends ZiroError {
+  override readonly name = 'UnsupportedPartError';
+  readonly partType: string;
+  readonly provider: string;
+
+  constructor(options: { partType: string; provider: string; message?: string }) {
+    super(
+      options.message ??
+        `The "${options.partType}" content part is not yet supported by the ${options.provider} provider.`,
+      { code: 'unsupported_part' },
+    );
+    this.partType = options.partType;
+    this.provider = options.provider;
+    brand(this);
+  }
+}

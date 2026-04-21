@@ -27,6 +27,7 @@ import {
   type ToolExecutionResult,
   toolsToModelDefinitions,
 } from '@ziro-agent/tools';
+import { instrumentTools } from '@ziro-agent/tracing';
 import type { Checkpointer, CheckpointId } from './checkpointer.js';
 import { buildHandoffTool, type Handoff, handoffStore } from './handoff.js';
 import {
@@ -114,6 +115,13 @@ export interface CreateAgentOptions {
    * and checkpoints.
    */
   memory?: AgentMemoryConfig;
+  /**
+   * When `true`, every tool (including auto-generated handoff tools) is wrapped
+   * with `instrumentTools` from `@ziro-agent/tracing`. Until `setTracer(...)` is
+   * installed, spans are no-ops. Default `false` so callers who already pass
+   * `instrumentTools(...)` maps do not double-wrap.
+   */
+  traceTools?: boolean;
   /**
    * Default {@link RepairToolCall} for every `run()` / `resume()` unless
    * overridden per-call on {@link AgentRunOptions} / {@link AgentResumeOptions}.
@@ -326,7 +334,7 @@ export function createAgent(options: CreateAgentOptions): Agent {
       baseTools[tool.name] = tool;
     }
   }
-  const tools = baseTools;
+  const tools = options.traceTools === true ? instrumentTools(baseTools) : baseTools;
   const toolDefs = Object.keys(tools).length > 0 ? toolsToModelDefinitions(tools) : undefined;
   const agentRepairDefault = options.repairToolCall;
 

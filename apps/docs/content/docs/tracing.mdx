@@ -20,3 +20,10 @@ const tracedTools = instrumentTools({ getWeather, search });
 
 Without an OTel tracer registered, `instrumentModel` and `instrumentTools`
 are no-ops — safe to leave on in production.
+
+## Tool metadata (span names & capabilities)
+
+Tools created with **`defineTool`** may set optional **`spanName`**,
+**`capabilities`**, and **`traceAttributes`**. When you wrap them with
+`instrumentTool` / `instrumentTools`, those values are applied to the span
+(e.g. sandbox and browser factories — see [Sandbox & browser tools](/docs/sandbox-browser)).
