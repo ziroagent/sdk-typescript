@@ -1,6 +1,6 @@
 {
   "name": "@ziro-agent/inngest",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Inngest durable execution adapter for ZiroAgent SDK — resumable agent runs with HITL via Inngest events.",
   "license": "Apache-2.0",
   "homepage": "https://ziroagent.com",
