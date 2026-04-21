@@ -51,15 +51,28 @@ export function createScope(
 export function intersectSpecs(parent: BudgetSpec, child: BudgetSpec): BudgetSpec {
   const tighter = (a: number | undefined, b: number | undefined) =>
     a === undefined ? b : b === undefined ? a : Math.min(a, b);
-  return {
+  const hard = Boolean(parent.hard || child.hard);
+  const baseOnExceed = child.onExceed ?? parent.onExceed;
+  let onExceed: BudgetSpec['onExceed'];
+  if (hard) {
+    onExceed =
+      typeof baseOnExceed === 'function' || baseOnExceed === 'truncate' ? 'throw' : baseOnExceed;
+  } else {
+    onExceed = baseOnExceed;
+  }
+  const tenantId = child.tenantId ?? parent.tenantId;
+  const out: BudgetSpec = {
     maxUsd: tighter(parent.maxUsd, child.maxUsd),
     maxTokens: tighter(parent.maxTokens, child.maxTokens),
     maxLlmCalls: tighter(parent.maxLlmCalls, child.maxLlmCalls),
     maxSteps: tighter(parent.maxSteps, child.maxSteps),
     maxDurationMs: tighter(parent.maxDurationMs, child.maxDurationMs),
     warnAt: { ...parent.warnAt, ...child.warnAt },
-    onExceed: child.onExceed ?? parent.onExceed,
+    onExceed,
   };
+  if (tenantId !== undefined) out.tenantId = tenantId;
+  if (hard) out.hard = true;
+  return out;
 }
 
 export function toContext(scope: BudgetScope): BudgetContext {
@@ -73,6 +86,7 @@ export function toContext(scope: BudgetScope): BudgetContext {
     remaining.durationMs = Math.max(0, spec.maxDurationMs - (Date.now() - scope.startedAt));
   return {
     spec,
+    ...(spec.tenantId !== undefined ? { tenantId: spec.tenantId } : {}),
     used: { ...used, durationMs: Date.now() - scope.startedAt },
     remaining,
     scopeId: id,

@@ -6,6 +6,7 @@ import {
   isZiroError,
   JSONParseError,
   NoTextGeneratedError,
+  ObjectValidationError,
   TimeoutError,
   ZiroError,
 } from './errors.js';
@@ -18,6 +19,11 @@ describe('error hierarchy', () => {
       new InvalidArgumentError({ argument: 'x', message: 'bad' }),
       new NoTextGeneratedError(),
       new JSONParseError('not-json'),
+      new ObjectValidationError({
+        message: 'bad object',
+        text: '{}',
+        repairAttempted: false,
+      }),
       new TimeoutError(1000),
     ];
     for (const e of errs) {

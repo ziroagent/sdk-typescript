@@ -22,6 +22,7 @@ import type { AgentMemoryConfig } from '@ziro-agent/memory';
 import { injectWorkingMemoryIntoMessages } from '@ziro-agent/memory';
 import {
   executeToolCalls,
+  type RepairToolCall,
   type Tool,
   type ToolExecutionResult,
   toolsToModelDefinitions,
@@ -113,6 +114,11 @@ export interface CreateAgentOptions {
    * and checkpoints.
    */
   memory?: AgentMemoryConfig;
+  /**
+   * Default {@link RepairToolCall} for every `run()` / `resume()` unless
+   * overridden per-call on {@link AgentRunOptions} / {@link AgentResumeOptions}.
+   */
+  repairToolCall?: RepairToolCall;
 }
 
 export interface AgentRunOptions {
@@ -161,6 +167,8 @@ export interface AgentRunOptions {
    * Free-form metadata propagated to the approver and tool-execute ctx.
    */
   metadata?: Record<string, unknown>;
+  /** Per-run override of {@link CreateAgentOptions.repairToolCall}. */
+  repairToolCall?: RepairToolCall;
 }
 
 export interface AgentRunResult {
@@ -320,6 +328,7 @@ export function createAgent(options: CreateAgentOptions): Agent {
   }
   const tools = baseTools;
   const toolDefs = Object.keys(tools).length > 0 ? toolsToModelDefinitions(tools) : undefined;
+  const agentRepairDefault = options.repairToolCall;
 
   /**
    * Auto-persist the snapshot from any `AgentSuspendedError` thrown by
@@ -398,6 +407,10 @@ export function createAgent(options: CreateAgentOptions): Agent {
       // fallback if the caller didn't re-supply one.
       const resolvedBudget =
         resumeOptions.budget ?? deserializeBudgetSpec(snapshot.budgetSpec) ?? undefined;
+      const resumeRepair =
+        resumeOptions.repairToolCall !== undefined
+          ? resumeOptions.repairToolCall
+          : agentRepairDefault;
       const cleanRo: AgentRunOptions = {
         ...(resumeOptions.toolBudget !== undefined ? { toolBudget: resumeOptions.toolBudget } : {}),
         ...(resumeOptions.approver !== undefined ? { approver: resumeOptions.approver } : {}),
@@ -406,6 +419,7 @@ export function createAgent(options: CreateAgentOptions): Agent {
           : {}),
         ...(resumeOptions.onEvent !== undefined ? { onEvent: resumeOptions.onEvent } : {}),
         ...(resumeOptions.metadata !== undefined ? { metadata: resumeOptions.metadata } : {}),
+        ...(resumeRepair ? { repairToolCall: resumeRepair } : {}),
         ...(snapshot.agentId !== undefined ? { agentId: snapshot.agentId } : {}),
         ...(resolvedBudget !== undefined ? { budget: resolvedBudget } : {}),
       };
@@ -531,6 +545,7 @@ export function createAgent(options: CreateAgentOptions): Agent {
   }
 
   async function iterateLoop(state: LoopState, ro: AgentRunOptions): Promise<AgentRunResult> {
+    const effectiveRepairToolCall = ro.repairToolCall ?? agentRepairDefault;
     const emit = async (event: StepEvent) => {
       if (ro.onEvent) await ro.onEvent(event);
     };
@@ -665,10 +680,12 @@ export function createAgent(options: CreateAgentOptions): Agent {
         toolResults = await executeToolCalls({
           tools,
           toolCalls: llmResult.toolCalls,
+          step: stepIndex,
           ...(ro.abortSignal ? { abortSignal: ro.abortSignal } : {}),
           ...(ro.toolBudget ? { toolBudget: ro.toolBudget } : {}),
           ...(ro.approver ? { approver: ro.approver } : {}),
           ...(ro.metadata ? { metadata: ro.metadata } : {}),
+          ...(effectiveRepairToolCall ? { repairToolCall: effectiveRepairToolCall } : {}),
           approvalContext,
         });
 
@@ -1129,6 +1146,8 @@ function addUsageInPlace(target: TokenUsage, add: TokenUsage): void {
  */
 function serializeBudgetSpec(spec: BudgetSpec): SerializableBudgetSpec {
   const out: SerializableBudgetSpec = {};
+  if (spec.tenantId !== undefined) out.tenantId = spec.tenantId;
+  if (spec.hard !== undefined) out.hard = spec.hard;
   if (spec.maxUsd !== undefined) out.maxUsd = spec.maxUsd;
   if (spec.maxTokens !== undefined) out.maxTokens = spec.maxTokens;
   if (spec.maxLlmCalls !== undefined) out.maxLlmCalls = spec.maxLlmCalls;

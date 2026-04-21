@@ -41,6 +41,8 @@ export const ATTR = {
   BudgetSpecMaxLlmCalls: 'ziroagent.budget.spec.max_llm_calls',
   BudgetSpecMaxSteps: 'ziroagent.budget.spec.max_steps',
   BudgetSpecMaxDurationMs: 'ziroagent.budget.spec.max_duration_ms',
+  BudgetTenantId: 'ziroagent.budget.tenant_id',
+  BudgetSpecHard: 'ziroagent.budget.spec.hard',
   BudgetUsedUsd: 'ziroagent.budget.used.usd',
   BudgetUsedTokens: 'ziroagent.budget.used.tokens',
   BudgetUsedLlmCalls: 'ziroagent.budget.used.llm_calls',
