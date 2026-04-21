@@ -192,7 +192,7 @@ This milestone exists because the 12-SDK review (RFC 0004) surfaced eight gaps w
 - [x] **E2** — Citation-first RAG output type — `buildTextWithCitations()`, `TextWithCitations`, `RetrievedChunk` / `toRetrievedChunk()` in `@ziro-agent/memory`
 - [x] **E3** — Hybrid search — `MemoryVectorStore` (BM25 + dense + RRF) and `PgVectorStore` (Postgres FTS + dense + RRF); `defaultSearchStrategy: 'hybrid'` on both when lexical + dense are configured — [RFC 0012](./rfcs/0012-rag-hardening.md)
 - [x] **E4** — Reranker pipeline — `retrieve({ store, query, reranker })` plus `createCohereReranker` / `createVoyageReranker` (`RerankerAdapter`)
-- [x] **E5** — *slice*: `loadDocument()` (local path or `file:` URL) for UTF-8 `.txt` / `.md` / `.csv` / `.json` and `.pdf` when `pdf-parse` is installed; DOCX / image OCR / URI registry still follow-up
+- [x] **E5** — *slice*: `loadDocument()` (local path or `file:` URL) for UTF-8 `.txt` / `.md` / `.csv` / `.json`, `.pdf` when `pdf-parse` is installed, and `.docx` when `mammoth` is installed; image OCR / URI registry still follow-up
 
 ---
 
