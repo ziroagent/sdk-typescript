@@ -27,6 +27,7 @@ import {
   type ToolExecutionResult,
   toolsToModelDefinitions,
 } from '@ziro-agent/tools';
+import { instrumentTools } from '@ziro-agent/tracing';
 import type { Checkpointer, CheckpointId } from './checkpointer.js';
 import { buildHandoffTool, type Handoff, handoffStore } from './handoff.js';
 import {
@@ -326,7 +327,7 @@ export function createAgent(options: CreateAgentOptions): Agent {
       baseTools[tool.name] = tool;
     }
   }
-  const tools = baseTools;
+  const tools = options.traceTools === true ? instrumentTools(baseTools) : baseTools;
   const toolDefs = Object.keys(tools).length > 0 ? toolsToModelDefinitions(tools) : undefined;
   const agentRepairDefault = options.repairToolCall;
 

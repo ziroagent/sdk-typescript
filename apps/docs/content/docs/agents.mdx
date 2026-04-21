@@ -52,3 +52,12 @@ createAgent({
 Each `AgentRunOptions.onEvent` callback receives a discriminated union:
 `step-start`, `llm-finish`, `tool-result`, `step-finish`, `agent-finish`. Use
 this for live UI updates or shipping to your tracing backend.
+
+## Tool tracing
+
+Set **`traceTools: true`** on `createAgent` to wrap every tool (including
+handoff tools) with `instrumentTools` from `@ziro-agent/tracing`. Install a
+tracer with `setTracer(...)`; until then spans are no-ops. Leave `traceTools`
+off (default) if you already pass a pre-wrapped tool map to avoid double spans.
+
+See [Tracing](/docs/tracing) and [Sandbox & browser tools](/docs/sandbox-browser).
