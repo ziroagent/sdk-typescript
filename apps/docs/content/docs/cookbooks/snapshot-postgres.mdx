@@ -1,0 +1,16 @@
+---
+title: Persist HITL snapshots to Postgres
+description: Store AgentSnapshot JSON when the agent suspends, reload on resume.
+---
+
+When a tool uses `requiresApproval`, the agent throws `AgentSuspendedError` with
+an `AgentSnapshot`. Persist that JSON in Postgres (or any store) keyed by
+`threadId` / `agentId`, then call `agent.resume(snapshot, { decisions })`.
+
+```ts
+// On suspend: serialize error.snapshot and INSERT ... ON CONFLICT UPDATE
+// On resume: SELECT snapshot_json, JSON.parse, agent.resume(migrated, opts)
+```
+
+Use `migrateSnapshot()` from `@ziro-agent/agent` so older persisted shapes keep
+working after SDK upgrades. See [HITL](../hitl) and [Migration](../migration).

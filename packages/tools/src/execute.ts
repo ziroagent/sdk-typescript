@@ -11,6 +11,7 @@ import {
   type ToolCallPart,
   withBudget,
 } from '@ziro-agent/core';
+import { parseAsync } from 'zod';
 import type { Tool } from './define-tool.js';
 
 export interface ToolExecutionResult {
@@ -132,7 +133,7 @@ export async function executeToolCalls(options: ExecuteOptions): Promise<ToolExe
 
     let parsedInput: unknown;
     try {
-      parsedInput = tool.input.parse(call.args);
+      parsedInput = await parseAsync(tool.input, call.args);
     } catch (err) {
       // No `parsedArgs` here — input validation failed, so we surface the
       // raw `call.args` instead so a snapshot can still echo what the
@@ -241,7 +242,7 @@ export async function executeToolCalls(options: ExecuteOptions): Promise<ToolExe
       // still receives a typed payload at runtime.
       if (decision.modifiedInput !== undefined) {
         try {
-          approvedInput = tool.input.parse(decision.modifiedInput);
+          approvedInput = await parseAsync(tool.input, decision.modifiedInput);
         } catch (err) {
           return {
             toolCallId: call.toolCallId,
@@ -263,7 +264,7 @@ export async function executeToolCalls(options: ExecuteOptions): Promise<ToolExe
           ...(metadata ? { metadata } : {}),
         }),
       );
-      return tool.output ? tool.output.parse(value) : value;
+      return tool.output ? await parseAsync(tool.output, value) : value;
     };
 
     const composedBudget = composeBudget(toolBudget, tool.budget);

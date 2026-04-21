@@ -78,6 +78,7 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",
     "@types/pg": "^8.15.5",
+    "pdf-parse": "^1.1.1",
     "pg": "^8.13.1",
     "publint": "^0.3.18",
     "tsup": "^8.5.1",

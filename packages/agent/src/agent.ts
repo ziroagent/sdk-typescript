@@ -18,6 +18,8 @@ import {
   type ToolResultPart,
   withBudget,
 } from '@ziro-agent/core';
+import type { AgentMemoryConfig } from '@ziro-agent/memory';
+import { injectWorkingMemoryIntoMessages } from '@ziro-agent/memory';
 import {
   executeToolCalls,
   type Tool,
@@ -104,6 +106,13 @@ export interface CreateAgentOptions {
    * to a single conversation; otherwise pass `threadId` per-call.
    */
   defaultThreadId?: string;
+  /**
+   * Optional three-tier memory (RFC 0011). Working memory is merged into the
+   * first `system` message each LLM step; memory processors and conversation
+   * transforms run on a copy — full history stays in `AgentRunResult.messages`
+   * and checkpoints.
+   */
+  memory?: AgentMemoryConfig;
 }
 
 export interface AgentRunOptions {
@@ -194,6 +203,11 @@ export interface Agent {
    * / `delete` checkpoints without holding a separate reference.
    */
   readonly checkpointer?: Checkpointer;
+  /**
+   * Same object passed to `createAgent({ memory })`. `longTerm` is for app
+   * tools and RAG; working and conversation tiers are applied inside the loop.
+   */
+  readonly memory?: AgentMemoryConfig;
   run(options: AgentRunOptions): Promise<AgentRunResult>;
   /**
    * Continue an agent run that was suspended via `AgentSuspendedError`.
@@ -247,6 +261,27 @@ interface LoopState {
    * synthesized step has accurate `toolCalls`).
    */
   pendingToolCalls?: ToolCallPart[];
+}
+
+let warnedUncappedBudgetThisProcess = false;
+
+/**
+ * RFC 0001 §Unresolved Q1: optional `budget` stays for prototyping, but the
+ * first top-level uncapped `agent.run` per process emits a one-time warning.
+ * Suppressed under Vitest (`VITEST=true`) or when `ZIRO_SUPPRESS_UNCAPPED_BUDGET_WARN=1`.
+ */
+function maybeWarnUncappedBudget(agentName: string, runOptions: AgentRunOptions): void {
+  if (warnedUncappedBudgetThisProcess) return;
+  if (runOptions.budget !== undefined) return;
+  if (getCurrentBudget() !== undefined) return;
+  if (process.env.VITEST === 'true') return;
+  if (process.env.ZIRO_SUPPRESS_UNCAPPED_BUDGET_WARN === '1') return;
+  warnedUncappedBudgetThisProcess = true;
+  process.emitWarning(
+    `[ziro-agent] "${agentName}" agent.run() was called without a budget (uncapped until v1.0). ` +
+      'Pass { budget: { maxUsdPerRun: number } } or set ZIRO_SUPPRESS_UNCAPPED_BUDGET_WARN=1 to silence. See rfcs/0001-budget-guard.md.',
+    { type: 'ZiroBudget', code: 'ZIRO_UNCAPPED_AGENT_BUDGET' },
+  );
 }
 
 /**
@@ -324,7 +359,9 @@ export function createAgent(options: CreateAgentOptions): Agent {
     name: agentName,
     tools,
     ...(checkpointer ? { checkpointer } : {}),
+    ...(options.memory ? { memory: options.memory } : {}),
     async run(runOptions: AgentRunOptions): Promise<AgentRunResult> {
+      maybeWarnUncappedBudget(agentName, runOptions);
       const exec = async (): Promise<AgentRunResult> => {
         const state = seedFromRunOptions(runOptions, baseMaxSteps);
         return await iterateLoop(state, runOptions);
@@ -471,6 +508,28 @@ export function createAgent(options: CreateAgentOptions): Agent {
   //  keeps the public surface readable up top.)
   // ============================================================
 
+  async function buildLlmMessages(
+    state: LoopState,
+    ro: AgentRunOptions,
+    stepIndex: number,
+  ): Promise<ChatMessage[]> {
+    const mem = options.memory;
+    if (!mem) return state.messages;
+    let msgs: ChatMessage[] = [...state.messages];
+    if (mem.working) {
+      const w = await mem.working.read();
+      msgs = injectWorkingMemoryIntoMessages(msgs, w);
+    }
+    const ctx = { threadId: ro.threadId ?? options.defaultThreadId, stepIndex };
+    for (const p of mem.processors ?? []) {
+      msgs = await Promise.resolve(p.process(msgs, ctx));
+    }
+    if (mem.conversation) {
+      msgs = await Promise.resolve(mem.conversation.prepareForModel(msgs, ctx));
+    }
+    return msgs;
+  }
+
   async function iterateLoop(state: LoopState, ro: AgentRunOptions): Promise<AgentRunResult> {
     const emit = async (event: StepEvent) => {
       if (ro.onEvent) await ro.onEvent(event);
@@ -560,7 +619,7 @@ export function createAgent(options: CreateAgentOptions): Agent {
       try {
         llmResult = await generateText({
           model: options.model,
-          messages: state.messages,
+          messages: await buildLlmMessages(state, ro, stepIndex),
           ...(toolDefs ? { tools: toolDefs } : {}),
           ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
           ...(ro.abortSignal ? { abortSignal: ro.abortSignal } : {}),

@@ -1,3 +1,4 @@
+export type { AgentMemoryConfig } from '@ziro-agent/memory';
 export {
   type Agent,
   type AgentRunOptions,

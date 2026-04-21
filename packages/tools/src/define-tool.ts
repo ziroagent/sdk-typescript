@@ -1,5 +1,6 @@
 import type { BudgetSpec, RequiresApproval } from '@ziro-agent/core';
 import type { z } from 'zod';
+import { normalizeToolSchema, type ToolSchemaSpec } from './tool-schema.js';
 
 export interface ToolExecutionContext {
   /** Stable id of this specific tool invocation. */
@@ -59,8 +60,8 @@ export interface Tool<TInput = unknown, TOutput = unknown> {
 export interface DefineToolOptions<TInput, TOutput> {
   name: string;
   description?: string;
-  input: z.ZodType<TInput>;
-  output?: z.ZodType<TOutput>;
+  input: ToolSchemaSpec<TInput>;
+  output?: ToolSchemaSpec<TOutput>;
   /** See {@link Tool.budget}. */
   budget?: BudgetSpec;
   /** See {@link Tool.requiresApproval}. */
@@ -75,12 +76,14 @@ export interface DefineToolOptions<TInput, TOutput> {
 export function defineTool<TInput, TOutput>(
   options: DefineToolOptions<TInput, TOutput>,
 ): Tool<TInput, TOutput> {
+  const input = normalizeToolSchema(options.input);
+  const output = options.output !== undefined ? normalizeToolSchema(options.output) : undefined;
   return {
     __ziro_tool__: true,
     name: options.name,
     ...(options.description !== undefined ? { description: options.description } : {}),
-    input: options.input,
-    ...(options.output !== undefined ? { output: options.output } : {}),
+    input,
+    ...(output !== undefined ? { output } : {}),
     ...(options.budget !== undefined ? { budget: options.budget } : {}),
     ...(options.requiresApproval !== undefined
       ? { requiresApproval: options.requiresApproval as RequiresApproval }

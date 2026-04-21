@@ -44,3 +44,16 @@ context-window management and per-session continuity to consumers.
 ## Detailed design
 
 TBD before v0.4 milestone start. Owner to draft.
+
+## Implementation notes (2026-04)
+
+- **`WorkingMemory` + `InMemoryWorkingMemory`** shipped in `@ziro-agent/memory`
+  (markdown scratchpad, `scope: 'resource' | 'thread'`).
+- **`ConversationMemory`**: `SlidingWindowConversationMemory`,
+  `SummarizingConversationMemory` (`onOverflow` hook).
+- **`MemoryProcessor`**: `composeMemoryProcessors`, `trimNonSystemMessageCount`.
+- **`createAgent({ memory })`**: working injection (`injectWorkingMemoryIntoMessages`),
+  processor chain, conversation `prepareForModel` before each `generateText`;
+  `agent.memory.longTerm` for app-held `VectorStore`.
+- Durable conversation store, **`MemoryProcessor` OTel spans**, and richer
+  `compress()` defaults — still open.

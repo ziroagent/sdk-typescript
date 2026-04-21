@@ -1,9 +1,12 @@
+import { BM25Index } from '../bm25.js';
+import { reciprocalRankFusion } from '../rrf.js';
 import type {
   Document,
   EmbeddedDocument,
   EmbeddingModel,
   Metadata,
   SearchResult,
+  SearchStrategy,
   VectorQuery,
   VectorStore,
 } from '../types.js';
@@ -15,6 +18,11 @@ export interface MemoryVectorStoreOptions {
   embedder?: EmbeddingModel;
   /** Expected vector dimensions; validated on every `upsert`. */
   dimensions?: number;
+  /**
+   * When `VectorQuery.strategy` is omitted, use this value. `hybrid` requires
+   * non-empty `query.text` for the BM25 channel.
+   */
+  defaultSearchStrategy?: SearchStrategy;
 }
 
 interface Row {
@@ -32,11 +40,13 @@ interface Row {
 export class MemoryVectorStore implements VectorStore {
   private readonly rows = new Map<string, Row>();
   private readonly embedder?: EmbeddingModel;
+  private readonly defaultSearchStrategy: SearchStrategy | undefined;
   private dim: number | undefined;
 
   constructor(options: MemoryVectorStoreOptions = {}) {
     this.embedder = options.embedder;
     this.dim = options.dimensions ?? options.embedder?.dimensions;
+    this.defaultSearchStrategy = options.defaultSearchStrategy;
   }
 
   async upsert(docs: EmbeddedDocument[]): Promise<void> {
@@ -75,6 +85,17 @@ export class MemoryVectorStore implements VectorStore {
   async search(query: VectorQuery): Promise<SearchResult[]> {
     const topK = query.topK ?? 4;
     const minScore = query.minScore ?? -Infinity;
+    const strategy = query.strategy ?? this.defaultSearchStrategy ?? 'vector';
+
+    if (strategy === 'hybrid') {
+      if (!query.text?.trim()) {
+        throw new Error(
+          'MemoryVectorStore.search: strategy "hybrid" requires non-empty query.text for BM25.',
+        );
+      }
+      return this.hybridSearch(query, topK, minScore);
+    }
+
     const queryVector = await this.resolveQueryVector(query);
 
     const hits: SearchResult[] = [];
@@ -88,6 +109,68 @@ export class MemoryVectorStore implements VectorStore {
     }
     hits.sort((a, b) => b.score - a.score);
     return hits.slice(0, topK);
+  }
+
+  private async hybridSearch(
+    query: VectorQuery,
+    topK: number,
+    minScore: number,
+  ): Promise<SearchResult[]> {
+    const queryText = query.text as string;
+    const queryVector = await this.resolveQueryVector(query);
+    const rrfK = query.rrfK ?? 60;
+    const cap = Math.min(query.hybridCandidateLimit ?? 200, Math.max(1, this.rows.size));
+
+    const rowsArr = [...this.rows.values()].filter(
+      (row) => !query.filter || matchesFilter(row.metadata, query.filter),
+    );
+
+    const semanticFull: SearchResult[] = [];
+    for (const row of rowsArr) {
+      const score = cosineSimilarity(queryVector, row.embedding);
+      if (score < minScore) continue;
+      const hit: SearchResult = { id: row.id, text: row.text, score };
+      if (row.metadata !== undefined) hit.metadata = row.metadata;
+      semanticFull.push(hit);
+    }
+    semanticFull.sort((a, b) => b.score - a.score);
+    const semanticRanked = semanticFull.slice(0, cap);
+
+    const index = new BM25Index(rowsArr.map((r) => ({ id: r.id, text: r.text })));
+    const bm25All = index.search(queryText).filter((h) => {
+      const row = this.rows.get(h.id);
+      if (!row) return false;
+      if (query.filter && !matchesFilter(row.metadata, query.filter)) return false;
+      return true;
+    });
+    const bm25Ranked = bm25All.slice(0, cap);
+
+    const fused = reciprocalRankFusion(
+      [semanticRanked, bm25Ranked.map((b) => ({ id: b.id }))],
+      rrfK,
+    );
+    const byId = new Map(this.rows);
+    const mergedIds = [...fused.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id);
+
+    const out: SearchResult[] = [];
+    for (const id of mergedIds) {
+      const row = byId.get(id);
+      if (!row) continue;
+      const semanticScore = cosineSimilarity(queryVector, row.embedding);
+      const bm25Score = bm25All.find((b) => b.id === id)?.score ?? 0;
+      const hit: SearchResult = {
+        id: row.id,
+        text: row.text,
+        score: semanticScore,
+        semanticScore,
+        bm25Score,
+        rrfScore: fused.get(id) ?? 0,
+      };
+      if (row.metadata !== undefined) hit.metadata = row.metadata;
+      out.push(hit);
+      if (out.length >= topK) break;
+    }
+    return out;
   }
 
   async delete(ids: string[]): Promise<void> {

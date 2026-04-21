@@ -1,0 +1,28 @@
+---
+title: Try / catch around Budget Guard
+description: Catch BudgetExceededError and branch to a cheaper model or notify ops.
+---
+
+Production agents should wrap `agent.run` (or `generateText`) in `try/catch`
+and handle `BudgetExceededError` from `@ziro-agent/core` — the SDK throws
+**before** the call that would exceed `maxUsdPerRun` / `maxTokens` / etc.
+
+```ts
+import { BudgetExceededError, generateText } from '@ziro-agent/core';
+import { anthropic } from '@ziro-agent/anthropic';
+
+try {
+  await generateText({
+    model: anthropic('claude-sonnet-4-20250514'),
+    prompt: userPrompt,
+    budget: { maxUsdPerRun: 0.5 },
+  });
+} catch (e) {
+  if (e instanceof BudgetExceededError) {
+    // e.kind, e.limit, e.observed — log + alert + fallback
+  }
+  throw e;
+}
+```
+
+See [Budget Guard](../budget-guard) for the full primitive.

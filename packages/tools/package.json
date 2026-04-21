@@ -64,6 +64,7 @@
     "attw": "attw --pack . --profile=node16"
   },
   "dependencies": {
+    "@standard-schema/spec": "^1.1.0",
     "@ziro-agent/core": "workspace:*",
     "zod": "^4.3.6"
   },
