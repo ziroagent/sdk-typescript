@@ -184,6 +184,7 @@ OTel spans on the agent loop carry `ziro.agent.pending_approvals`,
 - **No approval UI.** Build it however you want — Slack approval button,
   CLI prompt, web dashboard. The `Approver` callback is your seam.
 - **No notification engine.** You wire SES/SNS/Pagerduty in `setApprovalObserver`.
-- **No cloud orchestration today.** A run that suspends in process A
-  resumes in process B because *you* persisted the snapshot. Durable
-  adapters (Temporal, Inngest) layer on top in v0.2 for the cross-day case.
+- **No built-in workflow UI.** For cross-day durability and `step.run`
+  memoization, use **`@ziro-agent/inngest`** (shipped) — see the
+  [Durable Inngest cookbook](../cookbooks/durable-inngest) and
+  `examples/durable-support-agent`. Temporal remains roadmap (G5).

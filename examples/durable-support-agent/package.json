@@ -1,0 +1,23 @@
+{
+  "name": "@ziro-agent/example-durable-support-agent",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ziro-agent/agent": "workspace:*",
+    "@ziro-agent/checkpoint-memory": "workspace:*",
+    "@ziro-agent/core": "workspace:*",
+    "@ziro-agent/inngest": "workspace:*",
+    "@ziro-agent/tools": "workspace:*",
+    "inngest": "^4.2.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.3"
+  }
+}

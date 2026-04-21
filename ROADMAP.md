@@ -139,7 +139,7 @@ This milestone exists because the 12-SDK review (RFC 0004) surfaced eight gaps w
 - [x] **`@ziro-agent/inngest` first** — TS-first DX, ~1 week ship
 - [ ] `@ziro-agent/temporal` — moved to v0.6 per RFC 0008 (G5 promoted from P1 if pulled)
 - [ ] (Restate adapter deferred to v0.3 — no design-partner demand yet)
-- [ ] `examples/durable-support-agent` end-to-end with Inngest
+- [x] `examples/durable-support-agent` end-to-end with Inngest
 
 ### Track 5 — Evals polish (parallel, throughout)
 - [ ] **Replay-from-trace** (deferred from RFC 0003 §Q4) — folded into RFC 0015 (v0.6)

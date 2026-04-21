@@ -22,6 +22,7 @@
     "cookbooks/mcp-expose-tools",
     "cookbooks/budget-fallback-model",
     "cookbooks/rag-budget-cap",
+    "cookbooks/durable-inngest",
     "---Reference---",
     "comparison",
     "migration",
