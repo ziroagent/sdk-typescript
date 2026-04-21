@@ -1,4 +1,12 @@
-import type { ContentPart, TextPart, ToolCallPart, ToolResultPart } from './content.js';
+import type {
+  AudioPart,
+  ContentPart,
+  FilePart,
+  ImagePart,
+  TextPart,
+  ToolCallPart,
+  ToolResultPart,
+} from './content.js';
 
 export type Role = 'system' | 'user' | 'assistant' | 'tool';
 
@@ -9,7 +17,7 @@ export interface SystemMessage {
 
 export interface UserMessage {
   role: 'user';
-  content: string | Array<TextPart | { type: 'image'; image: string | URL | Uint8Array }>;
+  content: string | Array<TextPart | ImagePart | AudioPart | FilePart>;
 }
 
 export interface AssistantMessage {

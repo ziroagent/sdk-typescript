@@ -90,6 +90,59 @@ describe('OpenAI chat model — generate (msw)', () => {
     expect(result.finishReason).toBe('tool-calls');
   });
 
+  it('serializes input_audio for inline WAV data URLs', async () => {
+    let body: { messages?: Array<{ content?: unknown }> } | undefined;
+    server.use(
+      http.post(`${BASE}/chat/completions`, async ({ request }) => {
+        body = (await request.json()) as { messages?: Array<{ content?: unknown }> };
+        return HttpResponse.json({
+          id: 'chatcmpl-audio',
+          choices: [{ message: { role: 'assistant', content: 'ok' }, finish_reason: 'stop' }],
+          usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+        });
+      }),
+    );
+    const wavB64 = 'UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQIAAAAAAA==';
+    const openai = createOpenAI({ apiKey: 'test' });
+    await generateText({
+      model: openai('gpt-4o-mini'),
+      messages: [
+        {
+          role: 'user',
+          content: [{ type: 'audio', audio: `data:audio/wav;base64,${wavB64}` }],
+        },
+      ],
+    });
+    const content = body?.messages?.[0]?.content as unknown[];
+    expect(content).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'input_audio',
+          input_audio: expect.objectContaining({ format: 'wav' }),
+        }),
+      ]),
+    );
+  });
+
+  it('rejects remote audio URLs on OpenAI (no implicit fetch)', async () => {
+    const openai = createOpenAI({ apiKey: 'test' });
+    await expect(
+      generateText({
+        model: openai('gpt-4o-mini'),
+        messages: [
+          {
+            role: 'user',
+            content: [{ type: 'audio', audio: 'https://cdn.example.com/a.wav' }],
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({
+      name: 'UnsupportedPartError',
+      partType: 'audio',
+      provider: 'openai',
+    });
+  });
+
   it('throws APICallError on non-2xx', async () => {
     server.use(
       http.post(`${BASE}/chat/completions`, () =>

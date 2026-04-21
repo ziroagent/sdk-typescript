@@ -1,3 +1,4 @@
+import type { ContentPart } from '@ziro-agent/core';
 import {
   APICallError,
   type CostEstimate,
@@ -8,8 +9,10 @@ import {
   type ModelGenerateResult,
   type ModelStreamPart,
   type NormalizedMessage,
+  resolveMediaInput,
   type TokenUsage,
   type ToolCallPart,
+  UnsupportedPartError,
 } from '@ziro-agent/core';
 import { getPricing } from '@ziro-agent/core/pricing';
 import { parseSSE } from './util/sse.js';
@@ -268,6 +271,91 @@ export class OpenAIChatModel implements LanguageModel {
   }
 }
 
+function uint8ToBase64(arr: Uint8Array): string {
+  let s = '';
+  for (let i = 0; i < arr.byteLength; i++) s += String.fromCharCode(arr[i] as number);
+  return typeof btoa !== 'undefined' ? btoa(s) : Buffer.from(s, 'binary').toString('base64');
+}
+
+function openAiAudioFormat(mime?: string): 'wav' | 'mp3' | null {
+  const m = (mime ?? '').toLowerCase();
+  if (m.includes('wav')) return 'wav';
+  if (m.includes('mp3') || m.includes('mpeg')) return 'mp3';
+  return null;
+}
+
+function openAiGuessFilename(mime?: string): string {
+  const m = (mime ?? '').toLowerCase();
+  if (m.includes('pdf')) return 'document.pdf';
+  if (m.includes('plain')) return 'document.txt';
+  return 'document.bin';
+}
+
+function mapOpenAiUserContentPart(p: ContentPart): unknown {
+  if (p.type === 'text') return { type: 'text', text: p.text };
+  if (p.type === 'image') {
+    const url =
+      typeof p.image === 'string'
+        ? p.image
+        : p.image instanceof URL
+          ? p.image.toString()
+          : `data:${p.mimeType ?? 'image/png'};base64,${uint8ToBase64(p.image)}`;
+    return { type: 'image_url', image_url: { url } };
+  }
+  if (p.type === 'audio') {
+    const r = resolveMediaInput(p.audio);
+    if ('url' in r) {
+      throw new UnsupportedPartError({
+        partType: 'audio',
+        provider: 'openai',
+        message:
+          'OpenAI `input_audio` requires inline WAV/MP3 as a Uint8Array or a `data:` URL. The SDK does not fetch remote URLs.',
+      });
+    }
+    const fmt = openAiAudioFormat(r.mimeType ?? p.mimeType);
+    if (!fmt) {
+      throw new UnsupportedPartError({
+        partType: 'audio',
+        provider: 'openai',
+        message: `OpenAI supports input_audio with format "wav" or "mp3" only (got mime "${r.mimeType ?? p.mimeType ?? 'unknown'}").`,
+      });
+    }
+    return { type: 'input_audio', input_audio: { data: r.base64, format: fmt } };
+  }
+  if (p.type === 'file') {
+    if (typeof p.file === 'string' && p.file.startsWith('file-')) {
+      return {
+        type: 'file',
+        file: {
+          file_id: p.file,
+          ...(p.filename !== undefined ? { filename: p.filename } : {}),
+        },
+      };
+    }
+    const r = resolveMediaInput(p.file);
+    if ('url' in r) {
+      throw new UnsupportedPartError({
+        partType: 'file',
+        provider: 'openai',
+        message:
+          'OpenAI file parts need a Files API id (`file-…`), or inline bytes / a base64 `data:` URL. The SDK does not fetch remote URLs.',
+      });
+    }
+    return {
+      type: 'file',
+      file: {
+        file_data: r.base64,
+        filename: p.filename ?? openAiGuessFilename(r.mimeType ?? p.mimeType),
+      },
+    };
+  }
+  throw new UnsupportedPartError({
+    partType: (p as { type?: string }).type ?? 'unknown',
+    provider: 'openai',
+    message: 'Unexpected content part in user message.',
+  });
+}
+
 function toOpenAIMessage(m: NormalizedMessage): unknown {
   switch (m.role) {
     case 'system': {
@@ -287,19 +375,7 @@ function toOpenAIMessage(m: NormalizedMessage): unknown {
       }
       return {
         role: 'user',
-        content: m.content.map((p) => {
-          if (p.type === 'text') return { type: 'text', text: p.text };
-          if (p.type === 'image') {
-            const url =
-              typeof p.image === 'string'
-                ? p.image
-                : p.image instanceof URL
-                  ? p.image.toString()
-                  : `data:${p.mimeType ?? 'image/png'};base64,${uint8ToBase64(p.image)}`;
-            return { type: 'image_url', image_url: { url } };
-          }
-          return p;
-        }),
+        content: m.content.map((p) => mapOpenAiUserContentPart(p)),
       };
     }
     case 'assistant': {
@@ -357,12 +433,6 @@ function defaultOutputCap(modelId: string): number {
   if (modelId.startsWith('o1') || modelId.startsWith('o3')) return 100_000;
   if (modelId.startsWith('gpt-5')) return 32_768;
   return 16_384;
-}
-
-function uint8ToBase64(arr: Uint8Array): string {
-  let s = '';
-  for (let i = 0; i < arr.byteLength; i++) s += String.fromCharCode(arr[i] as number);
-  return typeof btoa !== 'undefined' ? btoa(s) : Buffer.from(s, 'binary').toString('base64');
 }
 
 function safeParseJSON(text: string): unknown {

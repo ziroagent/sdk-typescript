@@ -1,3 +1,4 @@
+import type { ContentPart } from '@ziro-agent/core';
 import {
   APICallError,
   type CostEstimate,
@@ -8,8 +9,10 @@ import {
   type ModelGenerateResult,
   type ModelStreamPart,
   type NormalizedMessage,
+  resolveMediaInput,
   type TokenUsage,
   type ToolCallPart,
+  UnsupportedPartError,
 } from '@ziro-agent/core';
 import { getPricing } from '@ziro-agent/core/pricing';
 import { parseSSE } from './util/sse.js';
@@ -298,31 +301,52 @@ function splitSystem(messages: NormalizedMessage[]): {
   return { systemText: text, others };
 }
 
+function mapGeminiUserPart(p: ContentPart): unknown {
+  if (p.type === 'text') return { text: p.text };
+  if (p.type === 'image') {
+    if (typeof p.image === 'string') {
+      if (p.image.startsWith('data:')) {
+        const [meta, data] = p.image.split(',');
+        const mime =
+          meta?.replace(/^data:/, '').replace(/;base64$/, '') ?? p.mimeType ?? 'image/png';
+        return { inlineData: { mimeType: mime, data: data ?? '' } };
+      }
+      return { fileData: { mimeType: p.mimeType ?? 'image/png', fileUri: p.image } };
+    }
+    return {
+      inlineData: {
+        mimeType: p.mimeType ?? 'image/png',
+        data: uint8ToBase64(p.image as Uint8Array),
+      },
+    };
+  }
+  if (p.type === 'audio') {
+    const r = resolveMediaInput(p.audio);
+    const mime = p.mimeType ?? ('url' in r ? undefined : r.mimeType) ?? 'audio/wav';
+    if ('url' in r) {
+      return { fileData: { mimeType: mime, fileUri: r.url } };
+    }
+    return { inlineData: { mimeType: mime, data: r.base64 } };
+  }
+  if (p.type === 'file') {
+    const r = resolveMediaInput(p.file);
+    const mime = p.mimeType ?? ('url' in r ? undefined : r.mimeType) ?? 'application/octet-stream';
+    if ('url' in r) {
+      return { fileData: { mimeType: mime, fileUri: r.url } };
+    }
+    return { inlineData: { mimeType: mime, data: r.base64 } };
+  }
+  throw new UnsupportedPartError({
+    partType: (p as { type?: string }).type ?? 'unknown',
+    provider: 'google',
+    message: 'Unexpected content part in user message.',
+  });
+}
+
 function toGeminiContent(m: NormalizedMessage): unknown {
   switch (m.role) {
     case 'user': {
-      const parts = m.content.map((p) => {
-        if (p.type === 'text') return { text: p.text };
-        if (p.type === 'image') {
-          if (typeof p.image === 'string') {
-            // Heuristic: data URL → inlineData; else → fileData.
-            if (p.image.startsWith('data:')) {
-              const [meta, data] = p.image.split(',');
-              const mime =
-                meta?.replace(/^data:/, '').replace(/;base64$/, '') ?? p.mimeType ?? 'image/png';
-              return { inlineData: { mimeType: mime, data: data ?? '' } };
-            }
-            return { fileData: { mimeType: p.mimeType ?? 'image/png', fileUri: p.image } };
-          }
-          return {
-            inlineData: {
-              mimeType: p.mimeType ?? 'image/png',
-              data: uint8ToBase64(p.image as Uint8Array),
-            },
-          };
-        }
-        return p;
-      });
+      const parts = m.content.map((p) => mapGeminiUserPart(p));
       return { role: 'user', parts };
     }
     case 'assistant': {

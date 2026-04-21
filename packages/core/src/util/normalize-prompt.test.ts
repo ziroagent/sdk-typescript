@@ -54,4 +54,36 @@ describe('normalizePrompt', () => {
     expect(out[0]?.content).toHaveLength(2);
     expect(out[0]?.content[1]?.type).toBe('image');
   });
+
+  it('normalizes audio and file parts with optional metadata', () => {
+    const out = normalizePrompt({
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'listen' },
+            { type: 'audio', audio: 'https://example.com/a.wav', mimeType: 'audio/wav' },
+            {
+              type: 'file',
+              file: 'https://example.com/b.pdf',
+              mimeType: 'application/pdf',
+              filename: 'b.pdf',
+            },
+          ],
+        },
+      ],
+    });
+    const parts = out[0]?.content;
+    expect(parts?.[1]).toEqual({
+      type: 'audio',
+      audio: 'https://example.com/a.wav',
+      mimeType: 'audio/wav',
+    });
+    expect(parts?.[2]).toEqual({
+      type: 'file',
+      file: 'https://example.com/b.pdf',
+      mimeType: 'application/pdf',
+      filename: 'b.pdf',
+    });
+  });
 });
