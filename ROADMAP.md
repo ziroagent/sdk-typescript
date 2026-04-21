@@ -121,6 +121,7 @@ This milestone exists because the 12-SDK review (RFC 0004) surfaced eight gaps w
 - [x] `LanguageModelMiddleware` interface + `wrapModel(model, middleware[])` in `@ziro-agent/core`
 - [x] **`@ziro-agent/middleware`** new package: `retry()`, `cache()` (in-memory LRU + pluggable adapter), `redactPII()` (heuristic adapter, Presidio adapter pending), `blockPromptInjection()` (heuristic + adapter interface)
 - [x] Tracing instrumentation reuses existing `instrumentModel()` — middleware spans nest under model spans
+- [x] **`prepareStep`** on `createAgent` / `run` / `resume` — per-step `model` / `system` / `activeTools` overrides before each `generateText` (RFC 0004 adoption matrix)
 
 ### Track 2 — Checkpointer + resumable streams (week 3-4) — see RFC 0006
 - [x] `Checkpointer` interface in `@ziro-agent/agent`

@@ -53,6 +53,28 @@ Each `AgentRunOptions.onEvent` callback receives a discriminated union:
 `step-start`, `llm-finish`, `tool-result`, `step-finish`, `agent-finish`. Use
 this for live UI updates or shipping to your tracing backend.
 
+## `prepareStep` (per-iteration overrides)
+
+Pass **`prepareStep`** on `createAgent` or `agent.run` / `agent.resume` to tweak
+each LLM call before it runs. Return any combination of:
+
+- **`model`** — use a different `LanguageModel` for that step only.
+- **`system`** — replace the first `system` message for that call, or prepend
+  one if the thread has no system message yet.
+- **`activeTools`** — restrict which tool names are sent to the model this
+  step (`[]` removes all tools for that call). Omitted keeps the full tool map.
+
+Per-call `prepareStep` on `run` / `resume` overrides the agent-level default.
+
+```ts
+createAgent({
+  model: cheapModel,
+  tools: { search, act },
+  prepareStep: ({ stepIndex }) =>
+    stepIndex >= 3 ? { model: strongModel, activeTools: ['act'] } : {},
+});
+```
+
 ## Tool tracing
 
 Set **`traceTools: true`** on `createAgent` to wrap every tool (including

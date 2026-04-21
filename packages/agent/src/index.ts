@@ -25,6 +25,7 @@ export {
   type NetworkRunResult,
   type NetworkStepRecord,
 } from './network.js';
+export type { PrepareStep, PrepareStepContext, PrepareStepResult } from './prepare-step.js';
 export {
   type AgentResumeOptions,
   type AgentSnapshot,
