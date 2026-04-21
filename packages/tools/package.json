@@ -1,6 +1,6 @@
 {
   "name": "@ziro-agent/tools",
-  "version": "0.5.0",
+  "version": "0.6.1",
   "description": "Type-safe tool definitions, parallel execution, and MCP adapter for ZiroAgent SDK.",
   "license": "Apache-2.0",
   "homepage": "https://ziroagent.com",

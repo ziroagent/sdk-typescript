@@ -1,6 +1,6 @@
 {
   "name": "@ziro-agent/eval",
-  "version": "0.2.5",
+  "version": "0.2.7",
   "description": "First-class evaluation primitive for ZiroAgent SDK — defineEval, built-in graders, CI gate.",
   "license": "Apache-2.0",
   "homepage": "https://ziroagent.com",
