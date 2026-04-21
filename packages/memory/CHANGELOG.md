@@ -1,5 +1,14 @@
 # @ziro-agent/memory
 
+## 0.2.4
+
+### Patch Changes
+
+- [#49](https://github.com/ziroagent/sdk-typescript/pull/49) [`48303a7`](https://github.com/ziroagent/sdk-typescript/commit/48303a7dac0dcc249600a27da8edd7507ecf917e) Thanks [@vokhoadev](https://github.com/vokhoadev)! - `loadDocument` supports `.docx` when the optional `mammoth` dependency is installed (same pattern as `pdf-parse` for PDF).
+
+- Updated dependencies [[`48303a7`](https://github.com/ziroagent/sdk-typescript/commit/48303a7dac0dcc249600a27da8edd7507ecf917e), [`48303a7`](https://github.com/ziroagent/sdk-typescript/commit/48303a7dac0dcc249600a27da8edd7507ecf917e), [`48303a7`](https://github.com/ziroagent/sdk-typescript/commit/48303a7dac0dcc249600a27da8edd7507ecf917e)]:
+  - @ziro-agent/core@0.7.2
+
 ## 0.2.3
 
 ### Patch Changes

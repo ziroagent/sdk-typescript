@@ -1,6 +1,6 @@
 {
   "name": "@ziro-agent/memory",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Vector store interfaces, in-memory & pgvector adapters, chunking and embedding helpers for ZiroAgent SDK.",
   "license": "Apache-2.0",
   "homepage": "https://ziroagent.com",
