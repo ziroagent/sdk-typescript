@@ -256,8 +256,8 @@ This milestone exists because the 12-SDK review (RFC 0004) surfaced eight gaps w
 ### Tracks (P0 only)
 - [x] **I2** — *slice*: `AudioPart` + `resolveMediaInput`; **OpenAI** `input_audio` (wav/mp3 inline / data URL); **Gemini** `inlineData` / `fileData`; **Anthropic** + **Ollama** reject with `UnsupportedPartError` (Messages API has no audio block yet; Ollama chat is image-only) — [RFC 0014](./rfcs/0014-multimodal-content-parts.md)
 - [x] **I3** — *slice*: `FilePart` — **OpenAI** `file` (`file-…` id or base64 `file_data`); **Anthropic** `document` (PDF base64/URL, plain text base64); **Gemini** `inlineData` / `fileData`; **Ollama** unsupported (vision `images[]` only)
-- [x] **H4** — *slice*: `SandboxAdapter` + `createStubSandboxAdapter()` in core; `createCodeInterpreterTool({ sandbox })` in `@ziro-agent/tools` (`mutates: true`); reference adapter `@ziro-agent/sandbox-e2b` — Modal / Daytona adapters still optional — [RFC 0013](./rfcs/0013-sandbox-tools.md)
-- [x] **H5** — *slice*: `BrowserAdapter` + stub + `createBrowserGotoTool` / `createBrowserScreenshotTool`; reference adapter `@ziro-agent/browser-playwright` — Browserbase / managed session SKUs still optional
+- [x] **H4** — *slice*: `SandboxAdapter` + `createStubSandboxAdapter()` in core; `createCodeInterpreterTool({ sandbox })` in `@ziro-agent/tools` (`mutates: true`); reference adapters `@ziro-agent/sandbox-e2b`, `@ziro-agent/sandbox-daytona`, `@ziro-agent/sandbox-modal` — [RFC 0013](./rfcs/0013-sandbox-tools.md)
+- [x] **H5** — *slice*: `BrowserAdapter` + stub + `createBrowserGotoTool` / `createBrowserScreenshotTool`; reference adapters `@ziro-agent/browser-playwright`, `@ziro-agent/browser-browserbase` — other managed browser SKUs still optional
 
 ---
 

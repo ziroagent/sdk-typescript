@@ -116,6 +116,13 @@ export interface CreateAgentOptions {
    */
   memory?: AgentMemoryConfig;
   /**
+   * When `true`, every tool (including auto-generated handoff tools) is wrapped
+   * with `instrumentTools` from `@ziro-agent/tracing`. Until `setTracer(...)` is
+   * installed, spans are no-ops. Default `false` so callers who already pass
+   * `instrumentTools(...)` maps do not double-wrap.
+   */
+  traceTools?: boolean;
+  /**
    * Default {@link RepairToolCall} for every `run()` / `resume()` unless
    * overridden per-call on {@link AgentRunOptions} / {@link AgentResumeOptions}.
    */
