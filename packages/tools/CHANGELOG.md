@@ -1,5 +1,44 @@
 # @ziro-agent/tools
 
+## 0.6.0
+
+### Minor Changes
+
+- [`019b2cd`](https://github.com/ziroagent/sdk-typescript/commit/019b2cdee2edb1acb213b22b86d3dedef4146252) - **v0.5 — Safety & governance (C1, C2, C4)**
+
+  - **@ziro-agent/core** — `generateObject()` with Zod validation and optional one-shot repair; `ObjectValidationError`; `BudgetSpec.tenantId` and `hard` (nested scopes coerce soft `onExceed` to `'throw'`); `BudgetContext.tenantId`.
+  - **@ziro-agent/tools** — `defineTool({ mutates: true })` sets `requiresApproval: true` when `requiresApproval` is omitted; `mutates` stored on the tool.
+  - **@ziro-agent/tracing** — Budget scope attributes `ziroagent.budget.tenant_id` and `ziroagent.budget.spec.hard`.
+  - **@ziro-agent/agent** — `serializeBudgetSpec` persists `tenantId` and `hard` on snapshots.
+
+  ROADMAP §v0.5 P0 (C1, C2, C4) marked complete.
+
+- [`fb35dc0`](https://github.com/ziroagent/sdk-typescript/commit/fb35dc0e04a6e802e4bf141108d39b703f5a74c7) - **v0.6 resilience slice (K3 + L1 + repairToolCall)**
+
+  - **@ziro-agent/core** — `withFallbackChain([primary, ...])` for `generate`/`stream`; optional `shouldFallback`; export from package root.
+  - **@ziro-agent/core/testing** — `createReplayLanguageModel` + `ReplayExhaustedError` for deterministic tests.
+  - **@ziro-agent/tools** — `executeToolCalls({ repairToolCall, step })` with one repair retry after Zod parse failure; exported `RepairToolCall` / `RepairToolCallContext`.
+  - **@ziro-agent/agent** — `repairToolCall` on `createAgent`, `run`, and `resume`; re-export repair types from package root.
+
+  ROADMAP §v0.6: K3, L1 slice, and `repairToolCall` track marked complete; G5 / full JSONL record-replay deferred.
+
+- [#40](https://github.com/ziroagent/sdk-typescript/pull/40) [`683efc4`](https://github.com/ziroagent/sdk-typescript/commit/683efc4051d4713487a71da2be0d2ea4a40f6bb5) Thanks [@vokhoadev](https://github.com/vokhoadev)! - **v0.7 H4/H5 sandbox & browser slice (interfaces + tool factories)**
+
+  - **@ziro-agent/core** — `SandboxAdapter` / `BrowserAdapter` contracts, execute/result types, `createStubSandboxAdapter()`, `createStubBrowserAdapter()` for tests.
+  - **@ziro-agent/tools** — `createCodeInterpreterTool({ sandbox })`; `createBrowserGotoTool` / `createBrowserScreenshotTool({ browser })` (both `mutates: true`).
+
+  Reference adapters `@ziro-agent/sandbox-e2b` / `@ziro-agent/browser-playwright` remain future work per RFC 0013.
+
+- [#40](https://github.com/ziroagent/sdk-typescript/pull/40) [`0f58843`](https://github.com/ziroagent/sdk-typescript/commit/0f588430fa422c2711c2614daa9634e31f7abba3) Thanks [@vokhoadev](https://github.com/vokhoadev)! - **Tool trace metadata (RFC 0013 observability)**
+
+  - **@ziro-agent/tools** — `Tool` / `defineTool` accept optional `capabilities`, `spanName`, and `traceAttributes`; sandbox/browser factories set `ziro.sandbox.execute` / `ziro.browser.action` and default capability tags; export `CODE_INTERPRETER_CAPABILITIES`.
+  - **@ziro-agent/tracing** — `ATTR.ToolCapabilities`, `ATTR.BrowserOperation`; `instrumentTool` emits custom span names and merges capability / trace attributes.
+
+### Patch Changes
+
+- Updated dependencies [[`15fb70f`](https://github.com/ziroagent/sdk-typescript/commit/15fb70f142d8e481f365bd44cf09e28730d4fdce), [`15fb70f`](https://github.com/ziroagent/sdk-typescript/commit/15fb70f142d8e481f365bd44cf09e28730d4fdce), [`15fb70f`](https://github.com/ziroagent/sdk-typescript/commit/15fb70f142d8e481f365bd44cf09e28730d4fdce), [`019b2cd`](https://github.com/ziroagent/sdk-typescript/commit/019b2cdee2edb1acb213b22b86d3dedef4146252), [`fb35dc0`](https://github.com/ziroagent/sdk-typescript/commit/fb35dc0e04a6e802e4bf141108d39b703f5a74c7), [`683efc4`](https://github.com/ziroagent/sdk-typescript/commit/683efc4051d4713487a71da2be0d2ea4a40f6bb5), [`e726cda`](https://github.com/ziroagent/sdk-typescript/commit/e726cdaa6684b02409a64d63bf59ca4a6e63c127)]:
+  - @ziro-agent/core@0.7.0
+
 ## 0.5.0
 
 ### Minor Changes

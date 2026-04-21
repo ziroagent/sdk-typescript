@@ -1,6 +1,6 @@
 {
   "name": "@ziro-agent/checkpoint-memory",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "In-memory reference Checkpointer for ZiroAgent SDK — durable execution adapter for tests, examples, and single-process deployments.",
   "license": "Apache-2.0",
   "homepage": "https://ziroagent.com",

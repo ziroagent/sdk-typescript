@@ -1,6 +1,6 @@
 {
   "name": "@ziro-agent/mcp-server",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Expose Ziro defineTool maps over MCP stdio (Claude Desktop, Cursor).",
   "license": "Apache-2.0",
   "type": "module",

@@ -1,6 +1,6 @@
 {
   "name": "@ziro-agent/middleware",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Built-in LanguageModelMiddleware for ZiroAgent SDK — retry, in-memory cache, and other production-safety primitives that compose via wrapModel().",
   "license": "Apache-2.0",
   "homepage": "https://ziroagent.com",

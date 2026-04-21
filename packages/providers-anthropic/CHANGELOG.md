@@ -1,5 +1,24 @@
 # @ziro-agent/anthropic
 
+## 0.2.6
+
+### Patch Changes
+
+- [#42](https://github.com/ziroagent/sdk-typescript/pull/42) [`15fb70f`](https://github.com/ziroagent/sdk-typescript/commit/15fb70f142d8e481f365bd44cf09e28730d4fdce) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Add reserved `VideoPart` to `UserMessage` content union; normalize + token estimate; Ollama preflight rejects `video`; chat providers throw `UnsupportedPartError` until mapping exists (RFC 0014).
+
+- [#40](https://github.com/ziroagent/sdk-typescript/pull/40) [`e726cda`](https://github.com/ziroagent/sdk-typescript/commit/e726cdaa6684b02409a64d63bf59ca4a6e63c127) Thanks [@vokhoadev](https://github.com/vokhoadev)! - **v0.7 multimodal slice (I2 + I3 — types + provider mapping)**
+
+  - **@ziro-agent/core** — `AudioPart` / `FilePart`; `normalizePrompt`; `estimateTokensFromMessages` heuristics; `resolveMediaInput()` for data URLs / bytes / http(s) & `file:` URLs; `UnsupportedPartError`; `assertProviderMapsUserMultimodalParts()` (Ollama only — stable chat API has no audio/file fields).
+  - **@ziro-agent/openai** — `input_audio` (wav/mp3, inline only); `file` (`file-…` id or `file_data` base64).
+  - **@ziro-agent/anthropic** — `document` for PDF (base64 or URL) and plain text (base64); audio still unsupported at API level → `UnsupportedPartError`.
+  - **@ziro-agent/google** — Gemini `inlineData` / `fileData` for audio and file parts.
+  - **@ziro-agent/ollama** — audio/file remain unsupported (`images[]` only) → `UnsupportedPartError`.
+
+  ROADMAP §v0.7: I2/I3 updated for per-provider coverage; H4/H5 unchanged.
+
+- Updated dependencies [[`15fb70f`](https://github.com/ziroagent/sdk-typescript/commit/15fb70f142d8e481f365bd44cf09e28730d4fdce), [`15fb70f`](https://github.com/ziroagent/sdk-typescript/commit/15fb70f142d8e481f365bd44cf09e28730d4fdce), [`15fb70f`](https://github.com/ziroagent/sdk-typescript/commit/15fb70f142d8e481f365bd44cf09e28730d4fdce), [`019b2cd`](https://github.com/ziroagent/sdk-typescript/commit/019b2cdee2edb1acb213b22b86d3dedef4146252), [`fb35dc0`](https://github.com/ziroagent/sdk-typescript/commit/fb35dc0e04a6e802e4bf141108d39b703f5a74c7), [`683efc4`](https://github.com/ziroagent/sdk-typescript/commit/683efc4051d4713487a71da2be0d2ea4a40f6bb5), [`e726cda`](https://github.com/ziroagent/sdk-typescript/commit/e726cdaa6684b02409a64d63bf59ca4a6e63c127)]:
+  - @ziro-agent/core@0.7.0
+
 ## 0.2.5
 
 ### Patch Changes
