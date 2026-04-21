@@ -1,0 +1,83 @@
+---
+title: Sandbox & browser tools
+description: Isolated code execution and browser automation via adapter interfaces (RFC 0013).
+---
+
+Untrusted **code** and **browser** automation are exposed through small core
+interfaces so you can swap E2B, Modal, Playwright, Browserbase, or in-house
+implementations without changing agent code.
+
+## Core contracts
+
+- **`SandboxAdapter`** (`@ziro-agent/core`) — `execute(code, language, options)` →
+  `{ stdout, stderr, exitCode, files? }`. Use **`createStubSandboxAdapter()`**
+  for dry-runs and tests (does not run code).
+- **`BrowserAdapter`** — `goto`, optional `click`, `type`, `screenshot`,
+  `evaluate`, `close`. Use **`createStubBrowserAdapter()`** for tests.
+
+## Agent tools (`@ziro-agent/tools`)
+
+- **`createCodeInterpreterTool({ sandbox })`** — Zod input `{ code, language }`;
+  **`mutates: true`** (HITL defaults to approval unless you opt out).
+- **`createBrowserGotoTool` / `createBrowserScreenshotTool`** — low-level
+  navigation and PNG capture; same mutability defaults.
+
+## Reference adapters
+
+### E2B (`@ziro-agent/sandbox-e2b`)
+
+```bash
+pnpm add @ziro-agent/sandbox-e2b @e2b/code-interpreter
+```
+
+```ts
+import { Sandbox } from '@e2b/code-interpreter';
+import { createCodeInterpreterTool } from '@ziro-agent/tools';
+import { createE2bSandboxAdapter } from '@ziro-agent/sandbox-e2b';
+
+const e2b = await Sandbox.create();
+const sandbox = createE2bSandboxAdapter({ sandbox: e2b });
+const codeInterpreter = createCodeInterpreterTool({ sandbox });
+```
+
+Set **`E2B_API_KEY`**. `AbortSignal` from the tool context is honored before
+`runCode` starts (server-side cancellation may still complete in flight).
+
+### Playwright (`@ziro-agent/browser-playwright`)
+
+```bash
+pnpm add @ziro-agent/browser-playwright playwright
+```
+
+```ts
+import { chromium } from 'playwright';
+import { createBrowserGotoTool } from '@ziro-agent/tools';
+import { createPlaywrightBrowserAdapter } from '@ziro-agent/browser-playwright';
+
+const browser = await chromium.launch();
+const page = await browser.newPage();
+const browserGoto = createBrowserGotoTool({
+  browser: createPlaywrightBrowserAdapter(page),
+});
+```
+
+`type` on the adapter maps to Playwright **`page.fill`** for reliable input.
+
+## Tracing & capabilities
+
+Factories set **`spanName`** (`ziro.sandbox.execute`, `ziro.browser.action`) and
+**`capabilities`** / **`traceAttributes`** for policy engines. Wrap tools with
+[`instrumentTools`](/docs/tracing) from `@ziro-agent/tracing` when you register
+an OpenTelemetry tracer.
+
+## Runnable stub example
+
+The monorepo includes **`examples/sandbox-stub-tools`**: stub sandbox + stub
+browser, **`executeToolCalls`** with an auto-approver (no API keys).
+
+```bash
+pnpm --filter @ziro-agent/example-sandbox-stub-tools start
+```
+
+See [RFC 0013](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0013-sandbox-tools.md)
+for scope and non-goals.
