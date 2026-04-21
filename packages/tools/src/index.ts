@@ -14,6 +14,7 @@ export {
   type ToolExecutionResult,
 } from './execute.js';
 export {
+  CODE_INTERPRETER_CAPABILITIES,
   type CodeInterpreterInput,
   type CreateCodeInterpreterToolOptions,
   createCodeInterpreterTool,

@@ -9,6 +9,9 @@ function uint8ToBase64(arr: Uint8Array): string {
   return typeof btoa !== 'undefined' ? btoa(s) : Buffer.from(s, 'binary').toString('base64');
 }
 
+/** Span attribute key; kept in sync with `ATTR.BrowserOperation` in `@ziro-agent/tracing`. */
+const BROWSER_OPERATION_ATTR = 'ziroagent.browser.operation' as const;
+
 const gotoInput = z.object({
   url: z.string().url(),
 });
@@ -31,6 +34,9 @@ export function createBrowserGotoTool(options: CreateBrowserGotoToolOptions) {
       'Open a URL in the automated browser session (Playwright, Browserbase, or custom BrowserAdapter).',
     input: gotoInput,
     mutates: true,
+    capabilities: ['network'],
+    spanName: 'ziro.browser.action',
+    traceAttributes: { [BROWSER_OPERATION_ATTR]: 'goto' },
     async execute(input, ctx) {
       await browser.goto(input.url, { signal: ctx.abortSignal });
       return { ok: true as const };
@@ -64,6 +70,9 @@ export function createBrowserScreenshotTool(options: CreateBrowserScreenshotTool
     input: screenshotInput,
     output: screenshotOutput,
     mutates: true,
+    capabilities: ['network'],
+    spanName: 'ziro.browser.action',
+    traceAttributes: { [BROWSER_OPERATION_ATTR]: 'screenshot' },
     async execute(_input, ctx) {
       if (browser.screenshot === undefined) {
         throw new InvalidArgumentError({

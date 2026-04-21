@@ -7,6 +7,8 @@ describe('createCodeInterpreterTool', () => {
   it('runs code through the sandbox adapter', async () => {
     const sandbox = createStubSandboxAdapter({ prefix: '[test] ' });
     const tool = createCodeInterpreterTool({ sandbox });
+    expect(tool.spanName).toBe('ziro.sandbox.execute');
+    expect(tool.capabilities).toContain('network');
     const res = await executeToolCalls({
       tools: { [tool.name]: tool },
       toolCalls: [

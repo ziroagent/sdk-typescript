@@ -9,6 +9,9 @@ const codeInterpreterInput = z.object({
 
 export type CodeInterpreterInput = z.infer<typeof codeInterpreterInput>;
 
+/** Default capability tags for code-interpreter tools (RFC 0013). */
+export const CODE_INTERPRETER_CAPABILITIES = ['network', 'fs:read:/tmp', 'fs:write:/tmp'] as const;
+
 export interface CreateCodeInterpreterToolOptions {
   sandbox: SandboxAdapter;
   /** Default: `code_interpreter` */
@@ -29,6 +32,8 @@ export function createCodeInterpreterTool(options: CreateCodeInterpreterToolOpti
       'Execute Python or JavaScript/TypeScript in an isolated sandbox. State changes are confined to the sandbox environment.',
     input: codeInterpreterInput,
     mutates: true,
+    capabilities: [...CODE_INTERPRETER_CAPABILITIES],
+    spanName: 'ziro.sandbox.execute',
     async execute(input, ctx) {
       return sandbox.execute(input.code, input.language, { signal: ctx.abortSignal });
     },

@@ -24,6 +24,10 @@ export const ATTR = {
   ToolName: 'gen_ai.tool.name',
   ToolCallId: 'gen_ai.tool.call.id',
   ToolError: 'gen_ai.tool.error',
+  /** RFC 0013 — capability tags declared on the tool (e.g. `network`, `fs:write:/tmp`). */
+  ToolCapabilities: 'ziroagent.tool.capabilities',
+  /** RFC 0013 — browser primitive when span is `ziro.browser.action`. */
+  BrowserOperation: 'ziroagent.browser.operation',
 
   // Agent / workflow attributes — Ziro extensions.
   AgentStepIndex: 'ziroagent.agent.step.index',

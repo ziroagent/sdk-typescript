@@ -75,6 +75,25 @@ describe('instrumentTool', () => {
     expect(tracer.spans[0]?.attributes[ATTR.ToolError]).toBe(true);
   });
 
+  it('uses custom spanName and capability attributes when present', async () => {
+    const tracer = recordingTracer();
+    setTracer(tracer);
+    const wrapped = instrumentTool({
+      name: 'x',
+      spanName: 'ziro.sandbox.execute',
+      capabilities: ['network', 'fs:write:/tmp'],
+      traceAttributes: { 'ziroagent.browser.operation': 'goto' },
+      execute: () => 1,
+    });
+    await wrapped.execute(undefined);
+    expect(tracer.spans[0]?.name).toBe('ziro.sandbox.execute');
+    expect(tracer.spans[0]?.attributes[ATTR.ToolCapabilities]).toEqual([
+      'network',
+      'fs:write:/tmp',
+    ]);
+    expect(tracer.spans[0]?.attributes['ziroagent.browser.operation']).toBe('goto');
+  });
+
   it('instrumentTools wraps every tool in a record', async () => {
     const tracer = recordingTracer();
     setTracer(tracer);
