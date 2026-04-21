@@ -16,8 +16,8 @@ references instead of base64 inlining.
 
 ## Scope
 
-- `Part` union extension: `AudioPart`, `FilePart` (P0); `VideoPart` (P2,
-  reserved for v2.0+).
+- `Part` union extension: `AudioPart`, `FilePart` (P0); **`VideoPart`** (P2 —
+  type + normalization ship today; provider mapping still future work).
 - `FileHandle` type: opaque URL or upload-and-reference handle; providers
   resolve via signed-URL fetch.
 - Provider parity: every shipped provider (`@ziro-agent/openai`, `anthropic`,

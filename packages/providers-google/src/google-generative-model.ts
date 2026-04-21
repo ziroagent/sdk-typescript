@@ -336,6 +336,14 @@ function mapGeminiUserPart(p: ContentPart): unknown {
     }
     return { inlineData: { mimeType: mime, data: r.base64 } };
   }
+  if (p.type === 'video') {
+    throw new UnsupportedPartError({
+      partType: 'video',
+      provider: 'google',
+      message:
+        'Video `UserMessage` parts are reserved (RFC 0014) — the Gemini chat adapter does not map them yet.',
+    });
+  }
   throw new UnsupportedPartError({
     partType: (p as { type?: string }).type ?? 'unknown',
     provider: 'google',

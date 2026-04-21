@@ -6,6 +6,7 @@ import type {
   TextPart,
   ToolCallPart,
   ToolResultPart,
+  VideoPart,
 } from './content.js';
 
 export type Role = 'system' | 'user' | 'assistant' | 'tool';
@@ -17,7 +18,7 @@ export interface SystemMessage {
 
 export interface UserMessage {
   role: 'user';
-  content: string | Array<TextPart | ImagePart | AudioPart | FilePart>;
+  content: string | Array<TextPart | ImagePart | AudioPart | FilePart | VideoPart>;
 }
 
 export interface AssistantMessage {

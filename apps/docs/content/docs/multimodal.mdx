@@ -3,10 +3,13 @@ title: Multimodal inputs
 description: User messages with image, audio, and file parts — provider support matrix and resolveMediaInput.
 ---
 
-`UserMessage.content` can mix **`text`**, **`image`**, **`audio`**, and **`file`**
-parts (see types in `@ziro-agent/core`). Use this for vision, short voice clips,
-and PDFs / documents without leaving the normal `generateText` / `createAgent`
-message list.
+`UserMessage.content` can mix **`text`**, **`image`**, **`audio`**, **`file`**, and
+**`video`** parts (see types in `@ziro-agent/core`). The **`video`** shape is
+**reserved** (RFC 0014 P2): it normalises through the stack, but every chat
+provider currently throws **`UnsupportedPartError`** until we ship a mapping.
+
+Use multimodal messages for vision, short voice clips, and PDFs / documents
+without leaving the normal `generateText` / `createAgent` message list.
 
 Design background: [RFC 0014](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0014-multimodal-content-parts.md).
 
@@ -31,6 +34,7 @@ const msg: UserMessage = {
       mimeType: 'audio/wav',
     },
     { type: 'image', image: 'https://example.com/shot.png', mimeType: 'image/png' },
+    // { type: 'video', video: 'https://example.com/clip.mp4' } — reserved; not mapped yet
   ],
 };
 ```
@@ -54,17 +58,17 @@ const resolved = resolveMediaInput(myUint8Array);
 
 ## Provider support (chat completion)
 
-| Provider | `image` | `audio` | `file` (e.g. PDF) |
-| -------- | ------- | ------- | ----------------- |
-| **OpenAI** (`@ziro-agent/openai`) | Yes | Yes (`input_audio`) | Yes (`file` / `file_data`) |
-| **Google** (`@ziro-agent/google`) | Yes | Yes | Yes (`inlineData` / `fileData`) |
-| **Anthropic** (`@ziro-agent/anthropic`) | Yes | **No** — throws `UnsupportedPartError` | Yes (PDF / text `document`) |
-| **Ollama** (`@ziro-agent/ollama`) | Yes (`images[]`) | **No** | **No** |
+| Provider | `image` | `audio` | `file` (e.g. PDF) | `video` (reserved) |
+| -------- | ------- | ------- | ----------------- | ------------------- |
+| **OpenAI** (`@ziro-agent/openai`) | Yes | Yes (`input_audio`) | Yes (`file` / `file_data`) | **No** — `UnsupportedPartError` |
+| **Google** (`@ziro-agent/google`) | Yes | Yes | Yes (`inlineData` / `fileData`) | **No** — `UnsupportedPartError` |
+| **Anthropic** (`@ziro-agent/anthropic`) | Yes | **No** — `UnsupportedPartError` | Yes (PDF / text `document`) | **No** — `UnsupportedPartError` |
+| **Ollama** (`@ziro-agent/ollama`) | Yes (`images[]`) | **No** | **No** | **No** — `UnsupportedPartError` |
 
 Ollama chat is image-only today; **`assertProviderMapsUserMultimodalParts`**
 (from `@ziro-agent/core`) can be called before hitting Ollama so `audio` /
-`file` fail fast with **`UnsupportedPartError`** instead of an opaque daemon
-error.
+`file` / **`video`** fail fast with **`UnsupportedPartError`** instead of an
+opaque daemon error.
 
 ## Agents and tools
 

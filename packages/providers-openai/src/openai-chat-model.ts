@@ -349,6 +349,14 @@ function mapOpenAiUserContentPart(p: ContentPart): unknown {
       },
     };
   }
+  if (p.type === 'video') {
+    throw new UnsupportedPartError({
+      partType: 'video',
+      provider: 'openai',
+      message:
+        'Video `UserMessage` parts are reserved (RFC 0014) — the OpenAI chat adapter does not map them yet.',
+    });
+  }
   throw new UnsupportedPartError({
     partType: (p as { type?: string }).type ?? 'unknown',
     provider: 'openai',

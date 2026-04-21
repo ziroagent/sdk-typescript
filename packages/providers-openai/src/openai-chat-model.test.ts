@@ -143,6 +143,27 @@ describe('OpenAI chat model — generate (msw)', () => {
     });
   });
 
+  it('rejects reserved video parts', async () => {
+    const openai = createOpenAI({ apiKey: 'test' });
+    await expect(
+      generateText({
+        model: openai('gpt-4o-mini'),
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'video', video: 'https://cdn.example.com/c.mp4', mimeType: 'video/mp4' },
+            ],
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({
+      name: 'UnsupportedPartError',
+      partType: 'video',
+      provider: 'openai',
+    });
+  });
+
   it('throws APICallError on non-2xx', async () => {
     server.use(
       http.post(`${BASE}/chat/completions`, () =>

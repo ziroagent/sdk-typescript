@@ -1,12 +1,13 @@
 /**
  * A piece of content within a message. Multimodal: `text`, `image`, `audio`,
- * `file`, and tool parts; `video` reserved for a later RFC.
+ * `file`, `video` (reserved — not mapped to providers yet), and tool parts.
  */
 export type ContentPart =
   | TextPart
   | ImagePart
   | AudioPart
   | FilePart
+  | VideoPart
   | ToolCallPart
   | ToolResultPart;
 
@@ -36,6 +37,17 @@ export interface FilePart {
   file: string | URL | Uint8Array;
   mimeType?: string;
   filename?: string;
+}
+
+/**
+ * Reserved user-media part (RFC 0014 P2). Carried through normalization; every
+ * chat provider currently rejects it with {@link UnsupportedPartError}.
+ */
+export interface VideoPart {
+  type: 'video';
+  /** URL, `data:` URL, or raw bytes — same transport conventions as {@link ImagePart.image}. */
+  video: string | URL | Uint8Array;
+  mimeType?: string;
 }
 
 export interface ToolCallPart {
