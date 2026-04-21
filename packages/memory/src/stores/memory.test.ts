@@ -83,4 +83,48 @@ describe('MemoryVectorStore', () => {
     const store = new MemoryVectorStore({ dimensions: 2 });
     await expect(store.add([{ text: 'x' }])).rejects.toThrow(/embedder/);
   });
+
+  it('rejects hybrid without query.text', async () => {
+    const store = new MemoryVectorStore({ dimensions: 2 });
+    await store.upsert([{ id: 'a', text: 'x', embedding: [1, 0] }]);
+    await expect(store.search({ embedding: [1, 0], strategy: 'hybrid', topK: 1 })).rejects.toThrow(
+      /hybrid.*text/i,
+    );
+  });
+
+  it('uses defaultSearchStrategy when query.strategy omitted', async () => {
+    const store = new MemoryVectorStore({
+      dimensions: 2,
+      defaultSearchStrategy: 'hybrid',
+    });
+    await store.upsert([
+      { id: 'lexical', text: 'xyzzyquantum regulation clause', embedding: [0, 1] },
+      { id: 'semantic', text: 'hello world generic', embedding: [1, 0] },
+    ]);
+    const hits = await store.search({
+      embedding: [1, 0],
+      text: 'xyzzyquantum',
+      topK: 2,
+    });
+    expect(hits.some((h) => h.id === 'lexical')).toBe(true);
+  });
+
+  it('hybrid RRF surfaces lexical matches with weak dense score', async () => {
+    const store = new MemoryVectorStore({ dimensions: 2 });
+    await store.upsert([
+      { id: 'lexical', text: 'xyzzyquantum regulation clause', embedding: [0, 1] },
+      { id: 'semantic', text: 'hello world generic', embedding: [1, 0] },
+    ]);
+    const hits = await store.search({
+      embedding: [1, 0],
+      text: 'xyzzyquantum',
+      strategy: 'hybrid',
+      topK: 2,
+    });
+    const ids = hits.map((h) => h.id);
+    expect(ids).toContain('lexical');
+    expect(hits[0]?.rrfScore).toBeDefined();
+    expect(hits[0]?.semanticScore).toBeDefined();
+    expect(hits[0]?.bm25Score).toBeDefined();
+  });
 });

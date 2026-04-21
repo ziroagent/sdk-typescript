@@ -10,7 +10,9 @@
     "../../packages/memory",
     "../../packages/workflow",
     "../../packages/tracing",
-    "../../packages/cli"
+    "../../packages/cli",
+    "../../packages/mcp-server",
+    "../../packages/openapi"
   ],
   "out": "public/api",
   "name": "ZiroAgent SDK",

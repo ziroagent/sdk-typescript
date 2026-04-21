@@ -1,6 +1,7 @@
 import kleur from 'kleur';
 import { type EvalCommandOptions, runEvalCommand } from './commands/eval.js';
 import { runInit } from './commands/init.js';
+import { runMcpServe } from './commands/mcp-serve.js';
 import { runPlayground } from './commands/playground.js';
 import { listExamples, runExample } from './commands/run.js';
 import { parseArgs } from './util/args.js';
@@ -17,6 +18,7 @@ ${kleur.bold('Commands:')}
   run <example>            Run a bundled example by name
   run --list               List available examples
   eval <path-or-glob>...   Run eval specs and gate on pass criteria (RFC 0003)
+  mcp serve <entry.js>     MCP stdio server for a compiled .js/.mjs tool map (RFC 0009)
   playground               Boot the local dev playground (Next.js)
   help                     Print this help
   version                  Print the CLI version
@@ -27,6 +29,7 @@ ${kleur.bold('Examples:')}
   $ ziroagent eval ./evals --gate 0.95
   $ ziroagent eval './evals/**/*.eval.js' --reporter json --out report.json
   $ ziroagent playground --port 4000
+  $ ziroagent mcp serve ./dist/mcp-tools.mjs
 `;
 
 async function main(argv: string[]): Promise<number> {
@@ -108,6 +111,19 @@ async function main(argv: string[]): Promise<number> {
       if (typeof flags.port === 'string') opts.port = Number.parseInt(flags.port, 10);
       else if (typeof flags.port === 'number') opts.port = flags.port;
       return await runPlayground(opts);
+    }
+    case 'mcp': {
+      const sub = positional[0];
+      if (sub !== 'serve') {
+        logger.error('Usage: ziroagent mcp serve <entry.js|entry.mjs>');
+        return 1;
+      }
+      const entry = positional[1];
+      if (!entry) {
+        logger.error('Missing entry file. Example: ziroagent mcp serve ./dist/mcp-tools.mjs');
+        return 1;
+      }
+      return await runMcpServe({ entry, cwd: process.cwd(), logger });
     }
     default:
       logger.error(`Unknown command: ${command}`);

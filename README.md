@@ -120,7 +120,7 @@ const run = await agent.run({ prompt: 'Refund order #4231 for the customer.' });
 ### Expose your agent as an MCP server (one line)
 
 ```bash
-ziro mcp serve ./my-agent.ts          # Claude Desktop / Cursor / Codex see it instantly
+ziroagent mcp serve ./dist/mcp-tools.mjs   # compile tools to ESM first; stdio MCP per RFC 0009
 ```
 
 ### Eval-as-code (ships with v0.2)
@@ -155,10 +155,11 @@ ziro eval ./evals/*.ts --gate 0.95     # CI gate: fail merge if score < 95%
 | [`@ziro-agent/openai`](packages/providers-openai) | shipped (v0.1.x) | OpenAI provider |
 | [`@ziro-agent/anthropic`](packages/providers-anthropic) | shipped (v0.1.x) | Anthropic provider with explicit prompt-cache control |
 | [`@ziro-agent/ollama`](packages/providers-ollama) | shipped (v0.1.9) | Local-first provider (sovereign mode) — first Sovereign-pillar package |
-| `@ziro-agent/google` | planned (v0.2) | Google Gemini provider |
+| [`@ziro-agent/google`](packages/providers-google) | shipped (v0.2) | Google Gemini provider |
 | `@ziro-agent/groq` | planned (v0.2) | Groq provider (fastest inference benchmark) |
 | [`@ziro-agent/tools`](packages/tools) | shipped (v0.1.x) | `defineTool`, parallel calls, JSON schema from Zod |
-| `@ziro-agent/mcp` | planned (v0.2) | MCP **server** — expose your tools/agents to Claude/Cursor |
+| [`@ziro-agent/openapi`](packages/openapi) | shipped (v0.3, [RFC 0010](rfcs/0010-openapi-tools.md)) | `toolsFromOpenAPISpec` / `toolsFromOpenAPIUrl` (GET + `operationId` first) |
+| [`@ziro-agent/mcp-server`](packages/mcp-server) | shipped (v0.3, [RFC 0009](rfcs/0009-mcp-server.md)) | MCP **stdio server** for `defineTool` maps — `ziroagent mcp serve ./tools.mjs` |
 | [`@ziro-agent/agent`](packages/agent) | shipped (v0.1.x) | Agent loop, HITL approval, suspend/resume, step events, multi-agent `handoffs[]` + `createNetwork` (v0.2, [RFC 0007](rfcs/0007-handoffs-and-router.md)) |
 | [`@ziro-agent/eval`](packages/eval) | shipped (v0.1.x) | `defineEval`, graders (exact/contains/regex/cost/latency/llm-judge), CI gate |
 | [`@ziro-agent/memory`](packages/memory) | shipped (v0.1.x) | Vector store interface, in-memory + pgvector |
@@ -168,10 +169,10 @@ ziro eval ./evals/*.ts --gate 0.95     # CI gate: fail merge if score < 95%
 | [`@ziro-agent/middleware`](packages/middleware) | shipped (v0.1.9, [RFC 0005](rfcs/0005-language-model-middleware.md)) | `LanguageModelMiddleware` runtime + built-ins (`retry`, `cache`); `redactPII` / `blockPromptInjection` planned |
 | [`@ziro-agent/checkpoint-memory`](packages/checkpoint-memory) | shipped (v0.1.9, [RFC 0006](rfcs/0006-checkpointer.md)) | Reference `Checkpointer` adapter (in-memory) — bootstrap for durable execution |
 | [`@ziro-agent/checkpoint-postgres`](packages/checkpoint-postgres) | shipped (v0.2, [RFC 0006](rfcs/0006-checkpointer.md)) | Production Postgres `Checkpointer` — row-locked atomic snapshots, UUID v7 ids, idempotent schema helper |
-| `@ziro-agent/checkpoint-redis` | planned (v0.2, [RFC 0006](rfcs/0006-checkpointer.md)) | Production Redis `Checkpointer` adapter |
+| [`@ziro-agent/checkpoint-redis`](packages/checkpoint-redis) | shipped (v0.2, [RFC 0006](rfcs/0006-checkpointer.md)) | Production Redis `Checkpointer` adapter |
 | `@ziro-agent/gateway` | planned (v0.2) | Routing + fallback + virtual keys (cost tracking via `@ziro-agent/middleware`) |
 | `@ziro-agent/temporal` | planned (v0.2) | Durable runtime adapter (Temporal) |
-| `@ziro-agent/inngest` | planned (v0.2) | Durable runtime adapter (Inngest) — TS-first, ships before Temporal |
+| [`@ziro-agent/inngest`](packages/inngest) | shipped (v0.2) | Durable runtime adapter (Inngest) — TS-first |
 | `@ziro-agent/audit` | planned (v0.3) | Hash-chained audit log (EU AI Act friendly) |
 | `@ziro-agent/agui` | planned (v0.3) | AG-UI 17-event protocol emitter |
 | `@ziro-agent/react` | planned (v0.3) | `<Chat>`, `<TraceTimeline>`, `<ToolApproval>` components |

@@ -1,0 +1,14 @@
+---
+title: RAG with a budget cap
+description: Compose retrieval + generateText under one withBudget or agent.run budget.
+---
+
+Wrap the whole retrieval + synthesis path in one `agent.run({ budget })` or
+`withBudget` scope so **both** embedding calls (if any) and the final
+`generateText` share the same USD / token ceiling.
+
+If you call `generateText` inside a tool, the tool inherits the agent scope
+automatically — declare a stricter `toolBudget` only when a specific tool should
+cost less than the rest of the step.
+
+See [Budget Guard](../budget-guard) and [Memory](../memory).

@@ -25,6 +25,9 @@ export interface EmbeddedDocument {
   metadata?: Metadata;
 }
 
+/** Retrieval strategy (RFC 0012 — hybrid lexical + dense on supported stores). */
+export type SearchStrategy = 'vector' | 'hybrid';
+
 /**
  * A query against a vector store. Provide either `embedding` (already
  * computed) or `text` (the store may use its embedder, otherwise it errors).
@@ -38,6 +41,17 @@ export interface VectorQuery {
   filter?: Metadata;
   /** Inclusive minimum cosine similarity in `[-1, 1]`. */
   minScore?: number;
+  /**
+   * `hybrid` runs BM25 + dense cosine then RRF merge (MemoryVectorStore only
+   * in v0.4). Requires `text` for the lexical channel.
+   */
+  strategy?: SearchStrategy;
+  /** RRF constant `k` (default 60). */
+  rrfK?: number;
+  /**
+   * Max candidates per channel before fusion (default: all rows, capped at 200).
+   */
+  hybridCandidateLimit?: number;
 }
 
 /** A single search hit. `score` is cosine similarity in `[-1, 1]`. */
@@ -46,6 +60,22 @@ export interface SearchResult {
   text: string;
   score: number;
   metadata?: Metadata;
+  /** When `strategy: 'hybrid'` — fused RRF score (higher is better). */
+  rrfScore?: number;
+  /** Dense cosine similarity for this hit (hybrid mode). */
+  semanticScore?: number;
+  /** BM25 relevance for this hit (hybrid mode). */
+  bm25Score?: number;
+}
+
+/**
+ * Retrieved chunk with explicit id for citations (RFC 0012). Same payload as
+ * `SearchResult`; `chunkId` mirrors `id`.
+ */
+export type RetrievedChunk = SearchResult & { chunkId: string };
+
+export function toRetrievedChunk(hit: SearchResult): RetrievedChunk {
+  return { ...hit, chunkId: hit.id };
 }
 
 /**

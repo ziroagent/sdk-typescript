@@ -58,6 +58,8 @@
   },
   "dependencies": {
     "@ziro-agent/eval": "workspace:*",
+    "@ziro-agent/mcp-server": "workspace:*",
+    "@ziro-agent/tools": "workspace:*",
     "kleur": "^4.1.5"
   },
   "devDependencies": {

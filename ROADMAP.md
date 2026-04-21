@@ -71,37 +71,39 @@ Our roadmap is shaped by one question: **"What stops 88% of agent projects from 
 This milestone exists because the 12-SDK review (RFC 0004) surfaced eight gaps where shipped code lags shipped marketing — Sovereign pillar empty, three production-safety primitives undocumented on the docs site, README packages table over-claiming, snapshot fidelity missing. Trust compounds; closing these gaps before adding new surface area protects every later milestone.
 
 ### Documentation
-- [ ] `apps/docs/content/docs/budget-guard.mdx` — pillar #1, currently undocumented on the docs site
-- [ ] `apps/docs/content/docs/hitl.mdx` — pillar #2 walkthrough with `agent.resume`
-- [ ] `apps/docs/content/docs/evals.mdx` — pillar #3 cookbook with CI gate
-- [ ] `apps/docs/content/docs/errors.mdx` — every Ziro error class, brand check, recovery pattern
-- [ ] `apps/docs/content/docs/comparison.mdx` — promote `POSITIONING.md` into the site
-- [ ] `apps/docs/content/docs/cookbooks/*.mdx` — five recipes: try/catch budget · persist snapshot to Postgres · expose tools as MCP · fallback model on `BudgetExceededError` · RAG with budget cap
-- [ ] `apps/docs/content/docs/migration.mdx` — v0.x churn policy explicit
-- [ ] Auto-build TypeDoc in CI; commit to `apps/docs/public/api/` so `/api/*` pages stop being 404s
-- [ ] Sync `apps/docs/content/docs/getting-started.mdx` CLI invocation with `README.md` (currently mismatched: `pnpm dlx @ziro-agent/cli init` vs `npm create ziro@latest`)
-- [ ] Wire the new `apps/docs/content/blog/` route in Fumadocs config
+- [x] `apps/docs/content/docs/budget-guard.mdx` — pillar #1, currently undocumented on the docs site
+- [x] `apps/docs/content/docs/hitl.mdx` — pillar #2 walkthrough with `agent.resume`
+- [x] `apps/docs/content/docs/evals.mdx` — pillar #3 cookbook with CI gate
+- [x] `apps/docs/content/docs/errors.mdx` — every Ziro error class, brand check, recovery pattern
+- [x] `apps/docs/content/docs/comparison.mdx` — promote `POSITIONING.md` into the site
+- [x] `apps/docs/content/docs/cookbooks/*.mdx` — five recipes: try/catch budget · persist snapshot to Postgres · expose tools as MCP · fallback model on `BudgetExceededError` · RAG with budget cap
+- [x] `apps/docs/content/docs/migration.mdx` — v0.x churn policy explicit
+- [x] Auto-build TypeDoc in CI; `apps/docs` `prebuild` runs `typedoc` → `public/api/` (gitignored locally; produced on every docs build / CI `docs` job)
+- [x] Sync `apps/docs/content/docs/getting-started.mdx` CLI invocation with `README.md` (currently mismatched: `pnpm dlx @ziro-agent/cli init` vs `npm create ziro@latest`)
+- [x] Wire the new `apps/docs/content/blog/` route in Fumadocs config
 
 ### README accuracy
-- [ ] Mark every package row in `README.md` "Packages" table with `shipped (v0.1.x)` or `planned (v0.x)` — currently 17 packages listed, 10 actually published
-- [ ] Same for the `examples/` table
+- [x] Mark every package row in `README.md` "Packages" table with `shipped (v0.1.x)` or `planned (v0.x)` — currently 17 packages listed, 10 actually published
+- [x] Same for the `examples/` table
 
 ### Snapshot completeness (RFC 0002 amend)
-- [ ] Add `parsedArgs` to `AgentSnapshot.resolvedSiblings[]` so `agent.resume()` doesn't lose tool-call argument fidelity for already-executed siblings
-- [ ] Bump `AgentSnapshot.version` to `2`; ship `migrateSnapshot(v1 → v2)`
+- [x] Add `parsedArgs` to `AgentSnapshot.resolvedSiblings[]` so `agent.resume()` doesn't lose tool-call argument fidelity for already-executed siblings
+- [x] Bump `AgentSnapshot.version` to `2`; ship `migrateSnapshot(v1 → v2)`
 
 ### Sovereign pillar credibility
-- [ ] **`@ziro-agent/ollama` v0.1.0** — the Sovereign pillar cannot remain empty; this is a 1-week ship and unblocks the VN/SEA wedge
+- [x] **`@ziro-agent/ollama` v0.1.0** — the Sovereign pillar cannot remain empty; this is a 1-week ship and unblocks the VN/SEA wedge
 
 ### Pricing data hygiene
-- [ ] Add `unverified: true` flag to any `ModelPricing` entry whose `validFrom` cannot be cross-referenced against a live provider page (today: speculative 2026 IDs in `packages/core/src/pricing/data.ts`)
-- [ ] `getPricing()` returns `undefined` for `unverified: true` unless `{ allowUnverified: true }` is passed; pre-flight enforcement falls back to chars/4 heuristic, same as for unknown models
+- [x] Add `unverified: true` flag to any `ModelPricing` entry whose `validFrom` cannot be cross-referenced against a live provider page (today: speculative 2026 IDs in `packages/core/src/pricing/data.ts`)
+- [x] `getPricing()` returns `undefined` for `unverified: true` unless `{ allowUnverified: true }` is passed; pre-flight enforcement falls back to chars/4 heuristic, same as for unknown models
 
 ---
 
 ## v0.2 — Production hardening (8-10 weeks)
 
 **Goal**: ship the four "blow up in production" primitives that unblock paying design-partner upgrades — middleware composition, graceful durability, provider depth, and replayable evals.
+
+> **Status (2026-04).** v0.2 **P0 scope is closed**: Tracks 1–3 and the Inngest adapter (Track 4) shipped. What remains below are **explicit follow-ups**, not v0.2 blockers — either moved to **v0.6 / v0.8 / v0.9** on the RFC 0008 schedule, partner-pulled (**Temporal**, **Groq**), or **examples / eval ergonomics** that can land anytime without re-opening the v0.2 milestone.
 
 ### Adoption matrix
 
@@ -123,7 +125,7 @@ This milestone exists because the 12-SDK review (RFC 0004) surfaced eight gaps w
 ### Track 2 — Checkpointer + resumable streams (week 3-4) — see RFC 0006
 - [x] `Checkpointer` interface in `@ziro-agent/agent`
 - [x] `@ziro-agent/checkpoint-memory`, [x] `@ziro-agent/checkpoint-postgres`, [x] `@ziro-agent/checkpoint-redis`
-- [ ] `agent.resumeFromCheckpoint(threadId)` / `agent.listCheckpoints(threadId)` — moved to v0.9 stabilisation per RFC 0008
+- [x] `agent.resumeFromCheckpoint(threadId, options)` — shipped (`createAgent({ checkpointer })` + `checkpointer.get` + `agent.resume`); thin `agent.listCheckpoints(threadId)` sugar still **v0.9** (call `checkpointer.list(threadId)` today)
 - [ ] `streamText({ resumeKey, resumeFromIndex })` with cached event log — moved to v0.6 (RFC 0015 resilience)
 - [x] **Mental model rename**: durable is the *default* (any checkpointer); Temporal/Inngest become the long-running adapters
 
@@ -161,12 +163,12 @@ This milestone exists because the 12-SDK review (RFC 0004) surfaced eight gaps w
 | Vitest / Mocked LLM patterns                 | `mockModel({ responses })` + `recordModel(real)` from `@ziro-agent/core/testing`         | Shipping a separate `@ziro-agent/testing` package — testing utilities live with the contract under test |
 
 ### Tracks (P0 only)
-- [ ] **A5** — OTel GenAI semconv aliases in `@ziro-agent/tracing` (dual-emit one minor)
-- [ ] **A6** — MCP server (`ziroagent mcp serve`) — see [RFC 0009](./rfcs/0009-mcp-server.md)
-- [ ] **A7** — Standard Schema (`~standard`) interop in `@ziro-agent/tools`
-- [ ] **B6** — Mock / record provider exposed from `@ziro-agent/core/testing`
-- [ ] **H3** — OpenAPI → tools generator — see [RFC 0010](./rfcs/0010-openapi-tools.md)
-- [ ] **M1** — Three-layer docs audit (Quickstart / Tutorial / Reference) in `apps/docs`
+- [x] **A5** — OTel GenAI semconv aliases in `@ziro-agent/tracing` (dual-emit one minor)
+- [x] **A6** — MCP server (`ziroagent mcp serve <entry.mjs>` + `@ziro-agent/mcp-server`) — see [RFC 0009](./rfcs/0009-mcp-server.md)
+- [x] **A7** — Standard Schema (`~standard`) interop in `@ziro-agent/tools` (`defineTool` accepts `StandardSchemaV1`, `zodFromStandardSchema`, `parseAsync` in `executeToolCalls`)
+- [x] **B6** — Mock / record provider exposed from `@ziro-agent/core/testing` (`createMockLanguageModel`, `recordLanguageModel`)
+- [x] **H3** — OpenAPI → tools generator — `@ziro-agent/openapi` (`toolsFromOpenAPISpec`, `toolsFromOpenAPIUrl`) — see [RFC 0010](./rfcs/0010-openapi-tools.md) (GET-only first slice)
+- [x] **M1** — Three-layer docs audit (Quickstart / Tutorial / Reference) in `apps/docs` — TypeDoc wired into `prebuild`; cookbooks + blog live; deeper editorial pass remains incremental
 
 ---
 
@@ -185,11 +187,11 @@ This milestone exists because the 12-SDK review (RFC 0004) surfaced eight gaps w
 | Cohere / Voyage / BGE rerankers              | `rerank()` middleware composable in retrieval pipeline                              | Coupling reranker to a single provider — ships as `RerankerAdapter` interface                         |
 
 ### Tracks (P0 only)
-- [ ] **E1** — Three-tier memory (working / conversation / long-term) — see [RFC 0011](./rfcs/0011-memory-tiers.md)
-- [ ] **E2** — Citation-first RAG output type
-- [ ] **E3** — Hybrid search (semantic + BM25 + RRF) default — see [RFC 0012](./rfcs/0012-rag-hardening.md)
-- [ ] **E4** — Reranker as middleware
-- [ ] **E5** — Document ingestion pipeline (PDF / CSV / MD / DOCX / image OCR)
+- [x] **E1** — Three-tier memory — `createAgent({ memory })` wires `WorkingMemory`, `MemoryProcessor[]`, `ConversationMemory`, and exposes `longTerm` on `agent.memory`; durable backends + `MemoryProcessor` tracing still follow-up — [RFC 0011](./rfcs/0011-memory-tiers.md)
+- [x] **E2** — Citation-first RAG output type — `buildTextWithCitations()`, `TextWithCitations`, `RetrievedChunk` / `toRetrievedChunk()` in `@ziro-agent/memory`
+- [x] **E3** — Hybrid search — `MemoryVectorStore` (BM25 + dense + RRF) and `PgVectorStore` (Postgres FTS + dense + RRF); `defaultSearchStrategy: 'hybrid'` on both when lexical + dense are configured — [RFC 0012](./rfcs/0012-rag-hardening.md)
+- [x] **E4** — Reranker pipeline — `retrieve({ store, query, reranker })` plus `createCohereReranker` / `createVoyageReranker` (`RerankerAdapter`)
+- [x] **E5** — *slice*: `loadDocument()` (local path or `file:` URL) for UTF-8 `.txt` / `.md` / `.csv` / `.json` and `.pdf` when `pdf-parse` is installed; DOCX / image OCR / URI registry still follow-up
 
 ---
 

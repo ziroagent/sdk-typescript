@@ -8,11 +8,24 @@ function fakePool(): PgPoolLike & { calls: Array<{ text: string; values?: unknow
     calls,
     async query(text: string, values?: unknown[]) {
       calls.push({ text, values });
-      if (/SELECT id, text, metadata/.test(text)) {
+      if (/ts_rank_cd/.test(text) && /plainto_tsquery/.test(text)) {
         return {
           rows: [
-            { id: 'a', text: 'A', metadata: { src: 'docs' }, score: 0.91 },
-            { id: 'b', text: 'B', metadata: null, score: 0.42 },
+            {
+              id: 'lex',
+              text: 'lexical hit',
+              metadata: null,
+              fts_score: 2.0,
+              semantic_score: 0.05,
+            },
+          ],
+        };
+      }
+      if (/SELECT id, text, metadata/.test(text) && /ORDER BY embedding/.test(text)) {
+        return {
+          rows: [
+            { id: 'vec', text: 'vector hit', metadata: null, score: 0.99 },
+            { id: 'lex', text: 'lexical hit', metadata: null, score: 0.2 },
           ],
         };
       }
@@ -29,7 +42,7 @@ describe('PgVectorStore', () => {
     );
   });
 
-  it('init() creates extension, table, and index', async () => {
+  it('init() creates extension, table, ivfflat, and FTS index', async () => {
     const pool = fakePool();
     const store = new PgVectorStore({ pool, dimensions: 3 });
     await store.init();
@@ -37,6 +50,7 @@ describe('PgVectorStore', () => {
     expect(sqls).toMatch(/CREATE EXTENSION IF NOT EXISTS vector/);
     expect(sqls).toMatch(/CREATE TABLE IF NOT EXISTS ziro_documents/);
     expect(sqls).toMatch(/CREATE INDEX IF NOT EXISTS ziro_documents_embedding_ivfflat/);
+    expect(sqls).toMatch(/CREATE INDEX IF NOT EXISTS ziro_documents_fts/);
   });
 
   it('upsert validates dimensions and serializes vectors', async () => {
@@ -57,20 +71,31 @@ describe('PgVectorStore', () => {
     const store = new PgVectorStore({ pool, dimensions: 3 });
     const hits = await store.search({ embedding: [0, 0, 1], topK: 5 });
     expect(hits).toHaveLength(2);
-    expect(hits[0]).toEqual({
-      id: 'a',
-      text: 'A',
-      score: 0.91,
-      metadata: { src: 'docs' },
+    expect(hits[0]?.id).toBe('vec');
+    expect(hits[0]?.score).toBeCloseTo(0.99, 5);
+  });
+
+  it('hybrid search merges FTS and vector channels', async () => {
+    const pool = fakePool();
+    const store = new PgVectorStore({ pool, dimensions: 3 });
+    const hits = await store.search({
+      embedding: [0, 0, 1],
+      text: 'quantum',
+      strategy: 'hybrid',
+      topK: 2,
     });
-    expect(hits[1]?.metadata).toBeUndefined();
+    expect(hits.length).toBeGreaterThanOrEqual(1);
+    expect(hits[0]?.rrfScore).toBeDefined();
+    expect(hits.some((h) => h.id === 'lex')).toBe(true);
   });
 
   it('search applies metadata filter as JSONB containment', async () => {
     const pool = fakePool();
     const store = new PgVectorStore({ pool, dimensions: 3 });
     await store.search({ embedding: [0, 0, 1], filter: { src: 'docs' } });
-    const sel = pool.calls.find((c) => /SELECT id, text/.test(c.text));
+    const sel = pool.calls.find(
+      (c) => /SELECT id, text/.test(c.text) && !/ts_rank_cd/.test(c.text),
+    );
     expect(sel?.text).toMatch(/metadata @> \$3::jsonb/);
     expect(sel?.values?.[2]).toEqual({ src: 'docs' });
   });

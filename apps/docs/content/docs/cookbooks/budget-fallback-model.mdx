@@ -1,0 +1,13 @@
+---
+title: Fallback model on budget overrun
+description: Use BudgetSpec.onExceed or catch BudgetExceededError to switch models.
+---
+
+**Option A — `onExceed` resolver (agent / generateText):** supply a function that
+returns a `replacement` result when the scope hits the limit (see RFC 0001).
+
+**Option B — catch and retry:** on `BudgetExceededError`, retry with a cheaper
+`LanguageModel` and a tighter `budget`.
+
+Keep the outer `try/catch` for unexpected failures; budget throws are typed so
+you never confuse them with network errors.

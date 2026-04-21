@@ -1,0 +1,14 @@
+---
+title: Expose tools over MCP
+description: Use the MCP client adapter today; `ziroagent mcp serve` lands in v0.3 (RFC 0009).
+---
+
+**Client:** `@ziro-agent/tools/mcp` adapts a remote MCP server into Ziro `Tool`s.
+
+**Server:** [`@ziro-agent/mcp-server`](https://github.com/ziroagent/sdk-typescript/tree/main/packages/mcp-server)
+plus `ziroagent mcp serve ./dist/your-tools.mjs` (stdio) — see
+[RFC 0009](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0009-mcp-server.md).
+
+Compile an ESM module that exports `export const tools = { ...defineTool(...) }`
+(or `export default { tools }`), then point Claude Desktop / Cursor at the
+`ziroagent mcp serve` command.

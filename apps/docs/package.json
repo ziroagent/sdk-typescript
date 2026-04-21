@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "fumadocs-mdx && next dev --port 4001",
-    "prebuild": "fumadocs-mdx",
+    "prebuild": "pnpm run api:generate && fumadocs-mdx",
     "build": "next build",
     "start": "next start --port 4001",
     "typecheck": "fumadocs-mdx && tsc --noEmit",

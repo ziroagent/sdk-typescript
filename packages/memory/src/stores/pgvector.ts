@@ -1,9 +1,11 @@
+import { reciprocalRankFusion } from '../rrf.js';
 import type {
   Document,
   EmbeddedDocument,
   EmbeddingModel,
   Metadata,
   SearchResult,
+  SearchStrategy,
   VectorQuery,
   VectorStore,
 } from '../types.js';
@@ -31,6 +33,19 @@ export interface PgVectorStoreOptions {
    * product or `<->` for L2 if you have indexed your column accordingly.
    */
   distance?: '<=>' | '<#>' | '<->';
+  /**
+   * When `VectorQuery.strategy` is omitted, use this strategy. `hybrid`
+   * requires non-empty `query.text` (lexical channel uses Postgres FTS).
+   */
+  defaultSearchStrategy?: SearchStrategy;
+}
+
+interface FtsRow {
+  id: string;
+  text: string;
+  metadata: Metadata | null;
+  fts_score: string | number;
+  semantic_score: string | number;
 }
 
 /**
@@ -47,6 +62,8 @@ export interface PgVectorStoreOptions {
  * );
  * CREATE INDEX IF NOT EXISTS <table>_embedding_ivfflat
  *   ON <table> USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+ * CREATE INDEX IF NOT EXISTS <table>_fts
+ *   ON <table> USING gin (to_tsvector('english', text));
  * ```
  */
 export class PgVectorStore implements VectorStore {
@@ -55,6 +72,7 @@ export class PgVectorStore implements VectorStore {
   private readonly dim: number;
   private readonly embedder?: EmbeddingModel;
   private readonly distance: '<=>' | '<#>' | '<->';
+  private readonly defaultSearchStrategy: SearchStrategy | undefined;
 
   constructor(options: PgVectorStoreOptions) {
     this.pool = options.pool;
@@ -62,6 +80,7 @@ export class PgVectorStore implements VectorStore {
     this.dim = options.dimensions;
     if (options.embedder) this.embedder = options.embedder;
     this.distance = options.distance ?? '<=>';
+    this.defaultSearchStrategy = options.defaultSearchStrategy;
   }
 
   /** Ensure the extension, table, and ivfflat index exist. Safe to call repeatedly. */
@@ -78,6 +97,10 @@ export class PgVectorStore implements VectorStore {
     await this.pool.query(
       `CREATE INDEX IF NOT EXISTS ${this.table}_embedding_ivfflat
         ON ${this.table} USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100)`,
+    );
+    await this.pool.query(
+      `CREATE INDEX IF NOT EXISTS ${this.table}_fts
+        ON ${this.table} USING gin (to_tsvector('english', text))`,
     );
   }
 
@@ -119,6 +142,27 @@ export class PgVectorStore implements VectorStore {
   }
 
   async search(query: VectorQuery): Promise<SearchResult[]> {
+    const strategy = query.strategy ?? this.defaultSearchStrategy ?? 'vector';
+    if (strategy === 'hybrid') {
+      if (!query.text?.trim()) {
+        throw new Error(
+          'PgVectorStore.search: strategy "hybrid" requires non-empty query.text for Postgres FTS.',
+        );
+      }
+      return this.searchHybrid(query);
+    }
+    return this.searchVectorOnly(query);
+  }
+
+  private denseSimilaritySql(vectorParam = '$1'): string {
+    return this.distance === '<=>'
+      ? `1 - (embedding ${this.distance} ${vectorParam}::vector)`
+      : this.distance === '<#>'
+        ? `-(embedding ${this.distance} ${vectorParam}::vector)`
+        : `-(embedding ${this.distance} ${vectorParam}::vector)`;
+  }
+
+  private async searchVectorOnly(query: VectorQuery): Promise<SearchResult[]> {
     const topK = query.topK ?? 4;
     const vector = await this.resolveQueryVector(query);
 
@@ -129,14 +173,7 @@ export class PgVectorStore implements VectorStore {
       where = `WHERE metadata @> $${params.length}::jsonb`;
     }
 
-    // Cosine *distance* is in [0, 2]; we convert to similarity in [-1, 1].
-    const sim =
-      this.distance === '<=>'
-        ? `1 - (embedding ${this.distance} $1::vector)`
-        : this.distance === '<#>'
-          ? `-(embedding ${this.distance} $1::vector)`
-          : `-(embedding ${this.distance} $1::vector)`;
-
+    const sim = this.denseSimilaritySql('$1');
     const sql = `SELECT id, text, metadata, ${sim} AS score
       FROM ${this.table}
       ${where}
@@ -159,6 +196,112 @@ export class PgVectorStore implements VectorStore {
       out.push(hit);
     }
     return out;
+  }
+
+  private async searchHybrid(query: VectorQuery): Promise<SearchResult[]> {
+    const topK = query.topK ?? 4;
+    const minScore = query.minScore ?? -Infinity;
+    const queryText = query.text as string;
+    const vector = await this.resolveQueryVector(query);
+    const vecLit = toVectorLiteral(vector);
+    const rrfK = query.rrfK ?? 60;
+    const cap = Math.min(query.hybridCandidateLimit ?? 200, 500);
+
+    const semantic = await this.fetchSemanticRanked(vecLit, cap, query.filter, minScore);
+    let fts: FtsRow[] = [];
+    try {
+      fts = await this.fetchFtsRanked(queryText, vecLit, cap, query.filter);
+    } catch {
+      fts = [];
+    }
+
+    const ftsById = new Map(fts.map((r) => [r.id, r]));
+    const semById = new Map(semantic.map((s) => [s.id, s]));
+
+    const fused = reciprocalRankFusion([semantic, fts.map((f) => ({ id: f.id }))], rrfK);
+    const mergedIds = [...fused.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id);
+
+    const out: SearchResult[] = [];
+    for (const id of mergedIds) {
+      const s = semById.get(id);
+      const f = ftsById.get(id);
+      const text = s?.text ?? f?.text;
+      if (!text) continue;
+      const semanticScore = s?.score ?? num(f?.semantic_score) ?? -1;
+      const bm25Score = f ? num(f.fts_score) : 0;
+      const hit: SearchResult = {
+        id,
+        text,
+        score: semanticScore,
+        semanticScore,
+        bm25Score,
+        rrfScore: fused.get(id) ?? 0,
+      };
+      const meta = s?.metadata ?? f?.metadata ?? undefined;
+      if (meta !== undefined) hit.metadata = meta;
+      out.push(hit);
+      if (out.length >= topK) break;
+    }
+    return out;
+  }
+
+  private async fetchSemanticRanked(
+    vectorLiteral: string,
+    cap: number,
+    filter: Metadata | undefined,
+    minScore: number,
+  ): Promise<SearchResult[]> {
+    const params: unknown[] = [vectorLiteral, cap];
+    let where = '';
+    if (filter && Object.keys(filter).length > 0) {
+      params.push(filter);
+      where = `WHERE metadata @> $${params.length}::jsonb`;
+    }
+    const sim = this.denseSimilaritySql('$1');
+    const sql = `SELECT id, text, metadata, ${sim} AS score
+      FROM ${this.table}
+      ${where}
+      ORDER BY embedding ${this.distance} $1::vector
+      LIMIT $2`;
+    const { rows } = await this.pool.query<{
+      id: string;
+      text: string;
+      metadata: Metadata | null;
+      score: string | number;
+    }>(sql, params);
+    const out: SearchResult[] = [];
+    for (const r of rows) {
+      const score = typeof r.score === 'string' ? Number.parseFloat(r.score) : r.score;
+      if (score < minScore) continue;
+      const hit: SearchResult = { id: r.id, text: r.text, score };
+      if (r.metadata) hit.metadata = r.metadata;
+      out.push(hit);
+    }
+    return out;
+  }
+
+  private async fetchFtsRanked(
+    queryText: string,
+    vectorLiteral: string,
+    cap: number,
+    filter: Metadata | undefined,
+  ): Promise<FtsRow[]> {
+    const params: unknown[] = [queryText, vectorLiteral, cap];
+    let extra = '';
+    if (filter && Object.keys(filter).length > 0) {
+      params.push(filter);
+      extra = ` AND metadata @> $${params.length}::jsonb`;
+    }
+    const dense = this.denseSimilaritySql('$2');
+    const sql = `SELECT id, text, metadata,
+        ts_rank_cd(to_tsvector('english', text), plainto_tsquery('english', $1)) AS fts_score,
+        ${dense} AS semantic_score
+      FROM ${this.table}
+      WHERE to_tsvector('english', text) @@ plainto_tsquery('english', $1)${extra}
+      ORDER BY fts_score DESC
+      LIMIT $3`;
+    const { rows } = await this.pool.query<FtsRow>(sql, params);
+    return rows;
   }
 
   async delete(ids: string[]): Promise<void> {
@@ -189,6 +332,11 @@ export class PgVectorStore implements VectorStore {
     }
     throw new Error('PgVectorStore.search: query must have `embedding` or `text`.');
   }
+}
+
+function num(v: string | number | undefined): number | undefined {
+  if (v === undefined) return undefined;
+  return typeof v === 'string' ? Number.parseFloat(v) : v;
 }
 
 function toVectorLiteral(v: number[]): string {
