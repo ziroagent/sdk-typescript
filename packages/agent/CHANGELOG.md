@@ -1,5 +1,21 @@
 # @ziro-agent/agent
 
+## 0.10.0
+
+### Minor Changes
+
+- [#45](https://github.com/ziroagent/sdk-typescript/pull/45) [`5e77412`](https://github.com/ziroagent/sdk-typescript/commit/5e77412a0d2e69c1a5d5960f529370e58bff4e14) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Add `prepareStep` hook on `createAgent`, `agent.run`, and `agent.resume` for per-iteration `model`, `system`, and `activeTools` overrides (RFC 0004).
+
+### Patch Changes
+
+- [#45](https://github.com/ziroagent/sdk-typescript/pull/45) [`5e77412`](https://github.com/ziroagent/sdk-typescript/commit/5e77412a0d2e69c1a5d5960f529370e58bff4e14) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Add `agent.listCheckpoints(threadId, opts?)` — delegates to the agent's `Checkpointer.list` for UI / pagination without holding the checkpointer separately.
+
+- Updated dependencies [[`5e77412`](https://github.com/ziroagent/sdk-typescript/commit/5e77412a0d2e69c1a5d5960f529370e58bff4e14), [`5e77412`](https://github.com/ziroagent/sdk-typescript/commit/5e77412a0d2e69c1a5d5960f529370e58bff4e14), [`5e77412`](https://github.com/ziroagent/sdk-typescript/commit/5e77412a0d2e69c1a5d5960f529370e58bff4e14), [`5e77412`](https://github.com/ziroagent/sdk-typescript/commit/5e77412a0d2e69c1a5d5960f529370e58bff4e14)]:
+  - @ziro-agent/core@0.7.1
+  - @ziro-agent/memory@0.2.3
+  - @ziro-agent/tools@0.6.1
+  - @ziro-agent/tracing@0.6.1
+
 ## 0.9.0
 
 ### Minor Changes
