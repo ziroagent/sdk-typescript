@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { basename, extname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { getRegisteredDocumentParser } from './document-adapters.js';
 import type { Document, Metadata } from './types.js';
 import { uuid } from './util/uuid.js';
 
@@ -27,8 +28,43 @@ function extToMime(ext: string): string {
       return 'application/json';
     case '.docx':
       return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    case '.png':
+      return 'image/png';
+    case '.jpg':
+    case '.jpeg':
+      return 'image/jpeg';
+    case '.gif':
+      return 'image/gif';
+    case '.webp':
+      return 'image/webp';
     default:
       return 'application/octet-stream';
+  }
+}
+
+function isRasterImageMime(mime: string): boolean {
+  return (
+    mime === 'image/png' || mime === 'image/jpeg' || mime === 'image/gif' || mime === 'image/webp'
+  );
+}
+
+async function parseImageBufferWithOcr(buf: Buffer): Promise<string> {
+  let tesseract: typeof import('tesseract.js');
+  try {
+    tesseract = await import('tesseract.js');
+  } catch {
+    throw new Error(
+      'Image OCR requires the optional dependency `tesseract.js`. Install it in your project: `pnpm add tesseract.js` (or npm/yarn equivalent).',
+    );
+  }
+  const worker = await tesseract.createWorker('eng', undefined, {
+    logger: () => undefined,
+  });
+  try {
+    const res = await worker.recognize(buf);
+    return (res.data.text ?? '').trim();
+  } finally {
+    await worker.terminate();
   }
 }
 
@@ -68,8 +104,9 @@ function resolveFsPath(uri: string | URL): string {
 
 /**
  * Load a local file into a {@link Document}. Supports `.txt`, `.md`,
- * `.csv`, `.json` (as UTF-8 text), `.pdf` when `pdf-parse` is installed, and
- * `.docx` when `mammoth` is installed.
+ * `.csv`, `.json` (as UTF-8 text), `.pdf` when `pdf-parse` is installed,
+ * `.docx` when `mammoth` is installed, and raster images (`.png`, `.jpg`,
+ * `.gif`, `.webp`) via OCR when `tesseract.js` is installed.
  *
  * @param uri `file:` URL or filesystem path (absolute or cwd-relative).
  */
@@ -89,6 +126,24 @@ export async function loadDocument(uri: string | URL): Promise<LoadedDocument> {
     },
   };
 
+  const parseCtx = {
+    path,
+    ext,
+    mime,
+    filename: basename(path),
+  };
+
+  const customByExt = getRegisteredDocumentParser(ext);
+  if (customByExt) {
+    base.text = await customByExt(buf, parseCtx);
+    return base;
+  }
+  const customByMime = getRegisteredDocumentParser(mime);
+  if (customByMime) {
+    base.text = await customByMime(buf, parseCtx);
+    return base;
+  }
+
   if (mime === 'application/pdf') {
     base.text = await parsePdfBuffer(buf);
     return base;
@@ -96,6 +151,11 @@ export async function loadDocument(uri: string | URL): Promise<LoadedDocument> {
 
   if (mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
     base.text = await parseDocxBuffer(buf);
+    return base;
+  }
+
+  if (isRasterImageMime(mime)) {
+    base.text = await parseImageBufferWithOcr(buf);
     return base;
   }
 

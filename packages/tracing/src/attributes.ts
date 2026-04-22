@@ -93,6 +93,11 @@ export const ATTR = {
   HandoffReason: 'ziroagent.handoff.reason',
   HandoffMessageCount: 'ziroagent.handoff.messages.count',
   HandoffFiltered: 'ziroagent.handoff.input_filter.applied',
+
+  /** Model fallback chain — Ziro extensions; see RFC 0015. */
+  ModelFallbackAttempt: 'ziroagent.model.fallback.attempt',
+  ModelFallbackFromModel: 'ziroagent.model.fallback.from_model',
+  ModelFallbackToModel: 'ziroagent.model.fallback.to_model',
 } as const;
 
 /** Value type accepted by the span attribute API. */

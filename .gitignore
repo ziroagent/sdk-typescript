@@ -48,3 +48,6 @@ temp/
 
 # Test fixtures
 __eval_fixtures_*/
+
+# Tesseract.js downloads local traineddata during OCR tests
+packages/memory/*.traineddata

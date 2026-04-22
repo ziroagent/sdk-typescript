@@ -2,7 +2,7 @@
 
 - Start date: 2026-04-20
 - Authors: @ziro-agent/maintainers
-- Status: **stub** (detailed design in progress; first code slice landed 2026-04)
+- Status: **draft** (§Detailed design sketched 2026-04; first code slice landed 2026-04; ingestion registry + non-PG store hybrid parity still open)
 - Affected packages: `@ziro-agent/memory`
 - Parent: [RFC 0008 — Roadmap v3](./0008-roadmap-v3.md) §C (v0.4) and §A rows E2, E3, E4, E5, E6
 
@@ -66,4 +66,61 @@ Landed in `@ziro-agent/memory`:
 
 ## Detailed design
 
-TBD before v0.4 milestone start. Owner to draft.
+### 1. Retrieval pipeline (conceptual order)
+
+For a single user query string `q`:
+
+1. **Embed** `q` with the configured embedder (if dense channel used).
+2. **Retrieve** two ranked lists (or one if hybrid disabled):
+   - **Dense:** cosine (or provider-specific distance) over stored vectors.
+   - **Sparse:** BM25 over chunk text (`MemoryVectorStore`) or Postgres
+     `tsvector` + `ts_rank_cd` (`PgVectorStore` hybrid path).
+3. **Fuse** with **Reciprocal Rank Fusion (RRF)** when both lists exist; else
+   pass through the single channel.
+4. **Rerank** (optional): `RerankerAdapter` receives `(query, candidates)` and
+   returns the same items in a new order with optional score metadata; default
+   **`passthroughReranker`** is a no-op.
+5. **Shape output** as `RetrievedChunk[]` and, when citations are required,
+   **`TextWithCitations`** via `buildTextWithCitations` / `cite()` helpers.
+
+Public orchestration entry: **`retrieve()`** composes store search + rerank
+where configured.
+
+### 2. RRF contract
+
+- Inputs: two or more ranked lists of chunk ids (or chunk payloads with stable
+  ids).
+- Fusion: standard RRF score `sum_i 1 / (k + rank_i)` with shared constant
+  **`k`** (implementation-defined default; tunable later if we expose options).
+- **Tie-breaking:** deterministic by chunk id lexical order after RRF score to
+  keep tests stable across runs.
+
+### 3. Citation contract (out-of-band default)
+
+- Every `RetrievedChunk` carries a stable **`id`** (and ideally `sourceRef` /
+  byte range when available).
+- Generated answers that use RAG SHOULD attach citations as a structured
+  **`citations`** array (or `TextWithCitations` shape) mapping spans of the
+  answer text to chunk ids — **not** rely on inline `[n]` footnotes as the
+  only machine-readable signal.
+- Inline numeric markers remain a **presentation** concern for apps that want
+  them; the SDK types favour out-of-band citation metadata.
+
+### 4. Store parity matrix (target)
+
+| Store | Dense | Sparse / BM25 | RRF in `search()` | Notes |
+|-------|-------|-----------------|-------------------|--------|
+| `MemoryVectorStore` | yes | in-process BM25 | yes | reference impl |
+| `PgVectorStore` | yes | FTS (`plainto_tsquery`) | yes | landed |
+| Other adapters (Qdrant, Pinecone, …) | yes | **TBD** | **TBD** | E6 — either ship sidecar BM25 or delegate to host FTS |
+
+### 5. Ingestion adapter registry (target)
+
+- **`loadDocument(uri, options)`** remains the user-facing entry.
+- **Registry** maps `(extension | mime)` → adapter with `parse(buffer | path)
+  -> { text, metadata }`.
+- **Adapters** are optional peer deps (`pdf-parse`, future `mammoth`, OCR) so
+  core install stays lean; missing adapter → clear error naming the optional
+  package.
+- **Security:** max bytes / page count defaults to guard PDF bomb and OCR cost;
+  documented per adapter.

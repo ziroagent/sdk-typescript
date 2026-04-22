@@ -9,6 +9,12 @@ export {
   SummarizingConversationMemory,
   type SummarizingConversationMemoryOptions,
 } from './conversation-memory.js';
+export {
+  clearDocumentParserRegistry,
+  type DocumentParseContext,
+  type DocumentParser,
+  registerDocumentParser,
+} from './document-adapters.js';
 export { createOpenAIEmbedder, type OpenAIEmbeddingOptions } from './embedder.js';
 export { type LoadedDocument, loadDocument } from './load-document.js';
 export {
