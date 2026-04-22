@@ -42,8 +42,9 @@ export interface VectorQuery {
   /** Inclusive minimum cosine similarity in `[-1, 1]`. */
   minScore?: number;
   /**
-   * `hybrid` runs BM25 + dense cosine then RRF merge (MemoryVectorStore only
-   * in v0.4). Requires `text` for the lexical channel.
+   * `hybrid` runs BM25 + dense cosine then RRF merge on stores that support it
+   * (`MemoryVectorStore`, `PgVectorStore`). Requires `text` for the lexical
+   * channel.
    */
   strategy?: SearchStrategy;
   /** RRF constant `k` (default 60). */
