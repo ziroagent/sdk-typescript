@@ -5,7 +5,7 @@
  * Environment (optional):
  * - `CHANGESET_PUBLISH_MAX_ATTEMPTS` — default `8`
  * - `CHANGESET_PUBLISH_BASE_DELAY_MS` — default `30000` (first backoff scales from this)
- * - `CHANGESET_PUBLISH_MAX_DELAY_MS` — default `600000` (cap each wait; CI should set lower so the GitHub job `timeout-minutes` is not exceeded)
+ * - `CHANGESET_PUBLISH_MAX_DELAY_MS` — default `600000` (cap each wait, ~10 minutes; CI should set lower so the GitHub job `timeout-minutes` is not exceeded)
  * - `NPM_CONFIG_MAXSOCKETS` — passed through; default `1` inside this script to reduce parallel PUTs
  */
 import { spawnSync } from 'node:child_process';
