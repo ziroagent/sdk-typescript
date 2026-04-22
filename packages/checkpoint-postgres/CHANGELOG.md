@@ -1,5 +1,12 @@
 # @ziro-agent/checkpoint-postgres
 
+## 0.3.6
+
+### Patch Changes
+
+- Updated dependencies [[`ab6ab69`](https://github.com/ziroagent/sdk-typescript/commit/ab6ab693e1b1099b25e77fc36517c9f916a46de4), [`ab6ab69`](https://github.com/ziroagent/sdk-typescript/commit/ab6ab693e1b1099b25e77fc36517c9f916a46de4)]:
+  - @ziro-agent/agent@0.12.0
+
 ## 0.3.5
 
 ### Patch Changes

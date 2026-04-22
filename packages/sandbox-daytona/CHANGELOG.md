@@ -1,5 +1,12 @@
 # @ziro-agent/sandbox-daytona
 
+## 0.2.3
+
+### Patch Changes
+
+- Updated dependencies [[`ab6ab69`](https://github.com/ziroagent/sdk-typescript/commit/ab6ab693e1b1099b25e77fc36517c9f916a46de4), [`ab6ab69`](https://github.com/ziroagent/sdk-typescript/commit/ab6ab693e1b1099b25e77fc36517c9f916a46de4), [`ab6ab69`](https://github.com/ziroagent/sdk-typescript/commit/ab6ab693e1b1099b25e77fc36517c9f916a46de4)]:
+  - @ziro-agent/core@0.7.3
+
 ## 0.2.2
 
 ### Patch Changes

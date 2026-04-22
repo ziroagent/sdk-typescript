@@ -1,5 +1,15 @@
 # @ziro-agent/core
 
+## 0.7.3
+
+### Patch Changes
+
+- [#53](https://github.com/ziroagent/sdk-typescript/pull/53) [`ab6ab69`](https://github.com/ziroagent/sdk-typescript/commit/ab6ab693e1b1099b25e77fc36517c9f916a46de4) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Add reserved `VideoPart` to `UserMessage` content union; normalize + token estimate; Ollama preflight rejects `video`; chat providers throw `UnsupportedPartError` until mapping exists (RFC 0014).
+
+- [#53](https://github.com/ziroagent/sdk-typescript/pull/53) [`ab6ab69`](https://github.com/ziroagent/sdk-typescript/commit/ab6ab693e1b1099b25e77fc36517c9f916a46de4) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Map `VideoPart` on user messages to Gemini `inlineData` / `fileData` (same transport as file/audio). Update `VideoPart` JSDoc and multimodal docs.
+
+- [#53](https://github.com/ziroagent/sdk-typescript/pull/53) [`ab6ab69`](https://github.com/ziroagent/sdk-typescript/commit/ab6ab693e1b1099b25e77fc36517c9f916a46de4) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Map `VideoPart` to OpenAI chat `file` parts (`file_id` / `file_data`), matching `FilePart` URL constraints. Optional `filename` on `VideoPart` for OpenAI metadata.
+
 ## 0.7.2
 
 ### Patch Changes
