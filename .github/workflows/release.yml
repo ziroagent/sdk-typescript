@@ -144,6 +144,7 @@ jobs:
           SANDBOX_RESCUE_MAX_ATTEMPTS: '8'
           SANDBOX_RESCUE_RETRY_DELAY_MS: '420000'
           SANDBOX_RESCUE_INTER_PACKAGE_DELAY_MS: '300000'
+          SANDBOX_RESCUE_INITIAL_DELAY_MS: '600000'
           # ----------------------------------------------------------------
           # PROVENANCE STATUS
           # ----------------------------------------------------------------
