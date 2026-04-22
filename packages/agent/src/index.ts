@@ -8,6 +8,16 @@ export {
   createAgent,
   type ResumeFromCheckpointOptions,
 } from './agent.js';
+export {
+  AGENT_RECORDING_VERSION,
+  type AgentRecordingStepLine,
+  createReplayModelFromAgentRecording,
+  createReplayToolsFromAgentRecording,
+  parseAgentRecordingJsonl,
+  ReplayMismatchError,
+  recordAgentRun,
+  runWithAgentRecording,
+} from './agent-recording.js';
 export type { Checkpointer, CheckpointId, CheckpointMeta } from './checkpointer.js';
 export {
   type Handoff,
@@ -43,13 +53,3 @@ export type {
   AgentStep,
   StepEvent,
 } from './types.js';
-export {
-  AGENT_RECORDING_VERSION,
-  type AgentRecordingStepLine,
-  createReplayModelFromAgentRecording,
-  createReplayToolsFromAgentRecording,
-  parseAgentRecordingJsonl,
-  recordAgentRun,
-  ReplayMismatchError,
-  runWithAgentRecording,
-} from './agent-recording.js';

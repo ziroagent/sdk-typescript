@@ -27,23 +27,19 @@ describe('loadDocument', () => {
     expect(doc.metadata?.format).toBe('docx');
   });
 
-  it(
-    'loads a tiny png via OCR when tesseract.js is available',
-    async () => {
-      if (process.env.SKIP_TESSERACT === '1') return;
-      const dir = await mkdtemp(join(tmpdir(), 'ziro-ocr-'));
-      const png1x1 = Buffer.from(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-        'base64',
-      );
-      const p = join(dir, 'tiny.png');
-      await writeFile(p, png1x1);
-      const doc = await loadDocument(p);
-      expect(doc.metadata?.mimeType).toBe('image/png');
-      expect(typeof doc.text).toBe('string');
-    },
-    180_000,
-  );
+  it('loads a tiny png via OCR when tesseract.js is available', async () => {
+    if (process.env.SKIP_TESSERACT === '1') return;
+    const dir = await mkdtemp(join(tmpdir(), 'ziro-ocr-'));
+    const png1x1 = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+      'base64',
+    );
+    const p = join(dir, 'tiny.png');
+    await writeFile(p, png1x1);
+    const doc = await loadDocument(p);
+    expect(doc.metadata?.mimeType).toBe('image/png');
+    expect(typeof doc.text).toBe('string');
+  }, 180_000);
 
   it('uses registerDocumentParser before built-in utf-8 path', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'ziro-mem-'));

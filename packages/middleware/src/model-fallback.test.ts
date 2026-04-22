@@ -1,7 +1,7 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import type { LanguageModel } from '@ziro-agent/core';
 import { APICallError, wrapModel } from '@ziro-agent/core';
 import { createMockLanguageModel } from '@ziro-agent/core/testing';
-import type { LanguageModel } from '@ziro-agent/core';
+import { afterEach, describe, expect, it } from 'vitest';
 import { modelFallback, resetModelFallbackCircuitState } from './model-fallback.js';
 
 describe('modelFallback', () => {

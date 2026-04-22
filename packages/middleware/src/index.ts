@@ -7,6 +7,12 @@ export {
 export { type CacheOptions, type CacheStore, cache, MemoryCacheStore } from './cache.js';
 export { PromptInjectionError } from './errors.js';
 export {
+  type ModelFallbackCircuitBreakerOptions,
+  type ModelFallbackOptions,
+  modelFallback,
+  resetModelFallbackCircuitState,
+} from './model-fallback.js';
+export {
   heuristicPiiAdapter,
   type PiiAdapter,
   type PiiEntity,
@@ -14,10 +20,4 @@ export {
   type RedactPiiOptions,
   redactPII,
 } from './redact-pii.js';
-export {
-  type ModelFallbackCircuitBreakerOptions,
-  type ModelFallbackOptions,
-  modelFallback,
-  resetModelFallbackCircuitState,
-} from './model-fallback.js';
 export { type RetryOptions, retry } from './retry.js';

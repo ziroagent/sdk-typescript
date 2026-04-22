@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createModelFallbackOtelOnFallback } from './instrument-model-fallback.js';
-import { setTracer, type SpanLike, type ZiroTracer } from './tracer.js';
+import { type SpanLike, setTracer, type ZiroTracer } from './tracer.js';
 
 describe('createModelFallbackOtelOnFallback', () => {
   it('records a span and exception when primary fails', () => {
