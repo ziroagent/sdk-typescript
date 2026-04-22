@@ -82,6 +82,7 @@ export function toContext(scope: BudgetScope): BudgetContext {
   if (spec.maxTokens !== undefined) remaining.tokens = Math.max(0, spec.maxTokens - used.tokens);
   if (spec.maxLlmCalls !== undefined)
     remaining.llmCalls = Math.max(0, spec.maxLlmCalls - used.llmCalls);
+  if (spec.maxSteps !== undefined) remaining.steps = Math.max(0, spec.maxSteps - used.steps);
   if (spec.maxDurationMs !== undefined)
     remaining.durationMs = Math.max(0, spec.maxDurationMs - (Date.now() - scope.startedAt));
   return {

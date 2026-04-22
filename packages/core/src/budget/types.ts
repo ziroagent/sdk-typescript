@@ -112,7 +112,14 @@ export interface BudgetContext {
   /** Convenience mirror of `spec.tenantId` when set (merged scope). */
   readonly tenantId?: string;
   readonly used: BudgetUsage;
-  readonly remaining: { usd?: number; tokens?: number; llmCalls?: number; durationMs?: number };
+  readonly remaining: {
+    usd?: number;
+    tokens?: number;
+    llmCalls?: number;
+    /** Only when `spec.maxSteps` is set; mirrors `used.steps` vs `maxSteps`. */
+    steps?: number;
+    durationMs?: number;
+  };
   readonly scopeId: string;
 }
 

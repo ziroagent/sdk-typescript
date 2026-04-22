@@ -114,10 +114,18 @@ function scopeStartAttrs(ctx: BudgetContext): Record<string, AttrValue> {
 }
 
 function usageAttrs(ctx: BudgetContext): Record<string, AttrValue> {
-  return {
+  const out: Record<string, AttrValue> = {
     [ATTR.BudgetUsedUsd]: ctx.used.usd,
     [ATTR.BudgetUsedTokens]: ctx.used.tokens,
     [ATTR.BudgetUsedLlmCalls]: ctx.used.llmCalls,
+    [ATTR.BudgetUsedSteps]: ctx.used.steps,
     [ATTR.BudgetUsedDurationMs]: ctx.used.durationMs,
   };
+  const r = ctx.remaining;
+  if (r.usd !== undefined) out[ATTR.BudgetRemainingUsd] = r.usd;
+  if (r.tokens !== undefined) out[ATTR.BudgetRemainingTokens] = r.tokens;
+  if (r.llmCalls !== undefined) out[ATTR.BudgetRemainingLlmCalls] = r.llmCalls;
+  if (r.steps !== undefined) out[ATTR.BudgetRemainingSteps] = r.steps;
+  if (r.durationMs !== undefined) out[ATTR.BudgetRemainingDurationMs] = r.durationMs;
+  return out;
 }
