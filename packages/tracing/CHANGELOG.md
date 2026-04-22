@@ -1,5 +1,16 @@
 # @ziro-agent/tracing
 
+## 0.8.0
+
+### Minor Changes
+
+- [#67](https://github.com/ziroagent/sdk-typescript/pull/67) [`ad1bd03`](https://github.com/ziroagent/sdk-typescript/commit/ad1bd03ba2dfde2eb7f8be4b2a0000845d932f48) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Add `modelFallback` middleware with optional circuit breaker, OpenTelemetry hook for fallback events, agent JSONL recording/replay (`runWithAgentRecording`, replay model/tools from trace), memory document parser registry plus optional raster image OCR via `tesseract.js`, and RFC 0012/0015 documentation updates.
+
+### Patch Changes
+
+- Updated dependencies [[`10b88b0`](https://github.com/ziroagent/sdk-typescript/commit/10b88b010b8c722954b1cead51c47f27adcbae24), [`59ca15d`](https://github.com/ziroagent/sdk-typescript/commit/59ca15d600266292aaacf59eb03bd5c00feb8c90), [`9924a20`](https://github.com/ziroagent/sdk-typescript/commit/9924a2077353e385ded93e3a28ac5ddad32a9da8)]:
+  - @ziro-agent/core@0.8.1
+
 ## 0.7.0
 
 ### Minor Changes

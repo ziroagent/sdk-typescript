@@ -1,5 +1,14 @@
 # @ziro-agent/inngest
 
+## 0.3.8
+
+### Patch Changes
+
+- [#42](https://github.com/ziroagent/sdk-typescript/pull/42) [`b3f7745`](https://github.com/ziroagent/sdk-typescript/commit/b3f7745de237036205cc7f5eaa43b467a09143e2) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Forward `budget` and `toolBudget` from Inngest run/resume event payloads into `agent.run` / `resumeFromCheckpoint`.
+
+- Updated dependencies [[`b4c57ee`](https://github.com/ziroagent/sdk-typescript/commit/b4c57ee6c1a7c817763e403d660e400bd367a27b), [`1fc781a`](https://github.com/ziroagent/sdk-typescript/commit/1fc781a764db86c469e496625d09902dc64f8180), [`ad1bd03`](https://github.com/ziroagent/sdk-typescript/commit/ad1bd03ba2dfde2eb7f8be4b2a0000845d932f48)]:
+  - @ziro-agent/agent@0.14.0
+
 ## 0.3.7
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@ziro-agent/workflow",
-  "version": "0.1.14",
+  "version": "0.1.15",
   "description": "Type-safe graph engine for multi-step, multi-agent workflows.",
   "license": "Apache-2.0",
   "homepage": "https://ziroagent.com",
