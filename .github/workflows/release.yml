@@ -132,11 +132,12 @@ jobs:
           # actual token value (not a placeholder), then runs `pnpm release`.
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           # `pnpm release` runs `scripts/changeset-publish-retry.js` — tune for npm rate limits.
-          # Keep per-wait cap modest: a 15-minute sleep can still fail the whole job if many
-          # attempts stack under the job timeout (GitHub cancels as `cancelled`).
-          CHANGESET_PUBLISH_MAX_ATTEMPTS: '10'
+          # When the log tail matches npm 429 / rate limit, wait at least 429_MIN (registry cooldown).
+          # Keep per-wait cap modest for non-429 backoff so many attempts do not exceed job timeout.
+          CHANGESET_PUBLISH_MAX_ATTEMPTS: '8'
           CHANGESET_PUBLISH_BASE_DELAY_MS: '45000'
           CHANGESET_PUBLISH_MAX_DELAY_MS: '180000'
+          CHANGESET_PUBLISH_429_MIN_WAIT_MS: '420000'
           NPM_CONFIG_MAXSOCKETS: '1'
           # ----------------------------------------------------------------
           # PROVENANCE STATUS
