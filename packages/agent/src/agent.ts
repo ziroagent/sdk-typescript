@@ -1164,12 +1164,25 @@ function toAgentBudgetInfo(
  */
 function computeRemaining(
   spec: BudgetSpec,
-  used: { usd: number; tokens: number; llmCalls: number; durationMs: number },
-): { usd?: number; tokens?: number; llmCalls?: number; durationMs?: number } {
-  const out: { usd?: number; tokens?: number; llmCalls?: number; durationMs?: number } = {};
+  used: BudgetUsage,
+): {
+  usd?: number;
+  tokens?: number;
+  llmCalls?: number;
+  steps?: number;
+  durationMs?: number;
+} {
+  const out: {
+    usd?: number;
+    tokens?: number;
+    llmCalls?: number;
+    steps?: number;
+    durationMs?: number;
+  } = {};
   if (spec.maxUsd !== undefined) out.usd = Math.max(0, spec.maxUsd - used.usd);
   if (spec.maxTokens !== undefined) out.tokens = Math.max(0, spec.maxTokens - used.tokens);
   if (spec.maxLlmCalls !== undefined) out.llmCalls = Math.max(0, spec.maxLlmCalls - used.llmCalls);
+  if (spec.maxSteps !== undefined) out.steps = Math.max(0, spec.maxSteps - used.steps);
   if (spec.maxDurationMs !== undefined) {
     out.durationMs = Math.max(0, spec.maxDurationMs - used.durationMs);
   }

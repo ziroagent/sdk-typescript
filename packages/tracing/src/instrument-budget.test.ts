@@ -88,9 +88,25 @@ describe('instrumentBudget', () => {
     expect(span?.name).toBe('ziro.budget.scope');
     expect(span?.attributes[ATTR.BudgetSpecMaxUsd]).toBe(1);
     expect(span?.attributes[ATTR.BudgetSpecMaxLlmCalls]).toBe(5);
+    expect(span?.attributes[ATTR.BudgetUsedSteps]).toBe(0);
+    expect(span?.attributes[ATTR.BudgetRemainingUsd]).toBe(1);
+    expect(span?.attributes[ATTR.BudgetRemainingLlmCalls]).toBe(5);
     expect(span?.attributes[ATTR.BudgetScopeOutcome]).toBe('ok');
     expect(span?.ended).toBe(true);
     expect(span?.status?.code).toBe(1);
+  });
+
+  it('records remaining.steps when maxSteps is set', async () => {
+    const tracer = recordingTracer();
+    setTracer(tracer);
+    ({ unregister } = instrumentBudget());
+
+    await withBudget({ maxSteps: 4 }, async () => 'ok');
+
+    const span = tracer.spans[0];
+    expect(span?.attributes[ATTR.BudgetSpecMaxSteps]).toBe(4);
+    expect(span?.attributes[ATTR.BudgetUsedSteps]).toBe(0);
+    expect(span?.attributes[ATTR.BudgetRemainingSteps]).toBe(4);
   });
 
   it('marks the scope span as error when fn throws', async () => {
