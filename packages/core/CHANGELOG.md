@@ -1,5 +1,21 @@
 # @ziro-agent/core
 
+## 0.8.0
+
+### Minor Changes
+
+- [#63](https://github.com/ziroagent/sdk-typescript/pull/63) [`1354315`](https://github.com/ziroagent/sdk-typescript/commit/1354315b2d2de6f13744a962039541301a1ffef6) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Expose `BudgetContext.remaining.steps` when `maxSteps` is set (aligned with `toContext`), mirror it in the agent `onExceed` snapshot helper, and emit used/remaining budget fields on budget scope spans (including `BudgetUsedSteps` and `BudgetRemaining*` attributes).
+
+## 0.7.3
+
+### Patch Changes
+
+- [#53](https://github.com/ziroagent/sdk-typescript/pull/53) [`ab6ab69`](https://github.com/ziroagent/sdk-typescript/commit/ab6ab693e1b1099b25e77fc36517c9f916a46de4) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Add reserved `VideoPart` to `UserMessage` content union; normalize + token estimate; Ollama preflight rejects `video`; chat providers throw `UnsupportedPartError` until mapping exists (RFC 0014).
+
+- [#53](https://github.com/ziroagent/sdk-typescript/pull/53) [`ab6ab69`](https://github.com/ziroagent/sdk-typescript/commit/ab6ab693e1b1099b25e77fc36517c9f916a46de4) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Map `VideoPart` on user messages to Gemini `inlineData` / `fileData` (same transport as file/audio). Update `VideoPart` JSDoc and multimodal docs.
+
+- [#53](https://github.com/ziroagent/sdk-typescript/pull/53) [`ab6ab69`](https://github.com/ziroagent/sdk-typescript/commit/ab6ab693e1b1099b25e77fc36517c9f916a46de4) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Map `VideoPart` to OpenAI chat `file` parts (`file_id` / `file_data`), matching `FilePart` URL constraints. Optional `filename` on `VideoPart` for OpenAI metadata.
+
 ## 0.7.2
 
 ### Patch Changes

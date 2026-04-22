@@ -50,7 +50,13 @@ export const ATTR = {
   BudgetUsedUsd: 'ziroagent.budget.used.usd',
   BudgetUsedTokens: 'ziroagent.budget.used.tokens',
   BudgetUsedLlmCalls: 'ziroagent.budget.used.llm_calls',
+  BudgetUsedSteps: 'ziroagent.budget.used.steps',
   BudgetUsedDurationMs: 'ziroagent.budget.used.duration_ms',
+  BudgetRemainingUsd: 'ziroagent.budget.remaining.usd',
+  BudgetRemainingTokens: 'ziroagent.budget.remaining.tokens',
+  BudgetRemainingLlmCalls: 'ziroagent.budget.remaining.llm_calls',
+  BudgetRemainingSteps: 'ziroagent.budget.remaining.steps',
+  BudgetRemainingDurationMs: 'ziroagent.budget.remaining.duration_ms',
   BudgetExceededKind: 'ziroagent.budget.exceeded.kind',
   BudgetExceededLimit: 'ziroagent.budget.exceeded.limit',
   BudgetExceededObserved: 'ziroagent.budget.exceeded.observed',
@@ -87,6 +93,11 @@ export const ATTR = {
   HandoffReason: 'ziroagent.handoff.reason',
   HandoffMessageCount: 'ziroagent.handoff.messages.count',
   HandoffFiltered: 'ziroagent.handoff.input_filter.applied',
+
+  /** Model fallback chain — Ziro extensions; see RFC 0015. */
+  ModelFallbackAttempt: 'ziroagent.model.fallback.attempt',
+  ModelFallbackFromModel: 'ziroagent.model.fallback.from_model',
+  ModelFallbackToModel: 'ziroagent.model.fallback.to_model',
 } as const;
 
 /** Value type accepted by the span attribute API. */

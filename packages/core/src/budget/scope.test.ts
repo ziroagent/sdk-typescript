@@ -54,6 +54,13 @@ describe('withBudget', () => {
       });
     });
   });
+
+  it('exposes remaining.steps when maxSteps is set', async () => {
+    await withBudget({ maxSteps: 5 }, async () => {
+      const ctx = getCurrentBudget();
+      expect(ctx?.remaining.steps).toBe(5);
+    });
+  });
 });
 
 describe('intersectSpecs', () => {

@@ -44,9 +44,9 @@ jobs:
     name: Version PR or publish
     needs: gate
     runs-on: ubuntu-latest
-    # Gate is a separate job; this job runs `changeset publish` + retries.
-    # Keep comfortably above worst-case backoff (see CHANGESET_* env below).
-    timeout-minutes: 120
+    # Gate is a separate job; this job runs `changeset publish` + retries and may run
+    # `publish-sandbox-rescue.js` (sequential pnpm publish for stubborn packages).
+    timeout-minutes: 240
     permissions:
       contents: write       # version-packages PR + git tags + GitHub Releases
       pull-requests: write  # open / update the "Version Packages" PR
@@ -131,13 +131,20 @@ jobs:
           # changesets/action reads NPM_TOKEN and writes ~/.npmrc with the
           # actual token value (not a placeholder), then runs `pnpm release`.
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          # `pnpm release` runs `scripts/changeset-publish-retry.js` — tune for npm rate limits.
-          # Keep per-wait cap modest: a 15-minute sleep can still fail the whole job if many
-          # attempts stack under the job timeout (GitHub cancels as `cancelled`).
-          CHANGESET_PUBLISH_MAX_ATTEMPTS: '10'
+          # `pnpm release` runs `scripts/publish-with-sandbox-rescue.js` (changeset retries + optional sandbox rescue).
+          # When the log tail matches npm 429 / rate limit, wait at least 429_MIN (registry cooldown).
+          # Keep per-wait cap modest for non-429 backoff so many attempts do not exceed job timeout.
+          CHANGESET_PUBLISH_MAX_ATTEMPTS: '8'
           CHANGESET_PUBLISH_BASE_DELAY_MS: '45000'
           CHANGESET_PUBLISH_MAX_DELAY_MS: '180000'
+          CHANGESET_PUBLISH_429_MIN_WAIT_MS: '420000'
           NPM_CONFIG_MAXSOCKETS: '1'
+          # After changeset publish + retries, `publish-with-sandbox-rescue.js` may publish
+          # these packages one at a time with long gaps (minimal extra registry reads).
+          SANDBOX_RESCUE_MAX_ATTEMPTS: '8'
+          SANDBOX_RESCUE_RETRY_DELAY_MS: '420000'
+          SANDBOX_RESCUE_INTER_PACKAGE_DELAY_MS: '300000'
+          SANDBOX_RESCUE_INITIAL_DELAY_MS: '600000'
           # ----------------------------------------------------------------
           # PROVENANCE STATUS
           # ----------------------------------------------------------------

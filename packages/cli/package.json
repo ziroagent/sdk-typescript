@@ -1,6 +1,6 @@
 {
   "name": "@ziro-agent/cli",
-  "version": "0.2.8",
+  "version": "0.2.10",
   "description": "ZiroAgent SDK command-line tools — scaffolds, examples runner, and dev playground launcher.",
   "license": "Apache-2.0",
   "homepage": "https://ziroagent.com",

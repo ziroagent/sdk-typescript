@@ -14,4 +14,10 @@ export {
   type RedactPiiOptions,
   redactPII,
 } from './redact-pii.js';
+export {
+  type ModelFallbackCircuitBreakerOptions,
+  type ModelFallbackOptions,
+  modelFallback,
+  resetModelFallbackCircuitState,
+} from './model-fallback.js';
 export { type RetryOptions, retry } from './retry.js';

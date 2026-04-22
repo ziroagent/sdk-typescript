@@ -43,3 +43,13 @@ export type {
   AgentStep,
   StepEvent,
 } from './types.js';
+export {
+  AGENT_RECORDING_VERSION,
+  type AgentRecordingStepLine,
+  createReplayModelFromAgentRecording,
+  createReplayToolsFromAgentRecording,
+  parseAgentRecordingJsonl,
+  recordAgentRun,
+  ReplayMismatchError,
+  runWithAgentRecording,
+} from './agent-recording.js';
