@@ -8,6 +8,7 @@
  * - `SANDBOX_RESCUE_MAX_ATTEMPTS` — per package (default `8`).
  * - `SANDBOX_RESCUE_RETRY_DELAY_MS` — wait after a failed publish before retry (default `420000`, ~7m).
  * - `SANDBOX_RESCUE_INTER_PACKAGE_DELAY_MS` — wait before each package after the first (default `300000`, ~5m).
+ * - `SANDBOX_RESCUE_INITIAL_DELAY_MS` — once before any publish, if something still needs publishing (default `0`; CI sets ~10m so the registry can cool down after failed `changeset publish` bursts).
  */
 import { spawnSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
@@ -30,6 +31,7 @@ const interPackageDelayMs = Math.max(
   0,
   Number(process.env.SANDBOX_RESCUE_INTER_PACKAGE_DELAY_MS ?? '300000'),
 );
+const initialDelayMs = Math.max(0, Number(process.env.SANDBOX_RESCUE_INITIAL_DELAY_MS ?? '0'));
 
 function findPackageDir(packageName) {
   const packagesRoot = join(process.cwd(), 'packages');
@@ -68,6 +70,32 @@ function publishOnce(dir) {
     env,
     shell: false,
   });
+}
+
+let needsPublish = false;
+for (const name of packageNames) {
+  const dir = findPackageDir(name);
+  if (!dir) {
+    needsPublish = true;
+    break;
+  }
+  const { version } = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+  if (!isVersionPublished(name, version)) {
+    needsPublish = true;
+    break;
+  }
+}
+
+if (!needsPublish) {
+  console.error('[publish-sandbox-rescue] all listed packages already on npm — nothing to do');
+  process.exit(0);
+}
+
+if (initialDelayMs > 0) {
+  console.error(
+    `[publish-sandbox-rescue] initial cooldown ${initialDelayMs}ms before first publish...`,
+  );
+  await setTimeout(initialDelayMs);
 }
 
 let anyFailed = false;
