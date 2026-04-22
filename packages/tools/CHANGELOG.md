@@ -1,5 +1,12 @@
 # @ziro-agent/tools
 
+## 0.6.4
+
+### Patch Changes
+
+- Updated dependencies [[`1354315`](https://github.com/ziroagent/sdk-typescript/commit/1354315b2d2de6f13744a962039541301a1ffef6)]:
+  - @ziro-agent/core@0.8.0
+
 ## 0.6.3
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @ziro-agent/core
 
+## 0.8.0
+
+### Minor Changes
+
+- [#63](https://github.com/ziroagent/sdk-typescript/pull/63) [`1354315`](https://github.com/ziroagent/sdk-typescript/commit/1354315b2d2de6f13744a962039541301a1ffef6) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Expose `BudgetContext.remaining.steps` when `maxSteps` is set (aligned with `toContext`), mirror it in the agent `onExceed` snapshot helper, and emit used/remaining budget fields on budget scope spans (including `BudgetUsedSteps` and `BudgetRemaining*` attributes).
+
 ## 0.7.3
 
 ### Patch Changes
