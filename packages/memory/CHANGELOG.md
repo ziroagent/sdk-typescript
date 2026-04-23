@@ -1,5 +1,11 @@
 # @ziro-agent/memory
 
+## 0.5.0
+
+### Minor Changes
+
+- [#76](https://github.com/ziroagent/sdk-typescript/pull/76) [`8be0f1a`](https://github.com/ziroagent/sdk-typescript/commit/8be0f1a908ca4e93a0cec740a676bfaaa243ff9a) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Add `FileBackedWorkingMemory` on the `@ziro-agent/memory/node` subpath for durable RFC 0011 working-memory scratchpads backed by the local filesystem.
+
 ## 0.4.0
 
 ### Minor Changes

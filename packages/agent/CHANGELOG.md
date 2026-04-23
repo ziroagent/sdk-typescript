@@ -1,5 +1,12 @@
 # @ziro-agent/agent
 
+## 0.17.1
+
+### Patch Changes
+
+- Updated dependencies [[`8be0f1a`](https://github.com/ziroagent/sdk-typescript/commit/8be0f1a908ca4e93a0cec740a676bfaaa243ff9a)]:
+  - @ziro-agent/memory@0.5.0
+
 ## 0.17.0
 
 ### Minor Changes
