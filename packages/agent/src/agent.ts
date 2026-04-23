@@ -19,7 +19,7 @@ import {
   withBudget,
 } from '@ziro-agent/core';
 import type { AgentMemoryConfig } from '@ziro-agent/memory';
-import { injectWorkingMemoryIntoMessages } from '@ziro-agent/memory';
+import { injectWorkingMemoryIntoMessages, type MemoryProcessor } from '@ziro-agent/memory';
 import {
   executeToolCalls,
   type RepairToolCall,
@@ -602,6 +602,7 @@ export function createAgent(options: CreateAgentOptions): Agent {
         for (const p of processors) {
           const i = idx;
           idx += 1;
+          const proc = p as MemoryProcessor;
           msgs = await tracer.withSpan(
             'ziro.memory.processor',
             async (span) => {
@@ -609,9 +610,10 @@ export function createAgent(options: CreateAgentOptions): Agent {
                 [ATTR.MemoryPhase]: 'processor',
                 [ATTR.MemoryProcessorIndex]: i,
                 [ATTR.MemoryProcessorCount]: procCount,
+                ...(proc.name ? { [ATTR.MemoryProcessorName]: proc.name } : {}),
                 ...(ctx.threadId ? { [ATTR.ThreadId]: ctx.threadId } : {}),
               });
-              return await Promise.resolve(p.process(msgs, ctx));
+              return await Promise.resolve(proc.process(msgs, ctx));
             },
             { kind: 'internal' },
           );

@@ -1,6 +1,7 @@
 import {
   buildComplianceReportJson,
   renderEuAiActTechnicalDocTemplate,
+  renderSoc2MarkdownReport,
 } from '@ziro-agent/compliance';
 import type { Logger } from '../util/logger.js';
 
@@ -41,13 +42,17 @@ export async function runComplianceCommand(opts: ComplianceCommandOptions): Prom
         ? flags.retention
         : JSON.stringify({ messages: 30, checkpoints: 90 });
     const retention = parseJsonObject(retentionRaw, '--retention');
-    const report = buildComplianceReportJson({
+    const framework = typeof flags.framework === 'string' ? flags.framework.toLowerCase() : 'json';
+    const baseInput = {
       generatedAt: new Date().toISOString(),
       productName,
       dataProcessingSummary: summary,
       retentionDaysByDataset: retention,
-    });
-    const text = `${JSON.stringify(report, null, 2)}\n`;
+    };
+    const text =
+      framework === 'soc2'
+        ? `${renderSoc2MarkdownReport(baseInput)}\n`
+        : `${JSON.stringify(buildComplianceReportJson(baseInput), null, 2)}\n`;
     if (typeof flags.out === 'string') {
       const { writeFile } = await import('node:fs/promises');
       await writeFile(flags.out, text, 'utf8');
@@ -82,7 +87,7 @@ export async function runComplianceCommand(opts: ComplianceCommandOptions): Prom
   }
 
   logger.error(
-    'Usage: ziroagent compliance report [--product name] [--summary text] [--retention json] [--out file]',
+    'Usage: ziroagent compliance report [--framework json|soc2] [--product name] [--summary text] [--retention json] [--out file]',
   );
   logger.error(
     '       ziroagent compliance eu-ai-act-template [--system name] [--purpose text] [--oversight text] [--out file]',
