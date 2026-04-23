@@ -2,7 +2,7 @@
 
 - Start date: 2026-04-20
 - Authors: @ziro-agent/maintainers
-- Status: **stub** (detailed design TBD before v0.4 milestone start)
+- Status: **draft** (§Detailed design sketched 2026-04; working + conversation + processors + `createAgent({ memory })` shipped; durable conversation store + MemoryProcessor OTel + richer `compress()` defaults still open)
 - Affected packages: `@ziro-agent/memory`, `@ziro-agent/agent`, `@ziro-agent/core`
 - Parent: [RFC 0008 — Roadmap v3](./0008-roadmap-v3.md) §C (v0.4) and §A rows E1, O2
 
@@ -43,7 +43,45 @@ context-window management and per-session continuity to consumers.
 
 ## Detailed design
 
-TBD before v0.4 milestone start. Owner to draft.
+### 1. Tier roles
+
+| Tier | Purpose | Persistence | Typical size |
+|------|---------|-------------|----------------|
+| **Working** | Scratchpad merged into the first **system** message each LLM step | `InMemoryWorkingMemory` today (pluggable `WorkingMemory`) | Small markdown block |
+| **Conversation** | Trim / summarise **message list** before model sees it | In-process; optional future durable adapter | Bounded by window + summariser |
+| **Long-term** | RAG / tools: **`VectorStore`** held by app, exposed as `agent.memory.longTerm`** | Backend-defined (pgvector, in-memory, …) | Large |
+
+### 2. Per-step pipeline (agent loop)
+
+Before each `generateText` for step `k`:
+
+1. Start from checkpoint / in-flight **`ChatMessage[]`**.
+2. **Working:** `injectWorkingMemoryIntoMessages` — prepend/merge working markdown into the first `system` message (or create one).
+3. **Processors:** `composeMemoryProcessors([...])` — each `process(msgs, { threadId, stepIndex })` returns a new list (trim, redact, etc.).
+4. **Conversation:** `conversation.prepareForModel(msgs, ctx)` — sliding window and/or summarisation hook.
+
+Full history for checkpoints and `AgentRunResult.messages` remains the **unshrunk** trail where applicable; transforms apply to a **copy** path for the model payload (see implementation in `agent.ts`).
+
+### 3. `WorkingMemory` contract
+
+- **`read(): Promise<string>`** / **`write(markdown: string): Promise<void>`** (and related clear/delete as implemented).
+- **`scope: 'resource' | 'thread'`** — resource = stable across threads for a user/tenant; thread = per `threadId` / conversation.
+
+### 4. `ConversationMemory` strategies
+
+- **`SlidingWindowConversationMemory`:** cap message count or tokens (strategy-specific options).
+- **`SummarizingConversationMemory`:** overflow triggers `onOverflow` / compress hook to fold older turns into summary messages.
+
+### 5. `MemoryProcessor`
+
+- Pure functions / objects: **`process(messages, ctx) => ChatMessage[] | Promise<>`**.
+- **`trimNonSystemMessageCount`** and **`composeMemoryProcessors`** for ordering (first processor sees the newest state after working injection).
+
+### 6. Open extensions (post-v0.4 target)
+
+- **Durable `ConversationMemory` backend** (same interface, different storage).
+- **OTel:** spans or events `ziro.memory.read` / `write` / `compress` under agent step spans (align with `@ziro-agent/tracing` ATTR conventions).
+- **Default `compress()` policy** — opt-in vs token-budget-triggered (see Open questions).
 
 ## Implementation notes (2026-04)
 

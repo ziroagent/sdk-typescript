@@ -7,9 +7,11 @@ export {
 export { type CacheOptions, type CacheStore, cache, MemoryCacheStore } from './cache.js';
 export { PromptInjectionError } from './errors.js';
 export {
+  type ModelFallbackAdaptiveOptions,
   type ModelFallbackCircuitBreakerOptions,
   type ModelFallbackOptions,
   modelFallback,
+  resetModelFallbackAdaptiveState,
   resetModelFallbackCircuitState,
 } from './model-fallback.js';
 export {

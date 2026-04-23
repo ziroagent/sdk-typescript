@@ -1,24 +1,22 @@
 {
-  "name": "@ziro-agent/tracing",
-  "version": "0.9.0",
-  "description": "OpenTelemetry instrumentation helpers for LLM calls, tool calls, agent steps, and workflow nodes.",
+  "name": "@ziro-agent/audit",
+  "version": "0.2.0",
+  "description": "Append-only tamper-evident JSONL audit log for ZiroAgent SDK (RFC 0016).",
   "license": "Apache-2.0",
   "homepage": "https://ziroagent.com",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ziroagent/sdk-typescript.git",
-    "directory": "packages/tracing"
+    "directory": "packages/audit"
   },
   "bugs": {
     "url": "https://github.com/ziroagent/sdk-typescript/issues"
   },
   "keywords": [
     "ai",
-    "opentelemetry",
-    "otel",
-    "tracing",
-    "observability",
-    "llm",
+    "audit",
+    "compliance",
+    "jsonl",
     "ziroagent"
   ],
   "type": "module",
@@ -40,9 +38,7 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "dist",
-    "README.md",
-    "LICENSE"
+    "dist"
   ],
   "scripts": {
     "build": "tsup",
@@ -54,21 +50,9 @@
     "publint": "publint",
     "attw": "attw --pack . --profile=node16"
   },
-  "dependencies": {
-    "@ziro-agent/core": "workspace:*"
-  },
-  "peerDependencies": {
-    "@opentelemetry/api": ">=1.7.0 <2.0.0"
-  },
-  "peerDependenciesMeta": {
-    "@opentelemetry/api": {
-      "optional": true
-    }
-  },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",
-    "@opentelemetry/api": "^1.9.1",
-    "@opentelemetry/sdk-trace-base": "^2.7.0",
+    "@types/node": "^22.10.5",
     "publint": "^0.3.18",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",

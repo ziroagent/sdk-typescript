@@ -1,4 +1,5 @@
 import kleur from 'kleur';
+import { runComplianceCommand } from './commands/compliance.js';
 import { type EvalCommandOptions, runEvalCommand } from './commands/eval.js';
 import { runInit } from './commands/init.js';
 import { runMcpServe } from './commands/mcp-serve.js';
@@ -18,6 +19,7 @@ ${kleur.bold('Commands:')}
   run <example>            Run a bundled example by name
   run --list               List available examples
   eval <path-or-glob>...   Run eval specs and gate on pass criteria (RFC 0003)
+  compliance <sub>         Compliance helpers (report JSON, EU AI Act template) (RFC 0016)
   mcp serve <entry.js>     MCP stdio server for a compiled .js/.mjs tool map (RFC 0009)
   playground               Boot the local dev playground (Next.js)
   help                     Print this help
@@ -30,6 +32,8 @@ ${kleur.bold('Examples:')}
   $ ziroagent eval './evals/**/*.eval.js' --reporter json --out report.json
   $ ziroagent playground --port 4000
   $ ziroagent mcp serve ./dist/mcp-tools.mjs
+  $ ziroagent compliance report --product MyApp --out compliance.json
+  $ ziroagent compliance eu-ai-act-template --system MyApp --out eu-ai-act.md
 `;
 
 async function main(argv: string[]): Promise<number> {
@@ -111,6 +115,14 @@ async function main(argv: string[]): Promise<number> {
       if (typeof flags.port === 'string') opts.port = Number.parseInt(flags.port, 10);
       else if (typeof flags.port === 'number') opts.port = flags.port;
       return await runPlayground(opts);
+    }
+    case 'compliance': {
+      return await runComplianceCommand({
+        cwd: process.cwd(),
+        logger,
+        argv: positional,
+        flags,
+      });
     }
     case 'mcp': {
       const sub = positional[0];

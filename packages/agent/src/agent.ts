@@ -26,7 +26,7 @@ import {
   type Tool,
   type ToolExecutionResult,
 } from '@ziro-agent/tools';
-import { instrumentTools } from '@ziro-agent/tracing';
+import { ATTR, getTracer, instrumentTools } from '@ziro-agent/tracing';
 import type { Checkpointer, CheckpointId, CheckpointMeta } from './checkpointer.js';
 import { buildHandoffTool, type Handoff, handoffStore } from './handoff.js';
 import { type PrepareStep, resolvePrepareForStep } from './prepare-step.js';
@@ -567,19 +567,74 @@ export function createAgent(options: CreateAgentOptions): Agent {
   ): Promise<ChatMessage[]> {
     const mem = options.memory;
     if (!mem) return state.messages;
-    let msgs: ChatMessage[] = [...state.messages];
-    if (mem.working) {
-      const w = await mem.working.read();
-      msgs = injectWorkingMemoryIntoMessages(msgs, w);
-    }
+    const tracer = getTracer();
     const ctx = { threadId: ro.threadId ?? options.defaultThreadId, stepIndex };
-    for (const p of mem.processors ?? []) {
-      msgs = await Promise.resolve(p.process(msgs, ctx));
-    }
-    if (mem.conversation) {
-      msgs = await Promise.resolve(mem.conversation.prepareForModel(msgs, ctx));
-    }
-    return msgs;
+    const processors = mem.processors ?? [];
+    const procCount = processors.length;
+
+    return tracer.withSpan(
+      'ziro.memory.build_llm_messages',
+      async (root) => {
+        root.setAttributes({
+          [ATTR.AgentStepIndex]: stepIndex,
+          [ATTR.MemoryProcessorCount]: procCount,
+          ...(ctx.threadId ? { [ATTR.ThreadId]: ctx.threadId } : {}),
+        });
+
+        let msgs: ChatMessage[] = [...state.messages];
+        const workingMem = mem.working;
+        if (workingMem) {
+          msgs = await tracer.withSpan(
+            'ziro.memory.working',
+            async (span) => {
+              span.setAttributes({
+                [ATTR.MemoryPhase]: 'working',
+                ...(ctx.threadId ? { [ATTR.ThreadId]: ctx.threadId } : {}),
+              });
+              const w = await workingMem.read();
+              return injectWorkingMemoryIntoMessages(msgs, w);
+            },
+            { kind: 'internal' },
+          );
+        }
+
+        let idx = 0;
+        for (const p of processors) {
+          const i = idx;
+          idx += 1;
+          msgs = await tracer.withSpan(
+            'ziro.memory.processor',
+            async (span) => {
+              span.setAttributes({
+                [ATTR.MemoryPhase]: 'processor',
+                [ATTR.MemoryProcessorIndex]: i,
+                [ATTR.MemoryProcessorCount]: procCount,
+                ...(ctx.threadId ? { [ATTR.ThreadId]: ctx.threadId } : {}),
+              });
+              return await Promise.resolve(p.process(msgs, ctx));
+            },
+            { kind: 'internal' },
+          );
+        }
+
+        const conversationMem = mem.conversation;
+        if (conversationMem) {
+          msgs = await tracer.withSpan(
+            'ziro.memory.conversation',
+            async (span) => {
+              span.setAttributes({
+                [ATTR.MemoryPhase]: 'conversation',
+                ...(ctx.threadId ? { [ATTR.ThreadId]: ctx.threadId } : {}),
+              });
+              return await Promise.resolve(conversationMem.prepareForModel(msgs, ctx));
+            },
+            { kind: 'internal' },
+          );
+        }
+        return msgs;
+      },
+      { kind: 'internal' },
+    );
   }
 
   async function iterateLoop(state: LoopState, ro: AgentRunOptions): Promise<AgentRunResult> {

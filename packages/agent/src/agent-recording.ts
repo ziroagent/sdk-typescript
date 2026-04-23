@@ -2,7 +2,13 @@ import type { LanguageModel, ModelGenerateResult } from '@ziro-agent/core';
 import { createReplayLanguageModel } from '@ziro-agent/core/testing';
 import { defineTool, type Tool, type ToolExecutionResult } from '@ziro-agent/tools';
 import { z } from 'zod';
-import type { Agent, AgentRunOptions, AgentRunResult } from './agent.js';
+import {
+  type Agent,
+  type AgentRunOptions,
+  type AgentRunResult,
+  type CreateAgentOptions,
+  createAgent,
+} from './agent.js';
 import type { AgentStep } from './types.js';
 
 export const AGENT_RECORDING_VERSION = 1 as const;
@@ -186,4 +192,32 @@ export function createReplayToolsFromAgentRecording(
     });
   }
   return tools;
+}
+
+/** Options for {@link replayAgentFromRecording} — `model` / `tools` default to replay stubs. */
+export type ReplayAgentFromRecordingAgentOptions = Omit<CreateAgentOptions, 'model' | 'tools'> &
+  Partial<Pick<CreateAgentOptions, 'model' | 'tools'>>;
+
+/**
+ * One-call replay: {@link createReplayModelFromAgentRecording} +
+ * {@link createReplayToolsFromAgentRecording} + {@link createAgent} + {@link Agent.run}.
+ */
+export async function replayAgentFromRecording(
+  lines: readonly AgentRecordingStepLine[],
+  agentOptions: ReplayAgentFromRecordingAgentOptions,
+  runOptions: AgentRunOptions,
+): Promise<AgentRunResult> {
+  const model = agentOptions.model ?? createReplayModelFromAgentRecording(lines);
+  const tools = agentOptions.tools ?? createReplayToolsFromAgentRecording(lines);
+  const agent = createAgent({ ...agentOptions, model, tools });
+  return agent.run(runOptions);
+}
+
+/** Parse JSONL then {@link replayAgentFromRecording}. */
+export async function replayAgentFromRecordingJsonl(
+  jsonl: string,
+  agentOptions: ReplayAgentFromRecordingAgentOptions,
+  runOptions: AgentRunOptions,
+): Promise<AgentRunResult> {
+  return replayAgentFromRecording(parseAgentRecordingJsonl(jsonl), agentOptions, runOptions);
 }

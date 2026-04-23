@@ -14,8 +14,11 @@ export {
   createReplayModelFromAgentRecording,
   createReplayToolsFromAgentRecording,
   parseAgentRecordingJsonl,
+  type ReplayAgentFromRecordingAgentOptions,
   ReplayMismatchError,
   recordAgentRun,
+  replayAgentFromRecording,
+  replayAgentFromRecordingJsonl,
   runWithAgentRecording,
 } from './agent-recording.js';
 export type { Checkpointer, CheckpointId, CheckpointMeta } from './checkpointer.js';

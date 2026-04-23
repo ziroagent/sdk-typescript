@@ -7,6 +7,7 @@ import {
   createReplayModelFromAgentRecording,
   createReplayToolsFromAgentRecording,
   parseAgentRecordingJsonl,
+  replayAgentFromRecordingJsonl,
   runWithAgentRecording,
 } from './agent-recording.js';
 
@@ -84,5 +85,12 @@ describe('agent recording / replay', () => {
     const replayed = await replayAgent.run({ prompt: 'ignored' });
     expect(replayed.text).toBe('all good');
     expect(replayed.steps.length).toBe(2);
+
+    const viaSugar = await replayAgentFromRecordingJsonl(
+      jsonl,
+      { maxSteps: 5 },
+      { prompt: 'ignored' },
+    );
+    expect(viaSugar.text).toBe('all good');
   });
 });
