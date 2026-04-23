@@ -12,6 +12,36 @@ export interface ComplianceCommandOptions {
   flags: Record<string, string | boolean | undefined>;
 }
 
+function parseStringRecordJson(raw: string, label: string): Record<string, string> {
+  try {
+    const o = JSON.parse(raw) as unknown;
+    if (!o || typeof o !== 'object' || Array.isArray(o)) throw new Error('expected object');
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(o as Record<string, unknown>)) {
+      if (typeof v === 'string') out[k] = v;
+    }
+    return out;
+  } catch (e) {
+    throw new Error(`${label}: ${e instanceof Error ? e.message : String(e)}`);
+  }
+}
+
+async function loadPackageVersions(
+  flags: Record<string, string | boolean | undefined>,
+): Promise<Record<string, string> | undefined> {
+  const file = flags['versions-file'];
+  if (typeof file === 'string' && file.trim()) {
+    const { readFile } = await import('node:fs/promises');
+    const raw = await readFile(file.trim(), 'utf8');
+    return parseStringRecordJson(raw, '--versions-file');
+  }
+  const inline = flags['versions-json'];
+  if (typeof inline === 'string' && inline.trim()) {
+    return parseStringRecordJson(inline.trim(), '--versions-json');
+  }
+  return undefined;
+}
+
 function parseJsonObject(raw: string, label: string): Record<string, number> {
   const trimmed = raw.trim();
   try {
@@ -43,11 +73,13 @@ export async function runComplianceCommand(opts: ComplianceCommandOptions): Prom
         : JSON.stringify({ messages: 30, checkpoints: 90 });
     const retention = parseJsonObject(retentionRaw, '--retention');
     const framework = typeof flags.framework === 'string' ? flags.framework.toLowerCase() : 'json';
+    const packageVersions = await loadPackageVersions(flags);
     const baseInput = {
       generatedAt: new Date().toISOString(),
       productName,
       dataProcessingSummary: summary,
       retentionDaysByDataset: retention,
+      ...(packageVersions && Object.keys(packageVersions).length > 0 ? { packageVersions } : {}),
     };
     const text =
       framework === 'soc2'
@@ -87,7 +119,7 @@ export async function runComplianceCommand(opts: ComplianceCommandOptions): Prom
   }
 
   logger.error(
-    'Usage: ziroagent compliance report [--framework json|soc2] [--product name] [--summary text] [--retention json] [--out file]',
+    'Usage: ziroagent compliance report [--framework json|soc2] [--product name] [--summary text] [--retention json] [--versions-file path|--versions-json inline] [--out file]',
   );
   logger.error(
     '       ziroagent compliance eu-ai-act-template [--system name] [--purpose text] [--oversight text] [--out file]',

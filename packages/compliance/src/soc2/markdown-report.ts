@@ -23,6 +23,20 @@ export function renderSoc2MarkdownReport(input: ComplianceReportInput): string {
     '| --- | ---: |',
     ...Object.entries(input.retentionDaysByDataset).map(([k, v]) => `| ${k} | ${v} |`),
     '',
+  ];
+
+  if (input.packageVersions && Object.keys(input.packageVersions).length > 0) {
+    lines.push(
+      '## Resolved SDK versions (optional)',
+      '',
+      '| Package | Version |',
+      '| --- | --- |',
+      ...Object.entries(input.packageVersions).map(([k, v]) => `| ${k} | ${v} |`),
+      '',
+    );
+  }
+
+  lines.push(
     '## Control mapping (starter)',
     '',
     '| Id | Criterion | ZiroAgent features |',
@@ -31,7 +45,7 @@ export function renderSoc2MarkdownReport(input: ComplianceReportInput): string {
     '',
     '## Declared controls (optional)',
     '',
-  ];
+  );
 
   if (input.controls) {
     lines.push('| Control | Status | Notes |', '| --- | --- | --- |');

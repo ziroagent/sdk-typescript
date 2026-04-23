@@ -35,8 +35,12 @@ describe('compliance', () => {
       productName: 'Demo',
       dataProcessingSummary: 'none',
       retentionDaysByDataset: { messages: 30 },
+      packageVersions: { '@ziro-agent/core': '1.0.0' },
     });
     expect(r.schema).toBe('ziroagent.compliance.report/v1');
+    expect(
+      (r as { packageVersions?: Record<string, string> }).packageVersions?.['@ziro-agent/core'],
+    ).toBe('1.0.0');
   });
 
   it('renderSoc2MarkdownReport includes control table', () => {
@@ -48,5 +52,17 @@ describe('compliance', () => {
     });
     expect(md).toContain('CC6.1');
     expect(md).toContain('not legal or audit advice');
+  });
+
+  it('renderSoc2MarkdownReport lists packageVersions when set', () => {
+    const md = renderSoc2MarkdownReport({
+      generatedAt: '2026-01-01T00:00:00.000Z',
+      productName: 'Demo',
+      dataProcessingSummary: 'x',
+      retentionDaysByDataset: { messages: 1 },
+      packageVersions: { '@ziro-agent/agent': '0.16.0' },
+    });
+    expect(md).toContain('Resolved SDK versions');
+    expect(md).toContain('@ziro-agent/agent');
   });
 });
