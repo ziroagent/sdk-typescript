@@ -105,6 +105,8 @@ export const ATTR = {
   MemoryProcessorIndex: 'ziroagent.memory.processor.index',
   MemoryProcessorCount: 'ziroagent.memory.processor.count',
   MemoryProcessorName: 'ziroagent.memory.processor.name',
+  /** Character length of working-memory markdown after `WorkingMemory.read()`. */
+  MemoryWorkingCharCount: 'ziroagent.memory.working.char_count',
 } as const;
 
 /** Value type accepted by the span attribute API. */

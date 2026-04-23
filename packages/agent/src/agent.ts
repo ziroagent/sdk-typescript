@@ -592,6 +592,9 @@ export function createAgent(options: CreateAgentOptions): Agent {
                 ...(ctx.threadId ? { [ATTR.ThreadId]: ctx.threadId } : {}),
               });
               const w = await workingMem.read();
+              span.addEvent('ziro.memory.read', {
+                [ATTR.MemoryWorkingCharCount]: w.length,
+              });
               return injectWorkingMemoryIntoMessages(msgs, w);
             },
             { kind: 'internal' },

@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { createAgent } from './agent.js';
 import {
   createReplayModelFromAgentRecording,
+  createReplayRunBundleFromRecording,
   createReplayToolsFromAgentRecording,
   parseAgentRecordingJsonl,
   replayAgentFromRecordingJsonl,
@@ -92,5 +93,9 @@ describe('agent recording / replay', () => {
       { prompt: 'ignored' },
     );
     expect(viaSugar.text).toBe('all good');
+
+    const bundle = createReplayRunBundleFromRecording(lines, { maxSteps: 5 });
+    const viaBundle = await bundle.run({ prompt: 'ignored' });
+    expect(viaBundle.text).toBe('all good');
   });
 });

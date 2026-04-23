@@ -198,6 +198,12 @@ export function createReplayToolsFromAgentRecording(
 export type ReplayAgentFromRecordingAgentOptions = Omit<CreateAgentOptions, 'model' | 'tools'> &
   Partial<Pick<CreateAgentOptions, 'model' | 'tools'>>;
 
+/** {@link createReplayRunBundleFromRecording} return shape (RFC 0015). */
+export interface ReplayRunBundle {
+  readonly agent: Agent;
+  run(runOptions: AgentRunOptions): Promise<AgentRunResult>;
+}
+
 /**
  * One-call replay: {@link createReplayModelFromAgentRecording} +
  * {@link createReplayToolsFromAgentRecording} + {@link createAgent} + {@link Agent.run}.
@@ -220,4 +226,32 @@ export async function replayAgentFromRecordingJsonl(
   runOptions: AgentRunOptions,
 ): Promise<AgentRunResult> {
   return replayAgentFromRecording(parseAgentRecordingJsonl(jsonl), agentOptions, runOptions);
+}
+
+/**
+ * Build a replay {@link Agent} without running — pair with {@link Agent.run} /
+ * {@link Agent.resumeFromCheckpoint} as needed (RFC 0015 convenience).
+ */
+export function createReplayAgentFromRecording(
+  lines: readonly AgentRecordingStepLine[],
+  agentOptions: ReplayAgentFromRecordingAgentOptions,
+): Agent {
+  const model = agentOptions.model ?? createReplayModelFromAgentRecording(lines);
+  const tools = agentOptions.tools ?? createReplayToolsFromAgentRecording(lines);
+  return createAgent({ ...agentOptions, model, tools });
+}
+
+/**
+ * Returns `{ agent, run }` where `run` delegates to {@link Agent.run} on the
+ * replay-configured agent (RFC 0015 `replayRun`-style bundle).
+ */
+export function createReplayRunBundleFromRecording(
+  lines: readonly AgentRecordingStepLine[],
+  agentOptions: ReplayAgentFromRecordingAgentOptions,
+): ReplayRunBundle {
+  const agent = createReplayAgentFromRecording(lines, agentOptions);
+  return {
+    agent,
+    run: (runOptions) => agent.run(runOptions),
+  };
 }
