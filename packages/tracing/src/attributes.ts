@@ -104,6 +104,7 @@ export const ATTR = {
   MemoryPhase: 'ziroagent.memory.phase',
   MemoryProcessorIndex: 'ziroagent.memory.processor.index',
   MemoryProcessorCount: 'ziroagent.memory.processor.count',
+  MemoryProcessorName: 'ziroagent.memory.processor.name',
 } as const;
 
 /** Value type accepted by the span attribute API. */
