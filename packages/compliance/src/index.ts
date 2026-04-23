@@ -1,4 +1,8 @@
 export {
+  type AgentCheckpointThreadDeleter,
+  deleteAgentCheckpointsForThreads,
+} from './delete-agent-checkpoints.js';
+export {
   type DeleteUserDataHooks,
   type DeleteUserDataRequest,
   deleteUserDataInOrder,

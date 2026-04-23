@@ -15,6 +15,14 @@ export interface ConversationSnapshotStore {
   delete(threadId: string): Promise<void>;
 }
 
+/** Deletes persisted conversation snapshots for each thread (RFC 0016 wiring). */
+export async function deleteConversationSnapshotThreads(
+  store: ConversationSnapshotStore,
+  threadIds: readonly string[],
+): Promise<void> {
+  await Promise.all(threadIds.map((tid) => store.delete(tid)));
+}
+
 /**
  * One JSON file per thread under `directory` (`<threadId>.json`).
  */
