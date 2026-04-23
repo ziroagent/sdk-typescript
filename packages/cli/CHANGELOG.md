@@ -1,5 +1,12 @@
 # @ziro-agent/cli
 
+## 0.4.1
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @ziro-agent/eval@0.2.14
+
 ## 0.4.0
 
 ### Minor Changes
