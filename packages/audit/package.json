@@ -1,6 +1,6 @@
 {
   "name": "@ziro-agent/audit",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Append-only tamper-evident JSONL audit log for ZiroAgent SDK (RFC 0016).",
   "license": "Apache-2.0",
   "homepage": "https://ziroagent.com",

@@ -1,5 +1,12 @@
 # @ziro-agent/checkpoint-redis
 
+## 0.3.12
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @ziro-agent/agent@0.17.1
+
 ## 0.3.11
 
 ### Patch Changes

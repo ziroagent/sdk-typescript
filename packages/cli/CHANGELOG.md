@@ -1,5 +1,22 @@
 # @ziro-agent/cli
 
+## 0.5.0
+
+### Minor Changes
+
+- [#76](https://github.com/ziroagent/sdk-typescript/pull/76) [`2848361`](https://github.com/ziroagent/sdk-typescript/commit/284836105d590a181e1c265082945d3c493fb5ef) Thanks [@vokhoadev](https://github.com/vokhoadev)! - **@ziro-agent/cli** — `ziroagent audit verify <file.jsonl>`; compliance `report` supports `--versions-file` and `--versions-json`.
+
+  **@ziro-agent/compliance** — `ComplianceReportInput.packageVersions` and SOC2 / JSON report sections.
+
+  **@ziro-agent/audit** — Test coverage for tampered hash detection in `verifyJsonlAuditLogChain`.
+
+### Patch Changes
+
+- Updated dependencies [[`2848361`](https://github.com/ziroagent/sdk-typescript/commit/284836105d590a181e1c265082945d3c493fb5ef)]:
+  - @ziro-agent/compliance@0.4.0
+  - @ziro-agent/audit@0.3.1
+  - @ziro-agent/eval@0.2.15
+
 ## 0.4.1
 
 ### Patch Changes
