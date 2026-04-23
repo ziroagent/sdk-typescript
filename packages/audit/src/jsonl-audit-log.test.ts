@@ -1,4 +1,4 @@
-import { mkdtemp, readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -24,5 +24,19 @@ describe('JsonlAuditLog', () => {
     const a = canonicalJsonStringify({ b: 2, a: 1 });
     const b = canonicalJsonStringify({ a: 1, b: 2 });
     expect(a).toBe(b);
+  });
+
+  it('verifyJsonlAuditLogChain rejects tampered hash', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'ziro-audit-tamper-'));
+    const path = join(dir, 'audit.jsonl');
+    const log = new JsonlAuditLog(path);
+    await log.append({ action: 'a' });
+    await log.append({ action: 'b' });
+    let raw = await readFile(path, 'utf8');
+    raw = raw.replace('"action":"b"', '"action":"tampered"');
+    await writeFile(path, raw, 'utf8');
+    const r = verifyJsonlAuditLogChain(await readFile(path, 'utf8'));
+    expect(r.ok).toBe(false);
+    expect(r.error).toBe('hash mismatch');
   });
 });

@@ -1,4 +1,5 @@
 import kleur from 'kleur';
+import { runAuditCommand } from './commands/audit.js';
 import { runComplianceCommand } from './commands/compliance.js';
 import { type EvalCommandOptions, runEvalCommand } from './commands/eval.js';
 import { runInit } from './commands/init.js';
@@ -20,6 +21,7 @@ ${kleur.bold('Commands:')}
   run --list               List available examples
   eval <path-or-glob>...   Run eval specs and gate on pass criteria (RFC 0003)
   compliance <sub>         Compliance helpers (report JSON/SOC2 md, EU AI Act template) (RFC 0016)
+  audit <sub>              Audit JSONL helpers (verify hash chain) (RFC 0016)
   mcp serve <entry.js>     MCP stdio server for a compiled .js/.mjs tool map (RFC 0009)
   playground               Boot the local dev playground (Next.js)
   help                     Print this help
@@ -35,6 +37,7 @@ ${kleur.bold('Examples:')}
   $ ziroagent compliance report --framework soc2 --product MyApp --out soc2.md
   $ ziroagent compliance report --product MyApp --out compliance.json
   $ ziroagent compliance eu-ai-act-template --system MyApp --out eu-ai-act.md
+  $ ziroagent audit verify ./var/audit.jsonl
 `;
 
 async function main(argv: string[]): Promise<number> {
@@ -124,6 +127,9 @@ async function main(argv: string[]): Promise<number> {
         argv: positional,
         flags,
       });
+    }
+    case 'audit': {
+      return await runAuditCommand({ logger, argv: positional });
     }
     case 'mcp': {
       const sub = positional[0];

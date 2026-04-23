@@ -591,6 +591,9 @@ importers:
 
   packages/cli:
     dependencies:
+      '@ziro-agent/audit':
+        specifier: workspace:*
+        version: link:../audit
       '@ziro-agent/compliance':
         specifier: workspace:*
         version: link:../compliance

@@ -57,6 +57,7 @@
     "attw": "attw --pack . --profile=node16"
   },
   "dependencies": {
+    "@ziro-agent/audit": "workspace:*",
     "@ziro-agent/compliance": "workspace:*",
     "@ziro-agent/eval": "workspace:*",
     "@ziro-agent/mcp-server": "workspace:*",
