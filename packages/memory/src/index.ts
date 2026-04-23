@@ -15,6 +15,7 @@ export {
 } from './conversation-memory.js';
 export {
   type ConversationSnapshotStore,
+  deleteConversationSnapshotThreads,
   DirConversationSnapshotStore,
   PersistingConversationMemory,
   type PersistingConversationMemoryOptions,
