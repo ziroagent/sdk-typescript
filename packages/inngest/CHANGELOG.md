@@ -1,5 +1,12 @@
 # @ziro-agent/inngest
 
+## 0.3.10
+
+### Patch Changes
+
+- Updated dependencies [[`8e3c3d7`](https://github.com/ziroagent/sdk-typescript/commit/8e3c3d71d3f326ac311af34da8140c9d3e2e738a)]:
+  - @ziro-agent/agent@0.16.0
+
 ## 0.3.9
 
 ### Patch Changes
