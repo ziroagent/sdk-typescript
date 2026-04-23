@@ -1,6 +1,6 @@
 {
   "name": "@ziro-agent/checkpoint-postgres",
-  "version": "0.3.12",
+  "version": "0.3.13",
   "description": "Production Postgres Checkpointer adapter for ZiroAgent SDK — durable agent state with row-locked snapshot persistence (RFC 0006).",
   "license": "Apache-2.0",
   "homepage": "https://ziroagent.com",
