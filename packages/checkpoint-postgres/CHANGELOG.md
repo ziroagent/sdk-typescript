@@ -1,5 +1,12 @@
 # @ziro-agent/checkpoint-postgres
 
+## 0.3.13
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @ziro-agent/agent@0.17.2
+
 ## 0.3.12
 
 ### Patch Changes

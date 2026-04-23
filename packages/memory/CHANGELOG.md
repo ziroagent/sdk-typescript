@@ -1,5 +1,13 @@
 # @ziro-agent/memory
 
+## 0.5.1
+
+### Patch Changes
+
+- [#78](https://github.com/ziroagent/sdk-typescript/pull/78) [`1d0f6cd`](https://github.com/ziroagent/sdk-typescript/commit/1d0f6cd685f8c09728414b0ad645e19c5676ce59) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Add `deleteAgentCheckpointsForThreads` (duck-typed checkpointer bridge) and `deleteConversationSnapshotThreads` for RFC 0016 user-data deletion wiring.
+
+  On `@ziro-agent/memory/node`, export `resolveFileBackedWorkingMemoryPath` and `deleteFileBackedWorkingMemoryFiles` for durable working-memory cleanup aligned with the same RFC.
+
 ## 0.5.0
 
 ### Minor Changes
