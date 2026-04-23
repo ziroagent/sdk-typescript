@@ -1,6 +1,6 @@
 {
   "name": "@ziro-agent/compliance",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Compliance helpers — ordered user-data deletion, report JSON, EU AI Act template (RFC 0016).",
   "license": "Apache-2.0",
   "homepage": "https://ziroagent.com",
