@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { canonicalJsonStringify, JsonlAuditLog } from './jsonl-audit-log.js';
+import { verifyJsonlAuditLogChain, verifyJsonlAuditLogFile } from './verify-chain.js';
 
 describe('JsonlAuditLog', () => {
   it('chains hashes across appends', async () => {
@@ -15,6 +16,8 @@ describe('JsonlAuditLog', () => {
     const raw = await readFile(path, 'utf8');
     const lines = raw.trim().split('\n');
     expect(lines.length).toBe(2);
+    expect(verifyJsonlAuditLogChain(raw).ok).toBe(true);
+    expect((await verifyJsonlAuditLogFile(path)).ok).toBe(true);
   });
 
   it('canonicalJsonStringify is order-insensitive for objects', () => {

@@ -5,3 +5,8 @@ export {
   canonicalJsonStringify,
   JsonlAuditLog,
 } from './jsonl-audit-log.js';
+export {
+  type VerifyJsonlAuditLogChainResult,
+  verifyJsonlAuditLogChain,
+  verifyJsonlAuditLogFile,
+} from './verify-chain.js';
