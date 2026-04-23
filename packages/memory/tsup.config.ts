@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ['src/index.ts', 'src/stores/pgvector.ts'],
+  entry: ['src/index.ts', 'src/node.ts', 'src/stores/pgvector.ts'],
   format: ['esm', 'cjs'],
   dts: true,
   sourcemap: true,
