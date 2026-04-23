@@ -98,6 +98,12 @@ export const ATTR = {
   ModelFallbackAttempt: 'ziroagent.model.fallback.attempt',
   ModelFallbackFromModel: 'ziroagent.model.fallback.from_model',
   ModelFallbackToModel: 'ziroagent.model.fallback.to_model',
+
+  /** Conversation / memory pipeline — Ziro extensions; see RFC 0011. */
+  ThreadId: 'ziroagent.thread.id',
+  MemoryPhase: 'ziroagent.memory.phase',
+  MemoryProcessorIndex: 'ziroagent.memory.processor.index',
+  MemoryProcessorCount: 'ziroagent.memory.processor.count',
 } as const;
 
 /** Value type accepted by the span attribute API. */

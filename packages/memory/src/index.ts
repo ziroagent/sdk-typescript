@@ -3,12 +3,22 @@ export { BM25Index, tokenize } from './bm25.js';
 export { type ChunkOptions, chunkText } from './chunker.js';
 export { buildTextWithCitations, type CitationEntry, type TextWithCitations } from './citations.js';
 export {
+  createDroppedMessagesSnippetCompressor,
+  type SnippetCompressorOptions,
+} from './conversation-compress-defaults.js';
+export {
   type ConversationMemory,
   type ConversationMemoryContext,
   SlidingWindowConversationMemory,
   SummarizingConversationMemory,
   type SummarizingConversationMemoryOptions,
 } from './conversation-memory.js';
+export {
+  type ConversationSnapshotStore,
+  DirConversationSnapshotStore,
+  PersistingConversationMemory,
+  type PersistingConversationMemoryOptions,
+} from './conversation-persistence.js';
 export {
   clearDocumentParserRegistry,
   type DocumentParseContext,

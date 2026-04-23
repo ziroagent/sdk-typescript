@@ -2,11 +2,16 @@ import type { LanguageModel } from '@ziro-agent/core';
 import { APICallError, wrapModel } from '@ziro-agent/core';
 import { createMockLanguageModel } from '@ziro-agent/core/testing';
 import { afterEach, describe, expect, it } from 'vitest';
-import { modelFallback, resetModelFallbackCircuitState } from './model-fallback.js';
+import {
+  modelFallback,
+  resetModelFallbackAdaptiveState,
+  resetModelFallbackCircuitState,
+} from './model-fallback.js';
 
 describe('modelFallback', () => {
   afterEach(() => {
     resetModelFallbackCircuitState();
+    resetModelFallbackAdaptiveState();
   });
 
   it('delegates to primary when it succeeds', async () => {
@@ -94,5 +99,56 @@ describe('modelFallback', () => {
     expect(primaryCalls).toBe(2);
     await wrapped.generate({ ...msg });
     expect(primaryCalls).toBe(3);
+  });
+
+  it('adaptive mode prefers historically successful fallbacks first', async () => {
+    let callsA = 0;
+    let callsB = 0;
+    const primary: LanguageModel = {
+      modelId: 'primary',
+      provider: 'mock',
+      async generate() {
+        throw new APICallError({ message: '503', statusCode: 503 });
+      },
+      async stream() {
+        return new ReadableStream();
+      },
+    };
+    const fbA: LanguageModel = {
+      modelId: 'slow',
+      provider: 'mock',
+      async generate() {
+        callsA += 1;
+        throw new APICallError({ message: '429', statusCode: 429 });
+      },
+      async stream() {
+        return new ReadableStream();
+      },
+    };
+    const fbB: LanguageModel = {
+      modelId: 'fast',
+      provider: 'mock',
+      async generate() {
+        callsB += 1;
+        return {
+          text: 'ok',
+          content: [{ type: 'text', text: 'ok' }],
+          toolCalls: [],
+          finishReason: 'stop' as const,
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        };
+      },
+      async stream() {
+        return new ReadableStream();
+      },
+    };
+    const wrapped = wrapModel(primary, modelFallback({ fallbacks: [fbA, fbB], adaptive: true }));
+    const msg = { messages: [{ role: 'user', content: [{ type: 'text', text: 'x' }] }] };
+    await wrapped.generate(msg);
+    expect(callsA).toBe(1);
+    expect(callsB).toBe(1);
+    await wrapped.generate(msg);
+    expect(callsA).toBe(1);
+    expect(callsB).toBe(2);
   });
 });

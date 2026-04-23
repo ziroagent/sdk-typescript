@@ -1,6 +1,6 @@
 {
   "name": "@ziro-agent/cli",
-  "version": "0.2.11",
+  "version": "0.3.0",
   "description": "ZiroAgent SDK command-line tools — scaffolds, examples runner, and dev playground launcher.",
   "license": "Apache-2.0",
   "homepage": "https://ziroagent.com",
@@ -57,6 +57,7 @@
     "attw": "attw --pack . --profile=node16"
   },
   "dependencies": {
+    "@ziro-agent/compliance": "workspace:*",
     "@ziro-agent/eval": "workspace:*",
     "@ziro-agent/mcp-server": "workspace:*",
     "@ziro-agent/tools": "workspace:*",

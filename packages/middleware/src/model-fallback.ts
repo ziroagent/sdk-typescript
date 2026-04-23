@@ -27,6 +27,15 @@ export interface ModelFallbackCircuitBreakerOptions {
   resetMs: number;
 }
 
+export interface ModelFallbackAdaptiveOptions {
+  /**
+   * How to rank `fallbacks` before each chain walk.
+   * - `success_ratio` — prefer models with more historical successes.
+   * - `latency` — prefer lower median-ish average latency on successes.
+   */
+  mode?: 'success_ratio' | 'latency';
+}
+
 export interface ModelFallbackOptions {
   /** Models to try after the wrapped primary fails. */
   fallbacks: readonly LanguageModel[];
@@ -47,6 +56,11 @@ export interface ModelFallbackOptions {
    * window where `doGenerate` / `doStream` is skipped and fallbacks run first.
    */
   circuitBreaker?: ModelFallbackCircuitBreakerOptions;
+  /**
+   * Re-order `fallbacks` using lightweight in-process stats so healthier models
+   * are tried first after the primary fails (RFC 0015 — adaptive routing).
+   */
+  adaptive?: boolean | ModelFallbackAdaptiveOptions;
 }
 
 function defaultShouldFallback(error: unknown): boolean {
@@ -62,6 +76,81 @@ interface CircuitEntry {
 }
 
 const circuitStore = new Map<string, CircuitEntry>();
+
+interface AdaptiveEntry {
+  successes: number;
+  failures: number;
+  totalLatencyMs: number;
+  latencySamples: number;
+}
+
+const adaptiveStore = new Map<string, AdaptiveEntry>();
+
+function readAdaptive(id: string): AdaptiveEntry {
+  let e = adaptiveStore.get(id);
+  if (!e) {
+    e = { successes: 0, failures: 0, totalLatencyMs: 0, latencySamples: 0 };
+    adaptiveStore.set(id, e);
+  }
+  return e;
+}
+
+function recordAdaptiveSuccess(id: string, latencyMs: number): void {
+  const e = readAdaptive(id);
+  e.successes += 1;
+  e.totalLatencyMs += Math.max(0, latencyMs);
+  e.latencySamples += 1;
+}
+
+function recordAdaptiveFailure(id: string): void {
+  readAdaptive(id).failures += 1;
+}
+
+function successRatio(id: string): number {
+  const e = adaptiveStore.get(id);
+  if (!e) return 0.5;
+  const t = e.successes + e.failures;
+  if (t === 0) return 0.5;
+  return e.successes / t;
+}
+
+function avgLatency(id: string): number {
+  const e = adaptiveStore.get(id);
+  if (!e || e.latencySamples === 0) return Number.POSITIVE_INFINITY;
+  return e.totalLatencyMs / e.latencySamples;
+}
+
+function resolveAdaptive(
+  adaptive: ModelFallbackOptions['adaptive'],
+): ModelFallbackAdaptiveOptions | undefined {
+  if (adaptive === true) return { mode: 'success_ratio' };
+  if (adaptive && typeof adaptive === 'object') return { mode: adaptive.mode ?? 'success_ratio' };
+  return undefined;
+}
+
+function orderFallbacks(
+  fallbacks: readonly LanguageModel[],
+  adaptive: ModelFallbackAdaptiveOptions | undefined,
+): readonly LanguageModel[] {
+  if (!adaptive) return fallbacks;
+  const mode = adaptive.mode ?? 'success_ratio';
+  const indexed = fallbacks.map((m, i) => ({ m, i }));
+  indexed.sort((a, b) => {
+    let cmp = 0;
+    if (mode === 'latency') cmp = avgLatency(a.m.modelId) - avgLatency(b.m.modelId);
+    else cmp = successRatio(b.m.modelId) - successRatio(a.m.modelId);
+    if (cmp !== 0) return cmp;
+    return a.i - b.i;
+  });
+  return indexed.map((x) => x.m);
+}
+
+/**
+ * Clears {@link ModelFallbackOptions.adaptive} ranking state. Intended for tests.
+ */
+export function resetModelFallbackAdaptiveState(): void {
+  adaptiveStore.clear();
+}
 
 function circuitKey(model: LanguageModel): string {
   return `${model.provider}\u0000${model.modelId}`;
@@ -125,6 +214,7 @@ async function tryFallbackGenerates(
     | undefined,
   fromModelId: string,
   firstError: unknown,
+  adaptive: ModelFallbackAdaptiveOptions | undefined,
 ): Promise<ModelGenerateResult> {
   let lastErr: unknown = firstError;
   if (fallbacks.length === 0 || !shouldFallback(firstError)) {
@@ -139,9 +229,13 @@ async function tryFallbackGenerates(
       toModelId: fb.modelId,
       error: lastErr,
     });
+    const t0 = performance.now();
     try {
-      return await fb.generate(params);
+      const r = await fb.generate(params);
+      if (adaptive) recordAdaptiveSuccess(fb.modelId, performance.now() - t0);
+      return r;
     } catch (e) {
+      if (adaptive) recordAdaptiveFailure(fb.modelId);
       lastErr = e;
       const more = i < fallbacks.length - 1;
       if (!more || !shouldFallback(e))
@@ -160,6 +254,7 @@ async function tryFallbackGeneratesForced(
     | undefined,
   fromModelId: string,
   syntheticReason: unknown,
+  adaptive: ModelFallbackAdaptiveOptions | undefined,
 ): Promise<ModelGenerateResult> {
   if (fallbacks.length === 0) {
     throw syntheticReason instanceof Error ? syntheticReason : new Error(String(syntheticReason));
@@ -174,9 +269,13 @@ async function tryFallbackGeneratesForced(
       toModelId: fb.modelId,
       error: lastErr,
     });
+    const t0 = performance.now();
     try {
-      return await fb.generate(params);
+      const r = await fb.generate(params);
+      if (adaptive) recordAdaptiveSuccess(fb.modelId, performance.now() - t0);
+      return r;
     } catch (e) {
+      if (adaptive) recordAdaptiveFailure(fb.modelId);
       lastErr = e;
       if (i === fallbacks.length - 1)
         throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
@@ -194,6 +293,7 @@ async function tryFallbackStreams(
     | undefined,
   fromModelId: string,
   firstError: unknown,
+  adaptive: ModelFallbackAdaptiveOptions | undefined,
 ): Promise<ReadableStream<ModelStreamPart>> {
   let lastErr: unknown = firstError;
   if (fallbacks.length === 0 || !shouldFallback(firstError)) {
@@ -208,9 +308,13 @@ async function tryFallbackStreams(
       toModelId: fb.modelId,
       error: lastErr,
     });
+    const t0 = performance.now();
     try {
-      return await fb.stream(params);
+      const r = await fb.stream(params);
+      if (adaptive) recordAdaptiveSuccess(fb.modelId, performance.now() - t0);
+      return r;
     } catch (e) {
+      if (adaptive) recordAdaptiveFailure(fb.modelId);
       lastErr = e;
       const more = i < fallbacks.length - 1;
       if (!more || !shouldFallback(e))
@@ -228,6 +332,7 @@ async function tryFallbackStreamsForced(
     | undefined,
   fromModelId: string,
   syntheticReason: unknown,
+  adaptive: ModelFallbackAdaptiveOptions | undefined,
 ): Promise<ReadableStream<ModelStreamPart>> {
   if (fallbacks.length === 0) {
     throw syntheticReason instanceof Error ? syntheticReason : new Error(String(syntheticReason));
@@ -242,9 +347,13 @@ async function tryFallbackStreamsForced(
       toModelId: fb.modelId,
       error: lastErr,
     });
+    const t0 = performance.now();
     try {
-      return await fb.stream(params);
+      const r = await fb.stream(params);
+      if (adaptive) recordAdaptiveSuccess(fb.modelId, performance.now() - t0);
+      return r;
     } catch (e) {
+      if (adaptive) recordAdaptiveFailure(fb.modelId);
       lastErr = e;
       if (i === fallbacks.length - 1)
         throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
@@ -258,6 +367,7 @@ export function modelFallback(options: ModelFallbackOptions): LanguageModelMiddl
   const shouldFallback = options.shouldFallback ?? defaultShouldFallback;
   const onFallback = options.onFallback;
   const cb = options.circuitBreaker;
+  const adaptiveCfg = resolveAdaptive(options.adaptive);
 
   return {
     middlewareId: 'resilience/model-fallback',
@@ -265,34 +375,40 @@ export function modelFallback(options: ModelFallbackOptions): LanguageModelMiddl
     async wrapGenerate({ doGenerate, params, model }) {
       const now = Date.now();
       const circuitOpen = cb ? isCircuitOpen(model, cb, now) : false;
+      const ordered = orderFallbacks(fallbacks, adaptiveCfg);
 
       if (!circuitOpen) {
+        const t0 = performance.now();
         try {
           const r = await doGenerate();
+          if (adaptiveCfg) recordAdaptiveSuccess(model.modelId, performance.now() - t0);
           clearCircuit(model);
           return r;
         } catch (err) {
+          if (adaptiveCfg) recordAdaptiveFailure(model.modelId);
           if (fallbacks.length > 0 && shouldFallback(err) && cb) {
             recordPrimaryFallbackFailure(model, cb, Date.now());
           }
           if (fallbacks.length === 0 || !shouldFallback(err)) throw err;
           return await tryFallbackGenerates(
-            fallbacks,
+            ordered,
             params,
             shouldFallback,
             onFallback,
             model.modelId,
             err,
+            adaptiveCfg,
           );
         }
       }
 
       const r = await tryFallbackGeneratesForced(
-        fallbacks,
+        ordered,
         params,
         onFallback,
         model.modelId,
         new Error('ziro.model.fallback: primary circuit open'),
+        adaptiveCfg,
       );
       clearCircuit(model);
       return r;
@@ -301,34 +417,40 @@ export function modelFallback(options: ModelFallbackOptions): LanguageModelMiddl
     async wrapStream({ doStream, params, model }) {
       const now = Date.now();
       const circuitOpen = cb ? isCircuitOpen(model, cb, now) : false;
+      const ordered = orderFallbacks(fallbacks, adaptiveCfg);
 
       if (!circuitOpen) {
+        const t0 = performance.now();
         try {
           const r = await doStream();
+          if (adaptiveCfg) recordAdaptiveSuccess(model.modelId, performance.now() - t0);
           clearCircuit(model);
           return r;
         } catch (err) {
+          if (adaptiveCfg) recordAdaptiveFailure(model.modelId);
           if (fallbacks.length > 0 && shouldFallback(err) && cb) {
             recordPrimaryFallbackFailure(model, cb, Date.now());
           }
           if (fallbacks.length === 0 || !shouldFallback(err)) throw err;
           return await tryFallbackStreams(
-            fallbacks,
+            ordered,
             params,
             shouldFallback,
             onFallback,
             model.modelId,
             err,
+            adaptiveCfg,
           );
         }
       }
 
       const r = await tryFallbackStreamsForced(
-        fallbacks,
+        ordered,
         params,
         onFallback,
         model.modelId,
         new Error('ziro.model.fallback: primary circuit open'),
+        adaptiveCfg,
       );
       clearCircuit(model);
       return r;
