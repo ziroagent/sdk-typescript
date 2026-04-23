@@ -1,5 +1,20 @@
 # @ziro-agent/agent
 
+## 0.17.0
+
+### Minor Changes
+
+- [#74](https://github.com/ziroagent/sdk-typescript/pull/74) [`2c590ad`](https://github.com/ziroagent/sdk-typescript/commit/2c590adb0038a8fe4dc32b5ee62a4f9274ba4df1) Thanks [@vokhoadev](https://github.com/vokhoadev)! - **@ziro-agent/agent** — `createReplayAgentFromRecording`, `createReplayRunBundleFromRecording`, and `ReplayRunBundle` (RFC 0015 replay sugar).
+
+  **@ziro-agent/audit** — `verifyJsonlAuditLogChain` / `verifyJsonlAuditLogFile` for hash-chain integrity.
+
+  **@ziro-agent/tracing** — `ATTR.MemoryWorkingCharCount` + `ziro.memory.read` event payload on working-memory span.
+
+### Patch Changes
+
+- Updated dependencies [[`2c590ad`](https://github.com/ziroagent/sdk-typescript/commit/2c590adb0038a8fe4dc32b5ee62a4f9274ba4df1)]:
+  - @ziro-agent/tracing@0.9.2
+
 ## 0.16.0
 
 ### Minor Changes
