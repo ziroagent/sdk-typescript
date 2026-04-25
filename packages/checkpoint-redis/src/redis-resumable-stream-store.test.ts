@@ -128,8 +128,8 @@ describe('RedisResumableStreamEventStore', () => {
     const store = new RedisResumableStreamEventStore({ client: redis });
     const key = store.createResumeKey();
     await store.append(key, 0, { type: 'text-delta', textDelta: 'x' });
-    await expect(
-      store.append(key, 2, { type: 'text-delta', textDelta: 'y' }),
-    ).rejects.toThrow(/Out-of-order event index/);
+    await expect(store.append(key, 2, { type: 'text-delta', textDelta: 'y' })).rejects.toThrow(
+      /Out-of-order event index/,
+    );
   });
 });
