@@ -5,7 +5,12 @@ import { getCurrentScope, withBudget } from './budget/scope.js';
 import { computeActualUsd, type GenerateTextOptions, resolveEstimate } from './generate-text.js';
 import { getPricing } from './pricing/index.js';
 import { chainAbortSignals, wrapStreamWithBudget } from './streaming/budget-stream.js';
-import type { ResumableStreamEventStore } from './streaming/resumable-stream-store.js';
+import { fireResumableStreamEvent } from './streaming/resumable-stream-observer.js';
+import type {
+  ResumableStreamContinueLock,
+  ResumableStreamContinueLockStore,
+  ResumableStreamEventStore,
+} from './streaming/resumable-stream-store.js';
 import { buildStreamTextResult, type StreamTextResult } from './streaming/text-stream.js';
 import type { ModelCallOptions, ModelStreamPart } from './types/model.js';
 import { estimateTokensFromMessages } from './util/estimate-tokens.js';
@@ -30,9 +35,22 @@ type StreamTextOptionsFromReplay = {
   streamEventStore: ResumableStreamEventStore;
   /** Called once per error event from the replay stream. */
   onError?: (err: unknown) => void;
+  continueUpstream?: false;
 };
 
-export type StreamTextOptions = StreamTextOptionsFromModel | StreamTextOptionsFromReplay;
+type StreamTextOptionsFromReplayAndContinue = GenerateTextOptions & {
+  resumeKey: string;
+  resumeFromIndex?: number;
+  streamEventStore: ResumableStreamEventStore;
+  /** Called once per error event from replay/live stream. */
+  onError?: (err: unknown) => void;
+  continueUpstream: true;
+};
+
+export type StreamTextOptions =
+  | StreamTextOptionsFromModel
+  | StreamTextOptionsFromReplay
+  | StreamTextOptionsFromReplayAndContinue;
 
 /**
  * Streaming counterpart of `generateText`. Returns a result object with two
@@ -59,17 +77,119 @@ export type StreamTextOptions = StreamTextOptionsFromModel | StreamTextOptionsFr
  */
 export async function streamText(options: StreamTextOptions): Promise<StreamTextResult> {
   if ('resumeKey' in options) {
-    const replayStream = buildReplayStream({
-      parts: await options.streamEventStore.getParts(
-        options.resumeKey,
-        options.resumeFromIndex ?? 0,
-      ),
+    const replayParts = await options.streamEventStore.getParts(
+      options.resumeKey,
+      options.resumeFromIndex ?? 0,
+    );
+    fireResumableStreamEvent({
+      phase: 'replay_start',
+      resumeKey: options.resumeKey,
+      replayCount: replayParts.length,
     });
-    const replay = buildStreamTextResult({
-      source: replayStream,
-      ...(options.onError ? { onError: options.onError } : {}),
-    });
-    return { ...replay, resumeKey: options.resumeKey };
+    const replayStream = buildReplayStream({ parts: replayParts });
+    if (!options.continueUpstream) {
+      fireResumableStreamEvent({
+        phase: 'replay_end',
+        resumeKey: options.resumeKey,
+        replayCount: replayParts.length,
+      });
+      const replay = buildStreamTextResult({
+        source: replayStream,
+        ...(options.onError ? { onError: options.onError } : {}),
+      });
+      return { ...replay, resumeKey: options.resumeKey };
+    }
+    let lock: ResumableStreamContinueLock | null = null;
+    try {
+      const maybeLockStore = asContinueLockStore(options.streamEventStore);
+      if (maybeLockStore) {
+        lock = await maybeLockStore.acquireContinueLock(options.resumeKey);
+        fireResumableStreamEvent({
+          phase: 'continue_lock_acquired',
+          resumeKey: options.resumeKey,
+        });
+      }
+
+      const meta = await options.streamEventStore.getSessionMeta(options.resumeKey);
+      if (meta?.completed) {
+        if (lock && maybeLockStore) {
+          await maybeLockStore.releaseContinueLock(lock);
+          fireResumableStreamEvent({
+            phase: 'continue_lock_released',
+            resumeKey: options.resumeKey,
+          });
+          lock = null;
+        }
+        fireResumableStreamEvent({
+          phase: 'continue_upstream_skipped_completed',
+          resumeKey: options.resumeKey,
+          replayCount: replayParts.length,
+        });
+        fireResumableStreamEvent({
+          phase: 'replay_end',
+          resumeKey: options.resumeKey,
+          replayCount: replayParts.length,
+        });
+        const replay = buildStreamTextResult({
+          source: replayStream,
+          ...(options.onError ? { onError: options.onError } : {}),
+        });
+        return { ...replay, resumeKey: options.resumeKey };
+      }
+      const { resumeKey, resumeFromIndex, streamEventStore, continueUpstream, onError, ...live } =
+        options;
+      fireResumableStreamEvent({
+        phase: 'continue_upstream_start',
+        resumeKey: options.resumeKey,
+      });
+      const liveResult = await streamText({
+        ...live,
+        ...(onError ? { onError } : {}),
+      });
+      const persistedLive = tapAndPersistStream(liveResult.fullStream, {
+        resumeKey: options.resumeKey,
+        store: options.streamEventStore,
+        startIndex: meta?.nextIndex ?? replayParts.length,
+      });
+      const liveWithUnlock =
+        lock && maybeLockStore
+          ? withFinally(persistedLive, async () => {
+              await maybeLockStore.releaseContinueLock(lock as ResumableStreamContinueLock);
+              fireResumableStreamEvent({
+                phase: 'continue_lock_released',
+                resumeKey: options.resumeKey,
+              });
+            })
+          : persistedLive;
+      const combined = withFinally(concatStreams(replayStream, liveWithUnlock), async () => {
+        fireResumableStreamEvent({
+          phase: 'continue_upstream_end',
+          resumeKey: options.resumeKey,
+        });
+        fireResumableStreamEvent({
+          phase: 'replay_end',
+          resumeKey: options.resumeKey,
+          replayCount: replayParts.length,
+        });
+      });
+      const replay = buildStreamTextResult({
+        source: combined,
+        ...(options.onError ? { onError: options.onError } : {}),
+      });
+      return { ...replay, resumeKey: options.resumeKey };
+    } catch (err) {
+      if (lock) {
+        const maybeLockStore = asContinueLockStore(options.streamEventStore);
+        if (maybeLockStore) {
+          await maybeLockStore.releaseContinueLock(lock).catch(() => {});
+          fireResumableStreamEvent({
+            phase: 'continue_lock_released',
+            resumeKey: options.resumeKey,
+          });
+        }
+      }
+      throw err;
+    }
   }
 
   const { model, tools, toolChoice, onError, budget, resumable, streamEventStore, ...rest } =
@@ -203,16 +323,18 @@ function requiredStore(): never {
 
 function tapAndPersistStream(
   source: ReadableStream<ModelStreamPart>,
-  opts: { resumeKey: string; store: ResumableStreamEventStore },
+  opts: { resumeKey: string; store: ResumableStreamEventStore; startIndex?: number },
 ): ReadableStream<ModelStreamPart> {
   return new ReadableStream<ModelStreamPart>({
     async start(controller) {
-      let index = 0;
+      let index = opts.startIndex ?? 0;
       const reader = source.getReader();
       try {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
+          // Guard errors (event/byte caps) come from store.append and should
+          // fail the stream so callers can decide to downgrade/disable resumable mode.
           await opts.store.append(opts.resumeKey, index, value);
           index++;
           controller.enqueue(value);
@@ -235,6 +357,87 @@ function buildReplayStream(opts: { parts: ModelStreamPart[] }): ReadableStream<M
     start(controller) {
       for (const part of opts.parts) controller.enqueue(part);
       controller.close();
+    },
+  });
+}
+
+function concatStreams(
+  first: ReadableStream<ModelStreamPart>,
+  second: ReadableStream<ModelStreamPart>,
+): ReadableStream<ModelStreamPart> {
+  return new ReadableStream<ModelStreamPart>({
+    async start(controller) {
+      const firstReader = first.getReader();
+      const secondReader = second.getReader();
+      try {
+        while (true) {
+          const { done, value } = await firstReader.read();
+          if (done) break;
+          controller.enqueue(value);
+        }
+        while (true) {
+          const { done, value } = await secondReader.read();
+          if (done) break;
+          controller.enqueue(value);
+        }
+        controller.close();
+      } catch (err) {
+        controller.error(err);
+      } finally {
+        firstReader.releaseLock();
+        secondReader.releaseLock();
+      }
+    },
+    async cancel(reason) {
+      await Promise.allSettled([first.cancel(reason), second.cancel(reason)]);
+    },
+  });
+}
+
+function asContinueLockStore(
+  store: ResumableStreamEventStore,
+): ResumableStreamContinueLockStore | null {
+  if (
+    'acquireContinueLock' in store &&
+    typeof store.acquireContinueLock === 'function' &&
+    'releaseContinueLock' in store &&
+    typeof store.releaseContinueLock === 'function'
+  ) {
+    return store as ResumableStreamContinueLockStore;
+  }
+  return null;
+}
+
+function withFinally(
+  source: ReadableStream<ModelStreamPart>,
+  onFinally: () => Promise<void>,
+): ReadableStream<ModelStreamPart> {
+  let finished = false;
+  const finalize = async () => {
+    if (finished) return;
+    finished = true;
+    await onFinally();
+  };
+  return new ReadableStream<ModelStreamPart>({
+    async start(controller) {
+      const reader = source.getReader();
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          controller.enqueue(value);
+        }
+        controller.close();
+      } catch (err) {
+        controller.error(err);
+      } finally {
+        reader.releaseLock();
+        await finalize();
+      }
+    },
+    async cancel(reason) {
+      await source.cancel(reason);
+      await finalize();
     },
   });
 }

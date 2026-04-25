@@ -106,9 +106,12 @@ const { stream } = await streamText({
 });
 ```
 
-Server caches stream events in the same `Checkpointer`, keyed by `resumeKey`
-with a TTL (default 1h). Replay events `< resumeFromIndex`, then continue from
-upstream.
+Server caches stream events in a pluggable `ResumableStreamEventStore`, keyed
+by `resumeKey` with a TTL (Redis adapter). **Shipped (MVP):** replay of cached
+`ModelStreamPart` slices only. **Planned:** replay events with index `>=
+resumeFromIndex` from the store, then, when the run is not yet completed, open
+a new upstream `model.stream` and append more parts to the same log — see
+[RFC 0017 — resumable streamText, continue upstream](./0017-resumable-stream-continue-upstream.md).
 
 ### Postgres adapter schema
 
