@@ -1,5 +1,12 @@
 # @ziro-agent/checkpoint-memory
 
+## 0.2.16
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @ziro-agent/agent@0.17.3
+
 ## 0.2.15
 
 ### Patch Changes
