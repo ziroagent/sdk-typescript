@@ -4,6 +4,8 @@ import type { ModelStreamPart } from '../types/model.js';
 import { addUsage, emptyUsage, type TokenUsage } from '../types/usage.js';
 
 export interface StreamTextResult {
+  /** Opaque key for resumable streams (`streamText({ resumable: true })`). */
+  readonly resumeKey?: string;
   /** A `ReadableStream` of just the text deltas (UTF-8 friendly). */
   readonly textStream: ReadableStream<string>;
   /** A `ReadableStream` of all model events (text deltas, tool calls, finish, error). */

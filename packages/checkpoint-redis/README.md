@@ -50,7 +50,7 @@ const checkpointer = new RedisCheckpointer({
 ### bring-your-own client
 
 The adapter only needs a single method. If you're using a sandboxed client
-(Cloudflare Workers, Edge, etc), implement the {@link RedisLike} surface
+(Cloudflare Workers, Edge, etc), implement the `RedisLike` surface
 yourself:
 
 ```ts
@@ -62,6 +62,31 @@ const checkpointer = new RedisCheckpointer({
   },
 });
 ```
+
+## Resumable `streamText` event log
+
+Use `RedisResumableStreamEventStore` with `streamText({ resumable: true, streamEventStore })` from `@ziro-agent/core` so cached `ModelStreamPart` events can be replayed after a disconnect (same semantics as the in-memory store, backed by Redis with optional TTL). See the [resumable streamText cookbook](https://ziroagent.com/docs/cookbooks/resumable-stream-text).
+
+```ts
+import { streamText } from '@ziro-agent/core';
+import IORedis from 'ioredis';
+import { fromIoRedis, RedisResumableStreamEventStore } from '@ziro-agent/checkpoint-redis';
+
+const redis = new IORedis(process.env.REDIS_URL!);
+const streamEventStore = new RedisResumableStreamEventStore({
+  client: fromIoRedis(redis),
+  ttlSeconds: 3600,
+});
+
+const result = await streamText({
+  model,
+  prompt: 'Hello',
+  resumable: true,
+  streamEventStore,
+});
+```
+
+Default stream key prefix is `ziro:st` (separate from the checkpointer’s `ziro:cp`).
 
 ## Key layout
 

@@ -54,7 +54,8 @@
     "attw": "attw --pack . --profile=node16"
   },
   "dependencies": {
-    "@ziro-agent/agent": "workspace:*"
+    "@ziro-agent/agent": "workspace:*",
+    "@ziro-agent/core": "workspace:*"
   },
   "peerDependencies": {
     "ioredis": ">=5.0.0",

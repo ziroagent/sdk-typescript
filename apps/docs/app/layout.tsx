@@ -1,12 +1,9 @@
 import { RootProvider } from 'fumadocs-ui/provider/next';
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
+import { SiteJsonLd } from '@/components/site-json-ld';
+import { OG_IMAGE_URL, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/site';
 import 'fumadocs-ui/style.css';
-
-const SITE_URL = 'https://ziroagent.com';
-const SITE_NAME = 'ZiroAgent SDK';
-const SITE_DESCRIPTION =
-  'Production-safe TypeScript agent runtime: durable execution, cost guardrails, replayable traces, MCP-native, sovereign-ready.';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -55,7 +52,7 @@ export const metadata: Metadata = {
     locale: 'en_US',
     images: [
       {
-        url: `${SITE_URL}/og.png`,
+        url: OG_IMAGE_URL,
         width: 1200,
         height: 630,
         alt: SITE_NAME,
@@ -66,7 +63,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: `${SITE_NAME} — TypeScript agent runtime for production`,
     description: SITE_DESCRIPTION,
-    images: [`${SITE_URL}/og.png`],
+    images: [OG_IMAGE_URL],
     site: '@ziroagent',
     creator: '@ziroagent',
   },
@@ -102,6 +99,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <SiteJsonLd />
         <RootProvider>{children}</RootProvider>
       </body>
     </html>

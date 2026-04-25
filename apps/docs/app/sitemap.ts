@@ -1,7 +1,6 @@
 import type { MetadataRoute } from 'next';
+import { DOCS_URL, SITE_URL } from '@/lib/site';
 import { source } from '@/lib/source';
-
-const SITE_URL = 'https://ziroagent.com';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
@@ -14,7 +13,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1.0,
     },
     {
-      url: `${SITE_URL}/docs`,
+      url: DOCS_URL,
       lastModified: now,
       changeFrequency: 'weekly',
       priority: 0.9,

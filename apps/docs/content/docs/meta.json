@@ -24,9 +24,11 @@
     "cookbooks/budget-fallback-model",
     "cookbooks/rag-budget-cap",
     "cookbooks/durable-inngest",
+    "cookbooks/resumable-stream-text",
     "---Reference---",
     "comparison",
     "migration",
+    "rfc-index",
     "api-reference"
   ]
 }
