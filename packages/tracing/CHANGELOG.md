@@ -1,5 +1,12 @@
 # @ziro-agent/tracing
 
+## 0.9.4
+
+### Patch Changes
+
+- Updated dependencies [[`d1c6abd`](https://github.com/ziroagent/sdk-typescript/commit/d1c6abd6c29168fc5c54bddd21fcedf762539574)]:
+  - @ziro-agent/core@0.10.0
+
 ## 0.9.3
 
 ### Patch Changes
