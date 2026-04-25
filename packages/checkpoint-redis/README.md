@@ -76,6 +76,8 @@ const redis = new IORedis(process.env.REDIS_URL!);
 const streamEventStore = new RedisResumableStreamEventStore({
   client: fromIoRedis(redis),
   ttlSeconds: 3600,
+  maxEventsPerStream: 10_000,
+  maxBytesPerStream: 8 * 1024 * 1024, // 8 MiB
 });
 
 const result = await streamText({
@@ -87,6 +89,21 @@ const result = await streamText({
 ```
 
 Default stream key prefix is `ziro:st` (separate from the checkpointer’s `ziro:cp`).
+TTL is still recommended as the primary long-session guardrail; event/byte caps
+add deterministic per-stream limits aligned with the in-memory store.
+
+`RedisResumableStreamEventStore` also exposes optional continue lock hooks used by `streamText({ continueUpstream: true })` to reduce multi-writer races across processes. Configure lock TTL with `continueLockSeconds` (default: `30`).
+
+### `RedisResumableStreamEventStore` key layout (default `ziro:st`)
+
+| Key | Type | Purpose |
+| --- | ---- | -------- |
+| `ziro:st:reg:<resumeKey>` | STRING | stream registered (`"1"`) |
+| `ziro:st:log:<resumeKey>` | LIST | one JSON line per `ModelStreamPart` |
+| `ziro:st:bytes:<resumeKey>` | STRING | running byte total (accounting) |
+| `ziro:st:ts:<resumeKey>` | STRING | last append time (ms), for `getSessionMeta` |
+| `ziro:st:comp:<resumeKey>` | STRING | set to `"1"` when a terminal part (`finish` / `error`) is stored |
+| `ziro:st:lock:<resumeKey>` | STRING | best-effort continue-upstream writer lock token (`SET NX EX`) |
 
 ## Key layout
 

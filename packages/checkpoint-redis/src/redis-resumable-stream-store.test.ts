@@ -1,5 +1,5 @@
 import type { LanguageModel, ModelStreamPart } from '@ziro-agent/core';
-import { streamText } from '@ziro-agent/core';
+import { ResumableStreamError, streamText } from '@ziro-agent/core';
 import { describe, expect, it } from 'vitest';
 import type { RedisLike } from './redis-checkpointer.js';
 import { RedisResumableStreamEventStore } from './redis-resumable-stream-store.js';
@@ -19,11 +19,17 @@ function redisListStub(): RedisLike {
 
       switch (cmd) {
         case 'SET': {
-          const [k, v, exFlag, exSec] = rest;
+          const [k, v, arg3, arg4, arg5, arg6] = rest;
           if (k === undefined || v === undefined) throw new Error('SET');
+          const isNx = [arg3, arg4, arg5, arg6].some((x) => x?.toUpperCase() === 'NX');
+          if (isNx && strings.has(k)) {
+            return null as T;
+          }
           strings.set(k, v);
-          if (exFlag?.toUpperCase() === 'EX' && exSec !== undefined) {
-            void Number(exSec);
+          const exIdx = [arg3, arg4, arg5, arg6].findIndex((x) => x?.toUpperCase() === 'EX');
+          if (exIdx >= 0) {
+            const vals = [arg3, arg4, arg5, arg6];
+            void Number(vals[exIdx + 1]);
           }
           return 'OK' as T;
         }
@@ -59,6 +65,11 @@ function redisListStub(): RedisLike {
         }
         case 'EXPIRE': {
           return 1 as T;
+        }
+        case 'DEL': {
+          const [k] = rest;
+          if (!k) return 0 as T;
+          return (strings.delete(k) ? 1 : 0) as T;
         }
         default:
           throw new Error(`unsupported: ${cmd}`);
@@ -131,5 +142,106 @@ describe('RedisResumableStreamEventStore', () => {
     await expect(store.append(key, 2, { type: 'text-delta', textDelta: 'y' })).rejects.toThrow(
       /Out-of-order event index/,
     );
+  });
+
+  it('streamText: rejects with ResumableStreamError when maxEventsPerStream is exceeded', async () => {
+    const redis = redisListStub();
+    const store = new RedisResumableStreamEventStore({ client: redis, maxEventsPerStream: 1 });
+    const out = await streamText({
+      model: mockStreamModel(),
+      prompt: 'hi',
+      resumable: true,
+      streamEventStore: store,
+    });
+    await expect(out.text()).rejects.toSatisfy(
+      (e: unknown) => e instanceof ResumableStreamError && /event cap exceeded/.test(String(e)),
+    );
+  });
+
+  it('streamText: rejects with ResumableStreamError when maxBytesPerStream is exceeded on first part', async () => {
+    const redis = redisListStub();
+    const store = new RedisResumableStreamEventStore({ client: redis, maxBytesPerStream: 1 });
+    const out = await streamText({
+      model: mockStreamModel(),
+      prompt: 'hi',
+      resumable: true,
+      streamEventStore: store,
+    });
+    await expect(out.text()).rejects.toSatisfy(
+      (e: unknown) => e instanceof ResumableStreamError && /byte cap exceeded/.test(String(e)),
+    );
+  });
+
+  it('getSessionMeta: completed true and nextIndex after streamText finishes', async () => {
+    const redis = redisListStub();
+    const store = new RedisResumableStreamEventStore({ client: redis });
+    const out = await streamText({
+      model: mockStreamModel(),
+      prompt: 'hi',
+      resumable: true,
+      streamEventStore: store,
+    });
+    await out.text();
+    await expect(store.getSessionMeta(out.resumeKey as string)).resolves.toEqual({
+      nextIndex: 2,
+      completed: true,
+      updatedAt: expect.any(Number),
+    });
+  });
+
+  it('getSessionMeta works from another store instance sharing Redis', async () => {
+    const redis = redisListStub();
+    const writer = new RedisResumableStreamEventStore({ client: redis });
+    const out = await streamText({
+      model: mockStreamModel(),
+      prompt: 'hi',
+      resumable: true,
+      streamEventStore: writer,
+    });
+    await out.text();
+    const reader = new RedisResumableStreamEventStore({ client: redis });
+    await expect(reader.getSessionMeta(out.resumeKey as string)).resolves.toMatchObject({
+      nextIndex: 2,
+      completed: true,
+    });
+  });
+
+  it('rejects append after terminal part', async () => {
+    const redis = redisListStub();
+    const store = new RedisResumableStreamEventStore({ client: redis });
+    const key = store.createResumeKey();
+    await store.append(key, 0, { type: 'text-delta', textDelta: 'x' });
+    await store.append(key, 1, { type: 'finish', finishReason: 'stop', usage: { totalTokens: 1 } });
+    await expect(store.append(key, 2, { type: 'text-delta', textDelta: 'y' })).rejects.toThrow(
+      /already completed/,
+    );
+  });
+
+  it('streamText: custom measurePartBytes is used for byte cap (second event over budget)', async () => {
+    const redis = redisListStub();
+    const store = new RedisResumableStreamEventStore({
+      client: redis,
+      maxBytesPerStream: 150,
+      measurePartBytes: () => 100,
+    });
+    const out = await streamText({
+      model: mockStreamModel(),
+      prompt: 'hi',
+      resumable: true,
+      streamEventStore: store,
+    });
+    await expect(out.text()).rejects.toSatisfy(
+      (e: unknown) => e instanceof ResumableStreamError && /byte cap exceeded/.test(String(e)),
+    );
+  });
+
+  it('continue lock: second acquire fails until release', async () => {
+    const redis = redisListStub();
+    const store = new RedisResumableStreamEventStore({ client: redis, continueLockSeconds: 60 });
+    const key = store.createResumeKey();
+    const lock = await store.acquireContinueLock(key);
+    await expect(store.acquireContinueLock(key)).rejects.toThrow(/Continue lock already held/);
+    await store.releaseContinueLock(lock);
+    await expect(store.acquireContinueLock(key)).resolves.toBeDefined();
   });
 });

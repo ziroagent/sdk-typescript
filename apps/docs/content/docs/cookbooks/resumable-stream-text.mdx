@@ -1,12 +1,32 @@
 ---
 title: Resumable streamText (event log)
-description: Cache model stream events under a resumeKey and replay slices with streamText — RFC 0006 MVP.
+description: Cache model stream events under a resumeKey, replay slices, and optionally continue upstream with streamText.
 ---
 
-`streamText` can persist each `ModelStreamPart` as it flows, then **replay** from
-a stored index without calling the provider again. This is the SDK’s **MVP** for
-resumable streams: same-process or Redis-backed logs, **replay only** (full RFC
-0006 “replay then continue upstream” remains future work).
+`streamText` can persist each `ModelStreamPart` as it flows, then replay from
+a stored index and optionally continue live generation from upstream when the
+session is not yet completed. Use `continueUpstream: true` with the same model
+inputs (`model` + prompt/messages + options) to opt in.
+
+## Replay then continue upstream
+
+If a client disconnects mid-stream, replay from the first missing event index
+and continue generation in a single stream:
+
+```ts
+const resumed = await streamText({
+  resumeKey: out.resumeKey!,
+  resumeFromIndex: clientLastSeenIndex + 1,
+  streamEventStore: store,
+  continueUpstream: true,
+  model,
+  prompt: 'Hi',
+});
+```
+
+When the stored log is already complete (`finish`/`error` recorded),
+`continueUpstream: true` becomes a no-op for upstream and only replays cached
+parts.
 
 ## In-memory (tests, single process)
 
@@ -54,6 +74,8 @@ const redis = new IORedis(process.env.REDIS_URL!);
 const streamEventStore = new RedisResumableStreamEventStore({
   client: fromIoRedis(redis),
   ttlSeconds: 3600,
+  maxEventsPerStream: 10_000,
+  maxBytesPerStream: 8 * 1024 * 1024, // 8 MiB
 });
 
 const out = await streamText({
@@ -63,6 +85,27 @@ const out = await streamText({
   streamEventStore,
 });
 ```
+
+## Memory guard (in-memory store)
+
+Use caps to prevent unbounded growth in long streams:
+
+```ts
+import { InMemoryResumableStreamEventStore } from '@ziro-agent/core';
+
+const streamEventStore = new InMemoryResumableStreamEventStore({
+  maxEventsPerStream: 10_000,
+  maxBytesPerStream: 8 * 1024 * 1024, // 8 MiB
+});
+```
+
+When a cap is exceeded, `streamText(...).text()` / iterators reject with
+`ResumableStreamError` so you can log and retry without resumable mode.
+
+Redis-backed stores support the same per-stream caps (`maxEventsPerStream`,
+`maxBytesPerStream`) and an optional `measurePartBytes` hook (default: UTF-8
+length of the stored JSON line). You should still use TTL (`ttlSeconds`) as the
+primary guardrail for long-lived sessions.
 
 See also: [RFC 0006](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0006-checkpointer.md),
 [ROADMAP — Track 2](https://github.com/ziroagent/sdk-typescript/blob/main/ROADMAP.md).

@@ -129,7 +129,7 @@ This milestone exists because the 12-SDK review (RFC 0004) surfaced eight gaps w
 - [x] `Checkpointer` interface in `@ziro-agent/agent`
 - [x] `@ziro-agent/checkpoint-memory`, [x] `@ziro-agent/checkpoint-postgres`, [x] `@ziro-agent/checkpoint-redis`
 - [x] `agent.resumeFromCheckpoint(threadId, options)` — shipped (`createAgent({ checkpointer })` + `checkpointer.get` + `agent.resume`); thin **`agent.listCheckpoints(threadId, opts?)`** delegates to `checkpointer.list` when you only hold the agent reference
-- [x] `streamText({ resumeKey, resumeFromIndex })` with cached event log — MVP replay from event store shipped in v0.6 slice; replay-then-continue upstream remains follow-up (RFC 0006 / RFC 0015)
+- [x] `streamText({ resumeKey, resumeFromIndex })` with cached event log — replay + optional `continueUpstream: true` shipped; reconnect clients can replay from store and continue live generation in one stream ([RFC 0017](rfcs/0017-resumable-stream-continue-upstream.md))
 - [x] **`RedisResumableStreamEventStore`** (`@ziro-agent/checkpoint-redis`) — Redis + TTL for resumable `streamText` event logs (complements in-memory `@ziro-agent/core` store)
 - [x] **Mental model rename**: durable is the *default* (any checkpointer); Temporal/Inngest become the long-running adapters
 
