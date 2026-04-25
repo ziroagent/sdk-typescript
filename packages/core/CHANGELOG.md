@@ -1,5 +1,13 @@
 # @ziro-agent/core
 
+## 0.9.0
+
+### Minor Changes
+
+- [#82](https://github.com/ziroagent/sdk-typescript/pull/82) [`fb04cd2`](https://github.com/ziroagent/sdk-typescript/commit/fb04cd200af279907da0ee7e915b67ee485892d0) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Add resumable `streamText` support with `resumeKey` replay in `@ziro-agent/core`, including a pluggable `ResumableStreamEventStore` API and in-memory store export.
+
+  Add `RedisResumableStreamEventStore` to `@ziro-agent/checkpoint-redis` so resumable stream event logs can be persisted in Redis with optional TTL.
+
 ## 0.8.1
 
 ### Patch Changes

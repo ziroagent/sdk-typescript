@@ -1,5 +1,12 @@
 # @ziro-agent/openapi
 
+## 0.2.8
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @ziro-agent/tools@0.6.6
+
 ## 0.2.7
 
 ### Patch Changes

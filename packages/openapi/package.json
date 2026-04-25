@@ -1,6 +1,6 @@
 {
   "name": "@ziro-agent/openapi",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "Generate Ziro tools from an OpenAPI 3.x document (GET + operationId first).",
   "license": "Apache-2.0",
   "type": "module",
