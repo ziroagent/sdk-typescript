@@ -5,15 +5,34 @@ import { getCurrentScope, withBudget } from './budget/scope.js';
 import { computeActualUsd, type GenerateTextOptions, resolveEstimate } from './generate-text.js';
 import { getPricing } from './pricing/index.js';
 import { chainAbortSignals, wrapStreamWithBudget } from './streaming/budget-stream.js';
+import type { ResumableStreamEventStore } from './streaming/resumable-stream-store.js';
 import { buildStreamTextResult, type StreamTextResult } from './streaming/text-stream.js';
-import type { ModelCallOptions } from './types/model.js';
+import type { ModelCallOptions, ModelStreamPart } from './types/model.js';
 import { estimateTokensFromMessages } from './util/estimate-tokens.js';
 import { normalizePrompt } from './util/normalize-prompt.js';
 
-export type StreamTextOptions = GenerateTextOptions & {
+type StreamTextOptionsFromModel = GenerateTextOptions & {
   /** Called once per error event from the underlying model stream. */
   onError?: (err: unknown) => void;
+  /**
+   * If true, cache emitted stream events and return a `resumeKey`.
+   */
+  resumable?: boolean;
+  /**
+   * Storage adapter used to cache stream events when `resumable` is enabled.
+   */
+  streamEventStore?: ResumableStreamEventStore;
 };
+
+type StreamTextOptionsFromReplay = {
+  resumeKey: string;
+  resumeFromIndex?: number;
+  streamEventStore: ResumableStreamEventStore;
+  /** Called once per error event from the replay stream. */
+  onError?: (err: unknown) => void;
+};
+
+export type StreamTextOptions = StreamTextOptionsFromModel | StreamTextOptionsFromReplay;
 
 /**
  * Streaming counterpart of `generateText`. Returns a result object with two
@@ -39,7 +58,22 @@ export type StreamTextOptions = GenerateTextOptions & {
  * fit a streaming API where bytes have already been emitted to the user).
  */
 export async function streamText(options: StreamTextOptions): Promise<StreamTextResult> {
-  const { model, tools, toolChoice, onError, budget, ...rest } = options;
+  if ('resumeKey' in options) {
+    const replayStream = buildReplayStream({
+      parts: await options.streamEventStore.getParts(
+        options.resumeKey,
+        options.resumeFromIndex ?? 0,
+      ),
+    });
+    const replay = buildStreamTextResult({
+      source: replayStream,
+      ...(options.onError ? { onError: options.onError } : {}),
+    });
+    return { ...replay, resumeKey: options.resumeKey };
+  }
+
+  const { model, tools, toolChoice, onError, budget, resumable, streamEventStore, ...rest } =
+    options;
 
   const messages = normalizePrompt(rest);
 
@@ -94,7 +128,20 @@ export async function streamText(options: StreamTextOptions): Promise<StreamText
         })
       : rawSource;
 
-    const result = buildStreamTextResult({ source, ...(onError ? { onError } : {}) });
+    const resumeKey = resumable
+      ? (streamEventStore ?? requiredStore()).createResumeKey()
+      : undefined;
+    const sourceWithReplay = resumeKey
+      ? tapAndPersistStream(source, {
+          resumeKey,
+          store: streamEventStore ?? requiredStore(),
+        })
+      : source;
+
+    const result = buildStreamTextResult({
+      source: sourceWithReplay,
+      ...(onError ? { onError } : {}),
+    });
 
     if (scope) {
       // Post-flight check: once usage resolves we record and re-validate.
@@ -119,7 +166,7 @@ export async function streamText(options: StreamTextOptions): Promise<StreamText
         });
     }
 
-    return result;
+    return resumeKey ? { ...result, resumeKey } : result;
   };
 
   // The pre-flight `onExceed` function-form resolver runs only at the layer
@@ -146,4 +193,48 @@ export async function streamText(options: StreamTextOptions): Promise<StreamText
     }
   }
   return await exec();
+}
+
+function requiredStore(): never {
+  throw new Error(
+    'streamText({ resumable: true }) requires `streamEventStore` (e.g. new InMemoryResumableStreamEventStore()).',
+  );
+}
+
+function tapAndPersistStream(
+  source: ReadableStream<ModelStreamPart>,
+  opts: { resumeKey: string; store: ResumableStreamEventStore },
+): ReadableStream<ModelStreamPart> {
+  return new ReadableStream<ModelStreamPart>({
+    async start(controller) {
+      let index = 0;
+      const reader = source.getReader();
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          await opts.store.append(opts.resumeKey, index, value);
+          index++;
+          controller.enqueue(value);
+        }
+        controller.close();
+      } catch (err) {
+        controller.error(err);
+      } finally {
+        reader.releaseLock();
+      }
+    },
+    async cancel(reason) {
+      await source.cancel(reason);
+    },
+  });
+}
+
+function buildReplayStream(opts: { parts: ModelStreamPart[] }): ReadableStream<ModelStreamPart> {
+  return new ReadableStream<ModelStreamPart>({
+    start(controller) {
+      for (const part of opts.parts) controller.enqueue(part);
+      controller.close();
+    },
+  });
 }

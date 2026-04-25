@@ -50,8 +50,9 @@ export interface CheckpointMeta {
  * `@ziro-agent/checkpoint-redis`) so the agent core stays free of
  * driver dependencies. See RFC 0006 for the design rationale.
  *
- * Available since v0.1.9 (interface only) — `agent.resumeFromCheckpoint`
- * lands in v0.2 per RFC 0006 §integration.
+ * `agent.resumeFromCheckpoint` / `agent.listCheckpoints` integrate with
+ * concrete adapters as of `@ziro-agent/agent` v0.2; resumable *streams*
+ * (`streamText` + `resumeKey`) remain future work per RFC 0006.
  */
 export interface Checkpointer {
   /**

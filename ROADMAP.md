@@ -25,34 +25,36 @@ Our roadmap is shaped by one question: **"What stops 88% of agent projects from 
 
 **Goal**: prove the production-safety thesis with a working SDK + CLI + 2 providers + MCP server. Time-to-first-token under 60 seconds.
 
+> Historical milestone snapshot: many v0.1 deliverables shipped in later v0.1.x / v0.2 iterations and are tracked as done below.
+
 ### Week 1 — Core + CLI + Benchmarks scaffold
 - [x] Monorepo (pnpm + Turborepo + Biome + Vitest + Changesets)
 - [x] CI: lint, typecheck, test, build, `attw`, `publint`
-- [ ] `@ziro-agent/core` — `LanguageModel` interface, `generateText`, `streamText`, error taxonomy
-- [ ] **`@ziro-agent/cli` ships day 1** — `ziroagent chat`, `ziroagent run`, interactive API-key setup → `~/.ziroagent/config.json`
-- [ ] `npm create ziro@latest` — scaffold an agent in <60s
+- [x] `@ziro-agent/core` — `LanguageModel` interface, `generateText`, `streamText`, error taxonomy
+- [x] **`@ziro-agent/cli` ships day 1** — `ziroagent chat`, `ziroagent run`, interactive API-key setup → `~/.ziroagent/config.json`
+- [x] `npm create ziro@latest` — scaffold an agent in <60s
 - [ ] `BENCHMARKS.md` + `pnpm bench` harness (vs. Vercel AI SDK + Mastra)
 
 ### Week 2 — Providers + MCP bidirectional + Tools
-- [ ] `@ziro-agent/openai` — with explicit prompt-cache control
-- [ ] `@ziro-agent/anthropic` — with cache TTL config (5m / 1h)
-- [ ] `@ziro-agent/ollama` — local-first, sovereign mode
-- [ ] `@ziro-agent/tools` — `defineTool`, parallel calls, JSON schema from Zod
-- [ ] **`@ziro-agent/mcp` — server + client both directions.** `ziro mcp serve ./tools.ts`
+- [x] `@ziro-agent/openai` — with explicit prompt-cache control
+- [x] `@ziro-agent/anthropic` — with cache TTL config (5m / 1h)
+- [x] `@ziro-agent/ollama` — local-first, sovereign mode
+- [x] `@ziro-agent/tools` — `defineTool`, parallel calls, JSON schema from Zod
+- [x] **`@ziro-agent/mcp` — server + client both directions.** `ziroagent mcp serve ./tools.ts`
 - [ ] `examples/mcp-server` — published in Claude Desktop ecosystem
 
 ### Week 3 — Agent loop + Budget guards + HITL
-- [ ] `@ziro-agent/agent` — loop, step events, stop conditions, error recovery
-- [ ] **Budget enforcement**: `BudgetExceededError` thrown before overspend, not after
-- [ ] **HITL**: `requiresApproval: true` on tools → suspend / resume primitives
-- [ ] `@ziro-agent/memory` — vector store interface, in-memory + pgvector
-- [ ] `@ziro-agent/workflow` — minimal graph engine
+- [x] `@ziro-agent/agent` — loop, step events, stop conditions, error recovery
+- [x] **Budget enforcement**: `BudgetExceededError` thrown before overspend, not after
+- [x] **HITL**: `requiresApproval: true` on tools → suspend / resume primitives
+- [x] `@ziro-agent/memory` — vector store interface, in-memory + pgvector
+- [x] `@ziro-agent/workflow` — minimal graph engine
 - [ ] `examples/agent-with-tools`, `examples/sovereign-ollama`, `examples/rag-pgvector`
 
 ### Week 4 — Tracing + Docs + Release
-- [ ] `@ziro-agent/tracing` — OpenTelemetry spans on every LLM call / tool call / agent step
-- [ ] `apps/playground` — chat UI + trace timeline + tool inspector + replay
-- [ ] `apps/docs` — Fumadocs site, getting-started in 4 languages (EN, VI, JA, KO)
+- [x] `@ziro-agent/tracing` — OpenTelemetry spans on every LLM call / tool call / agent step
+- [x] `apps/playground` — chat UI + trace timeline + tool inspector + replay
+- [x] `apps/docs` — Fumadocs site, getting-started in 4 languages (EN, VI, JA, KO)
 - [ ] **v0.1.0 release** to npm with provenance + GitHub Release + launch post (HN, Reddit, X)
 - [ ] First public benchmark numbers published
 
@@ -127,7 +129,8 @@ This milestone exists because the 12-SDK review (RFC 0004) surfaced eight gaps w
 - [x] `Checkpointer` interface in `@ziro-agent/agent`
 - [x] `@ziro-agent/checkpoint-memory`, [x] `@ziro-agent/checkpoint-postgres`, [x] `@ziro-agent/checkpoint-redis`
 - [x] `agent.resumeFromCheckpoint(threadId, options)` — shipped (`createAgent({ checkpointer })` + `checkpointer.get` + `agent.resume`); thin **`agent.listCheckpoints(threadId, opts?)`** delegates to `checkpointer.list` when you only hold the agent reference
-- [ ] `streamText({ resumeKey, resumeFromIndex })` with cached event log — moved to v0.6 (RFC 0015 resilience)
+- [x] `streamText({ resumeKey, resumeFromIndex })` with cached event log — MVP replay from event store shipped in v0.6 slice; replay-then-continue upstream remains follow-up (RFC 0006 / RFC 0015)
+- [x] **`RedisResumableStreamEventStore`** (`@ziro-agent/checkpoint-redis`) — Redis + TTL for resumable `streamText` event logs (complements in-memory `@ziro-agent/core` store)
 - [x] **Mental model rename**: durable is the *default* (any checkpointer); Temporal/Inngest become the long-running adapters
 
 ### Track 3 — Provider depth (week 5-6)
@@ -275,7 +278,7 @@ This milestone exists because the 12-SDK review (RFC 0004) surfaced eight gaps w
 | GDPR right-to-erasure                        | `agent.deleteUserData(userId)` propagates across checkpointer + memory + traces     | Storing user-identifiable data in spans by default — span attrs use opaque IDs only                   |
 
 ### Tracks (P0 only)
-- [ ] **O5** — Compliance starter pack (`@ziro-agent/compliance` + `@ziro-agent/audit`) — see [RFC 0016](./rfcs/0016-compliance-pack.md)
+- [x] **O5** — Compliance starter pack *slice* (`@ziro-agent/compliance` + `@ziro-agent/audit`) exists in-repo; deeper control-map and templates continue under [RFC 0016](./rfcs/0016-compliance-pack.md)
 - [ ] **O4** — `@ziro-agent/vllm` + `@ziro-agent/tgi` (promoted from P1 if banking pull)
 - [ ] Vietnamese tokenizer / model presets (PhoGPT, VinAI, Viettel AI, FPT.AI) — carried from RFC 0004 v0.3
 - [ ] Air-gapped install bundle (single tarball, zero network calls) — carried from RFC 0004 v0.3
@@ -297,7 +300,7 @@ This milestone exists because the 12-SDK review (RFC 0004) surfaced eight gaps w
 - [ ] **N1** — `CONTRIBUTING-ADAPTERS.md` published
 - [ ] **N2** — release-cadence commitment in `RELEASING.md`
 - [ ] **J3** — `SUPPORT-MATRIX.md` published (TS / Node LTS policy)
-- [ ] `agent.resumeFromCheckpoint(threadId)` / `agent.listCheckpoints(threadId)` (carried from v0.2 Track 2)
+- [x] `agent.resumeFromCheckpoint(threadId)` / `agent.listCheckpoints(threadId)` (shipped in v0.2 Track 2)
 - [ ] JSON / YAML datasets accepted by `ziroagent eval` (carried from v0.2 Track 5)
 
 ---
@@ -332,7 +335,7 @@ P1 items deferred from v1.0 GA per RFC 0008 tier definitions. Backwards-compatib
 - **G5** — Temporal durable adapter (if not promoted to P0)
 - **I4** / **I5** — Image generation + TTS / STT model interfaces
 - **K2** — Semantic cache middleware
-- **M2** — RFC index auto-published to docs site
+- **M2** — RFC index auto-published to docs site (**shipped** in `apps/docs`)
 - **O2** — Long-context auto-compress hook
 - **O4** — vLLM / TGI providers (if not promoted)
 - AG-UI / `@ziro-agent/agui` + `@ziro-agent/react` frontend layer (carried from RFC 0004 v0.3 Track 3)

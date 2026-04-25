@@ -63,6 +63,7 @@ export type {
   SandboxLanguage,
 } from './sandbox/types.js';
 export * from './stream-text.js';
+export * from './streaming/resumable-stream-store.js';
 export * from './streaming/text-stream.js';
 export * from './types/content.js';
 export * from './types/finish-reason.js';

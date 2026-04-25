@@ -5,12 +5,13 @@
   "description": "Documentation site for the ZiroAgent SDK (Fumadocs + Next.js).",
   "type": "module",
   "scripts": {
-    "dev": "fumadocs-mdx && next dev --port 4001",
-    "prebuild": "pnpm run api:generate && fumadocs-mdx",
+    "dev": "pnpm run rfc:index && fumadocs-mdx && next dev --port 4001",
+    "prebuild": "pnpm run rfc:index && pnpm run api:generate && fumadocs-mdx",
     "build": "next build",
     "start": "next start --port 4001",
-    "typecheck": "fumadocs-mdx && tsc --noEmit",
-    "api:generate": "typedoc"
+    "typecheck": "pnpm run rfc:index && fumadocs-mdx && tsc --noEmit",
+    "api:generate": "typedoc",
+    "rfc:index": "node ./scripts/generate-rfc-index.mjs"
   },
   "dependencies": {
     "fumadocs-core": "^16.8.1",

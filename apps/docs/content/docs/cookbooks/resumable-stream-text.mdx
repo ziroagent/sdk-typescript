@@ -1,0 +1,68 @@
+---
+title: Resumable streamText (event log)
+description: Cache model stream events under a resumeKey and replay slices with streamText — RFC 0006 MVP.
+---
+
+`streamText` can persist each `ModelStreamPart` as it flows, then **replay** from
+a stored index without calling the provider again. This is the SDK’s **MVP** for
+resumable streams: same-process or Redis-backed logs, **replay only** (full RFC
+0006 “replay then continue upstream” remains future work).
+
+## In-memory (tests, single process)
+
+```ts
+import {
+  InMemoryResumableStreamEventStore,
+  streamText,
+} from '@ziro-agent/core';
+
+const store = new InMemoryResumableStreamEventStore();
+
+const out = await streamText({
+  model,
+  prompt: 'Hi',
+  resumable: true,
+  streamEventStore: store,
+});
+// out.resumeKey — opaque, treat like a session handle
+const text = await out.text();
+
+// Replay from event index 0 (full run)
+const again = await streamText({
+  resumeKey: out.resumeKey!,
+  resumeFromIndex: 0,
+  streamEventStore: store,
+});
+await again.text();
+```
+
+`resumeFromIndex` is **0-based**: use the first index the client has **not** yet
+applied (after a disconnect, pass “last seen index + 1” if you only need the tail).
+
+## Redis (TTL, multi-process readers)
+
+Use `RedisResumableStreamEventStore` from `@ziro-agent/checkpoint-redis` with the
+same `ResumableStreamEventStore` interface as the in-memory store. Default key
+prefix is `ziro:st` (separate from the checkpointer’s `ziro:cp`).
+
+```ts
+import { streamText } from '@ziro-agent/core';
+import IORedis from 'ioredis';
+import { fromIoRedis, RedisResumableStreamEventStore } from '@ziro-agent/checkpoint-redis';
+
+const redis = new IORedis(process.env.REDIS_URL!);
+const streamEventStore = new RedisResumableStreamEventStore({
+  client: fromIoRedis(redis),
+  ttlSeconds: 3600,
+});
+
+const out = await streamText({
+  model,
+  prompt: 'Hi',
+  resumable: true,
+  streamEventStore,
+});
+```
+
+See also: [RFC 0006](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0006-checkpointer.md),
+[ROADMAP — Track 2](https://github.com/ziroagent/sdk-typescript/blob/main/ROADMAP.md).

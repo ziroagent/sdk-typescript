@@ -209,6 +209,8 @@ We publish reproducible benchmarks against Vercel AI SDK, Mastra, and LangGraph 
 
 See [POSITIONING.md](POSITIONING.md) for an honest comparison with Vercel AI SDK, Mastra, LangGraph, and CrewAI — including where Ziro is **not** the right choice today.
 
+**Agentic system requirements** (capability checklist aligned with production agent patterns, mapped to `@ziro-agent/*` packages and release gates): [docs/AGENTIC_SYSTEM_REQUIREMENTS.md](docs/AGENTIC_SYSTEM_REQUIREMENTS.md).
+
 ## Repository scripts
 
 ```bash

@@ -1,0 +1,32 @@
+---
+title: RFC index
+description: Design RFCs for the ZiroAgent SDK (generated from the repository).
+---
+
+This page is **generated** — do not edit by hand. Source: `apps/docs/scripts/generate-rfc-index.mjs` and `rfcs/*.md`.
+
+The canonical text, status lines, and discussion live in the GitHub repository. Follow links to read the full RFC (including deferred work, gap matrices, and open questions).
+
+| RFC | Title | Status | Source |
+| --- | --- | --- | --- |
+| `0000-template` | RFC NNNN: Title | draft \| accepted \| rejected \| superseded | [View on GitHub](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0000-template.md) |
+| `0001-budget-guard` | RFC 0001: BudgetGuard — first-class cost enforcement | **accepted (v0.1.6)** — layers 1+2+3+4 all shipped 2026-04-20 (`core` + provider `estimateCost`; `agent` loop budget, `tools` per-tool `budget` + `getCurrentBudget`, `tracing` `instrumentBudget()`; streaming mid-call abo | [View on GitHub](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0001-budget-guard.md) |
+| `0002-human-in-the-loop` | RFC 0002: Human-in-the-loop — approval gates + suspend/resume | **accepted (v0.1.7)** | [View on GitHub](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0002-human-in-the-loop.md) |
+| `0003-evals-as-first-class` | RFC 0003: Evals as first-class — `defineEval` + graders + CI gate | **accepted (v0.1.8)** | [View on GitHub](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0003-evals-as-first-class.md) |
+| `0004-roadmap-v2` | RFC 0004: Roadmap v2 — competitive absorption with anti-roadmap discipline | **draft** | [View on GitHub](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0004-roadmap-v2.md) |
+| `0005-language-model-middleware` | RFC 0005: `LanguageModelMiddleware` — composable model wrappers | **draft (stub)** — design comments open per `GOVERNANCE.md` until 2026-05-06 | [View on GitHub](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0005-language-model-middleware.md) |
+| `0006-checkpointer` | RFC 0006: `Checkpointer` + resumable streams — durable-by-default agents | **draft (stub)** — design comments open per `GOVERNANCE.md` until 2026-05-06 | [View on GitHub](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0006-checkpointer.md) |
+| `0007-handoffs-and-router` | RFC 0007: Multi-agent — `handoffs[]` + deterministic `router` | **draft (stub)** — design comments open per `GOVERNANCE.md` until 2026-05-06 | [View on GitHub](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0007-handoffs-and-router.md) |
+| `0008-roadmap-v3` | RFC 0008: Roadmap v3 — toward v1.0 (best-practices 2026 absorption) | **draft** | [View on GitHub](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0008-roadmap-v3.md) |
+| `0009-mcp-server` | RFC 0009: MCP server (`ziroagent mcp serve`) | **stub** (detailed design TBD before v0.3 milestone start) | [View on GitHub](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0009-mcp-server.md) |
+| `0010-openapi-tools` | RFC 0010: OpenAPI → tools generator | **stub** (detailed design TBD before v0.3 milestone start) | [View on GitHub](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0010-openapi-tools.md) |
+| `0011-memory-tiers` | RFC 0011: Memory tiers (working / conversation / long-term) | **draft** (§Detailed design sketched 2026-04; working + conversation + processors + `createAgent({ memory })` shipped; durable conversation store + MemoryProcessor OTel + richer `compress()` defaults still open) | [View on GitHub](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0011-memory-tiers.md) |
+| `0012-rag-hardening` | RFC 0012: RAG hardening (hybrid + rerank + ingestion + citations) | **draft** (§Detailed design sketched 2026-04; first code slice landed 2026-04; ingestion registry + non-PG store hybrid parity still open) | [View on GitHub](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0012-rag-hardening.md) |
+| `0013-sandbox-tools` | RFC 0013: Sandbox tools (code interpreter + browser) | **slice shipped** (core interfaces + tools + reference adapters; detailed cookbook / `browse(url, intent)` TBD) | [View on GitHub](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0013-sandbox-tools.md) |
+| `0014-multimodal-content-parts` | RFC 0014: Multi-modal content parts (audio / file / video) | **stub** (detailed design TBD before v0.7 milestone start) | [View on GitHub](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0014-multimodal-content-parts.md) |
+| `0015-resilience` | RFC 0015: Resilience (fallback chain + record/replay + repair) | **partial** — v0.6+ slice: `repairToolCall`, `@ziro-agent/core/testing` model helpers, **`modelFallback`** middleware (optional circuit breaker), **agent JSONL record/replay** (`runWithAgentRecording` / `recordAgentRun`) | [View on GitHub](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0015-resilience.md) |
+| `0016-compliance-pack` | RFC 0016: Compliance starter pack (EU AI Act / SOC 2 / GDPR) | **draft** (§Detailed design sketched 2026-04; no `@ziro-agent/compliance` / `@ziro-agent/audit` package code in repo yet) | [View on GitHub](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0016-compliance-pack.md) |
+
+## Gaps and follow-ups (selected)
+
+MVP **replay** for resumable `streamText` / `resumeKey` (in-memory + optional Redis) is [shipped in the SDK](https://github.com/ziroagent/sdk-typescript/blob/main/ROADMAP.md) — **full** RFC 0006 “replay then continue upstream” and durable stream caching semantics remain follow-up. Other high-level gaps in [RFC 0008 (Roadmap v3)](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0008-roadmap-v3.md) include **full OpenAPI → tools** beyond GET ([RFC 0010](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0010-openapi-tools.md)), **RAG hardening** ([RFC 0012](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0012-rag-hardening.md)), **compliance pack** depth ([RFC 0016](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0016-compliance-pack.md)), and many others — see the gap matrix in RFC 0008.
