@@ -1,6 +1,6 @@
 {
   "name": "@ziro-agent/ollama",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "description": "Ollama provider for ZiroAgent SDK — run open-weight LLMs locally with the same interface as OpenAI / Anthropic. Sovereign pillar primitive.",
   "license": "Apache-2.0",
   "homepage": "https://ziroagent.com",
