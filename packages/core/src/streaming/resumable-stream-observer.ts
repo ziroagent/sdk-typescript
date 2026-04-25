@@ -2,6 +2,7 @@ export interface ResumableStreamEvent {
   phase:
     | 'replay_start'
     | 'replay_end'
+    | 'replay_stale_expected_index'
     | 'continue_lock_acquired'
     | 'continue_lock_released'
     | 'continue_upstream_start'
@@ -9,6 +10,10 @@ export interface ResumableStreamEvent {
     | 'continue_upstream_skipped_completed';
   resumeKey: string;
   replayCount?: number;
+  /** Client-asserted next index (RFC 0017) when phase is `replay_stale_expected_index`. */
+  expectedNextIndex?: number;
+  /** Store `getSessionMeta().nextIndex` when phase is `replay_stale_expected_index`. */
+  serverNextIndex?: number;
 }
 
 export interface ResumableStreamObserver {

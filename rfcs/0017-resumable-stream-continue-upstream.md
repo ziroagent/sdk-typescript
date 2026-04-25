@@ -8,11 +8,11 @@
 
 ## Summary
 
-Today, `streamText({ resumable: true, streamEventStore })` records `ModelStreamPart` events by sequential index, and `streamText({ resumeKey, resumeFromIndex, streamEventStore })` **replays** slices from the store only. It does **not** open a new call to the language model to append further events after the last persisted index.
+Today, `streamText({ resumable: true, streamEventStore })` records `ModelStreamPart` events by sequential index. Replay mode `streamText({ resumeKey, resumeFromIndex, streamEventStore })` reads slices from the store. With **`continueUpstream: true`** and the same model-call fields as a fresh `streamText`, the SDK **replays** cached parts from `resumeFromIndex`, then — when the session is **not** completed — opens a live `model.stream`, appends new parts to the same log, and exposes them in one combined consumer stream (see phased delivery below).
 
-This RFC specifies the **“replay then continue upstream”** behavior promised at a high level in RFC 0006: after emitting all parts with index `>= resumeFromIndex` that are already in the store, the SDK should **optionally** attach a live model stream and keep appending new parts (with increasing indices) **when the original run did not complete** (e.g. client disconnect, process crash) and the operator opts in to continuation.
+Optional **`expectedNextIndex`** (must equal `getSessionMeta(resumeKey).nextIndex`) lets clients detect stale tabs or conflicting writers **before** replay / continue.
 
-MVP (shipped) remains **replay-only**; this document is the plan for the next slice.
+This RFC remains the design record for semantics, caps, locks, observability, and follow-ups beyond the shipped slices.
 
 ## Motivation
 
@@ -75,6 +75,8 @@ Extend the **replay** branch (options that include `resumeKey` + `streamEventSto
 type StreamTextOptionsContinue = StreamTextOptionsFromReplay & {
   /** When true, after replaying stored parts from `resumeFromIndex`, open upstream if the session is not completed. */
   continueUpstream?: boolean;
+  /** Optional: must equal `getSessionMeta(resumeKey).nextIndex` when set (stale-tab guard). */
+  expectedNextIndex?: number;
 } & (
   | { continueUpstream?: false | undefined } // no extra fields
   | { continueUpstream: true; model: LanguageModel; /* + messages, tools, ... same as “from model” branch */ }
@@ -126,13 +128,20 @@ If a `LanguageModel` / provider can resume without resending the full message li
 
 | Phase | Deliverable | Notes |
 | ----- |-------------|-------|
-| A | `getSessionMeta` (or equivalent) + `completed` flips on terminal part | **Shipped** in `InMemoryResumableStreamEventStore` + `RedisResumableStreamEventStore` (`@ziro-agent/core`, `@ziro-agent/checkpoint-redis`); no new `streamText` surface yet |
-| B | `streamText` replay stream concatenated with `model.stream` when `continueUpstream: true` | **Shipped** in `@ziro-agent/core`; replays cached tail then appends live parts into the same session log. |
-| C | Optional Redis `SETNX` / lock helper for single-writer continue | Optional package API in `checkpoint-redis` |
-| D | Replay/continue observability hooks | **Shipped** via `setResumableStreamObserver` + phase events (`replay_*`, `continue_upstream_*`, lock acquire/release). Tracing packages can map these to spans. |
+| A | `getSessionMeta` + `completed` flips on terminal part | **Shipped** — `InMemoryResumableStreamEventStore` + `RedisResumableStreamEventStore` |
+| B | `streamText` replay concatenated with `model.stream` when `continueUpstream: true` | **Shipped** — `@ziro-agent/core` |
+| C | Redis `SET NX EX` continue lock (`acquireContinueLock` / `releaseContinueLock`) | **Shipped** — `@ziro-agent/checkpoint-redis`; auto-used from `streamText` when the store implements the lock interface |
+| D | Replay/continue observability hooks | **Shipped** — `setResumableStreamObserver` + phase events (`replay_*`, `continue_upstream_*`, lock acquire/release); added `replay_stale_expected_index` when `expectedNextIndex` mismatches |
+| E | `@ziro-agent/tracing` (or docs cookbook) maps observer phases → OTel spans | **Planned** — keep core free of tracer deps |
+| F | Agent-loop integration (RFC 0002) when log ends mid-tool-call | **Open** — likely “resume agent, not raw `streamText`” |
+| G | Manual `markCompleted(resumeKey)` escape hatch for false-incomplete logs | **Open** |
+
+## Decisions (locked in code)
+
+- **`expectedNextIndex`:** Optional on replay / continue-upstream `streamText`. When set, it must equal `getSessionMeta(resumeKey).nextIndex` (the next append index == current log length). Mismatch → `ResumableStreamError` + observer phase `replay_stale_expected_index`. Callers who only use `resumeFromIndex` need not set it.
 
 ## Unresolved questions
 
-- Should `continueUpstream` require an explicit `expectedNextIndex` from the client to detect stale tabs?
 - How to represent **tool-call** mid-stream: if the log ends mid-tool-call, is continuation allowed, or do we require resuming the **agent** loop (RFC 0002) instead of raw `streamText`?
 - Should **budget** be charged for replay bytes as 0 tokens, or a configurable “replay free” mode only when `!continueUpstream`?
+- Should continuation require **`expectedNextIndex`** when `continueUpstream: true` in a future semver-major tightening?

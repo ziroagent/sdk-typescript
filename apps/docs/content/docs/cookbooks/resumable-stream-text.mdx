@@ -59,6 +59,23 @@ await again.text();
 `resumeFromIndex` is **0-based**: use the first index the client has **not** yet
 applied (after a disconnect, pass “last seen index + 1” if you only need the tail).
 
+### Stale-tab guard: `expectedNextIndex`
+
+If the client cached `nextIndex` from a prior response (same value as
+`getSessionMeta(resumeKey).nextIndex` on the server), pass it on reconnect. If
+the log advanced on another tab or writer, `streamText` throws
+`ResumableStreamError` before replay:
+
+```ts
+const meta = await store.getSessionMeta(resumeKey);
+const out = await streamText({
+  resumeKey,
+  resumeFromIndex: clientLastSeen + 1,
+  expectedNextIndex: meta?.nextIndex,
+  streamEventStore: store,
+});
+```
+
 ## Redis (TTL, multi-process readers)
 
 Use `RedisResumableStreamEventStore` from `@ziro-agent/checkpoint-redis` with the

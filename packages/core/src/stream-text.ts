@@ -6,10 +6,11 @@ import { computeActualUsd, type GenerateTextOptions, resolveEstimate } from './g
 import { getPricing } from './pricing/index.js';
 import { chainAbortSignals, wrapStreamWithBudget } from './streaming/budget-stream.js';
 import { fireResumableStreamEvent } from './streaming/resumable-stream-observer.js';
-import type {
-  ResumableStreamContinueLock,
-  ResumableStreamContinueLockStore,
-  ResumableStreamEventStore,
+import {
+  type ResumableStreamContinueLock,
+  type ResumableStreamContinueLockStore,
+  ResumableStreamError,
+  type ResumableStreamEventStore,
 } from './streaming/resumable-stream-store.js';
 import { buildStreamTextResult, type StreamTextResult } from './streaming/text-stream.js';
 import type { ModelCallOptions, ModelStreamPart } from './types/model.js';
@@ -33,6 +34,11 @@ type StreamTextOptionsFromReplay = {
   resumeKey: string;
   resumeFromIndex?: number;
   streamEventStore: ResumableStreamEventStore;
+  /**
+   * When set, must equal `getSessionMeta(resumeKey).nextIndex` for the key (length of the
+   * persisted log). Use to detect stale clients or conflicting writers before replay.
+   */
+  expectedNextIndex?: number;
   /** Called once per error event from the replay stream. */
   onError?: (err: unknown) => void;
   continueUpstream?: false;
@@ -42,6 +48,7 @@ type StreamTextOptionsFromReplayAndContinue = GenerateTextOptions & {
   resumeKey: string;
   resumeFromIndex?: number;
   streamEventStore: ResumableStreamEventStore;
+  expectedNextIndex?: number;
   /** Called once per error event from replay/live stream. */
   onError?: (err: unknown) => void;
   continueUpstream: true;
@@ -77,6 +84,24 @@ export type StreamTextOptions =
  */
 export async function streamText(options: StreamTextOptions): Promise<StreamTextResult> {
   if ('resumeKey' in options) {
+    const metaProbe = await options.streamEventStore.getSessionMeta(options.resumeKey);
+    if (metaProbe === null) {
+      throw new ResumableStreamError(`Unknown resumeKey: ${options.resumeKey}`);
+    }
+    if (options.expectedNextIndex !== undefined) {
+      if (metaProbe.nextIndex !== options.expectedNextIndex) {
+        fireResumableStreamEvent({
+          phase: 'replay_stale_expected_index',
+          resumeKey: options.resumeKey,
+          expectedNextIndex: options.expectedNextIndex,
+          serverNextIndex: metaProbe.nextIndex,
+        });
+        throw new ResumableStreamError(
+          `expectedNextIndex ${options.expectedNextIndex} does not match server log (nextIndex ${metaProbe.nextIndex}) for ${options.resumeKey}`,
+        );
+      }
+    }
+
     const replayParts = await options.streamEventStore.getParts(
       options.resumeKey,
       options.resumeFromIndex ?? 0,
@@ -136,8 +161,15 @@ export async function streamText(options: StreamTextOptions): Promise<StreamText
         });
         return { ...replay, resumeKey: options.resumeKey };
       }
-      const { resumeKey, resumeFromIndex, streamEventStore, continueUpstream, onError, ...live } =
-        options;
+      const {
+        resumeKey,
+        resumeFromIndex,
+        streamEventStore,
+        continueUpstream,
+        expectedNextIndex: _expectedNextIndex,
+        onError,
+        ...live
+      } = options;
       fireResumableStreamEvent({
         phase: 'continue_upstream_start',
         resumeKey: options.resumeKey,
