@@ -14,7 +14,7 @@
     "rfc:index": "node ./scripts/generate-rfc-index.mjs"
   },
   "dependencies": {
-    "fumadocs-core": "^16.8.1",
+    "fumadocs-core": "^16.8.4",
     "fumadocs-mdx": "^14.3.1",
     "fumadocs-ui": "^16.8.1",
     "next": "^16.2.4",
