@@ -6,6 +6,7 @@ export {
   createModelFallbackOtelOnFallback,
   type ModelFallbackEvent,
 } from './instrument-model-fallback.js';
+export { instrumentResumableStreams } from './instrument-resumable-streams.js';
 export { instrumentTool, instrumentTools, type ToolLike } from './instrument-tools.js';
 export {
   createOtelTracer,
