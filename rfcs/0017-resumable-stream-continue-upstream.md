@@ -132,7 +132,7 @@ If a `LanguageModel` / provider can resume without resending the full message li
 | B | `streamText` replay concatenated with `model.stream` when `continueUpstream: true` | **Shipped** — `@ziro-agent/core` |
 | C | Redis `SET NX EX` continue lock (`acquireContinueLock` / `releaseContinueLock`) | **Shipped** — `@ziro-agent/checkpoint-redis`; auto-used from `streamText` when the store implements the lock interface |
 | D | Replay/continue observability hooks | **Shipped** — `setResumableStreamObserver` + phase events (`replay_*`, `continue_upstream_*`, lock acquire/release); added `replay_stale_expected_index` when `expectedNextIndex` mismatches |
-| E | `@ziro-agent/tracing` (or docs cookbook) maps observer phases → OTel spans | **Planned** — keep core free of tracer deps |
+| E | `@ziro-agent/tracing` maps observer phases → OTel spans (`instrumentResumableStreams`) | **Shipped** — `ziro.resumable.replay` + events; `ziro.resumable.stale_expected_index` marker; core emits `replay_end` on continue-upstream errors for paired lifecycle |
 | F | Agent-loop integration (RFC 0002) when log ends mid-tool-call | **Open** — likely “resume agent, not raw `streamText`” |
 | G | Manual `markCompleted(resumeKey)` escape hatch for false-incomplete logs | **Open** |
 

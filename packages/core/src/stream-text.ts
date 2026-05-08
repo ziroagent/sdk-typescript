@@ -220,6 +220,11 @@ export async function streamText(options: StreamTextOptions): Promise<StreamText
           });
         }
       }
+      fireResumableStreamEvent({
+        phase: 'replay_end',
+        resumeKey: options.resumeKey,
+        replayCount: replayParts.length,
+      });
       throw err;
     }
   }

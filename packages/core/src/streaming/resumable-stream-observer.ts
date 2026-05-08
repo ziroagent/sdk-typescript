@@ -22,8 +22,12 @@ export interface ResumableStreamObserver {
 
 let observer: ResumableStreamObserver | null = null;
 
-export function setResumableStreamObserver(next: ResumableStreamObserver | null): void {
+export function setResumableStreamObserver(
+  next: ResumableStreamObserver | null,
+): ResumableStreamObserver | null {
+  const prev = observer;
   observer = next;
+  return prev;
 }
 
 export function fireResumableStreamEvent(event: ResumableStreamEvent): void {
