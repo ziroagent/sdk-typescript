@@ -1,5 +1,14 @@
 # @ziro-agent/cli
 
+## 0.5.4
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @ziro-agent/eval@0.2.19
+  - @ziro-agent/tools@0.6.8
+  - @ziro-agent/mcp-server@0.2.10
+
 ## 0.5.3
 
 ### Patch Changes
