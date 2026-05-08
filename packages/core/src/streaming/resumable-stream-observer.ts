@@ -7,7 +7,8 @@ export interface ResumableStreamEvent {
     | 'continue_lock_released'
     | 'continue_upstream_start'
     | 'continue_upstream_end'
-    | 'continue_upstream_skipped_completed';
+    | 'continue_upstream_skipped_completed'
+    | 'continue_upstream_blocked_mid_tool_call';
   resumeKey: string;
   replayCount?: number;
   /** Client-asserted next index (RFC 0017) when phase is `replay_stale_expected_index`. */

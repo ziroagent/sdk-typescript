@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { streamText } from './stream-text.js';
 import { setResumableStreamObserver } from './streaming/resumable-stream-observer.js';
 import {
+  ContinueUpstreamMidToolCallError,
   InMemoryResumableStreamEventStore,
   ResumableStreamError,
 } from './streaming/resumable-stream-store.js';
@@ -201,6 +202,48 @@ describe('streamText resumable', () => {
     await expect(out.text()).resolves.toBe('Hello');
   });
 
+  it('continueUpstream: throws when persisted tail ends mid-tool-call', async () => {
+    const store = new InMemoryResumableStreamEventStore();
+    const key = store.createResumeKey();
+    await store.append(key, 0, {
+      type: 'tool-call',
+      toolCallId: 'c1',
+      toolName: 'fn',
+      args: {},
+    });
+
+    await expect(
+      streamText({
+        resumeKey: key,
+        resumeFromIndex: 0,
+        streamEventStore: store,
+        continueUpstream: true,
+        model: mockStreamingModel(),
+        prompt: 'continue',
+      }),
+    ).rejects.toBeInstanceOf(ContinueUpstreamMidToolCallError);
+  });
+
+  it('replay-only still works when tail ends mid-tool-call', async () => {
+    const store = new InMemoryResumableStreamEventStore();
+    const key = store.createResumeKey();
+    await store.append(key, 0, {
+      type: 'tool-call',
+      toolCallId: 'c1',
+      toolName: 'fn',
+      args: {},
+    });
+
+    const replay = await streamText({
+      resumeKey: key,
+      resumeFromIndex: 0,
+      streamEventStore: store,
+    });
+    await expect(replay.toolCalls()).resolves.toMatchObject([
+      { toolCallId: 'c1', toolName: 'fn', args: {} },
+    ]);
+  });
+
   it('continueUpstream: replays cached tail then appends live stream', async () => {
     const store = new InMemoryResumableStreamEventStore();
     const key = store.createResumeKey();
@@ -378,6 +421,39 @@ describe('streamText resumable', () => {
         streamEventStore: store,
       }),
     ).rejects.toThrow(/expectedNextIndex 99 does not match server log/);
+  });
+
+  it('fires observer continue_upstream_blocked_mid_tool_call before throwing', async () => {
+    const phases: string[] = [];
+    setResumableStreamObserver({
+      onEvent(e) {
+        phases.push(e.phase);
+      },
+    });
+    try {
+      const store = new InMemoryResumableStreamEventStore();
+      const key = store.createResumeKey();
+      await store.append(key, 0, {
+        type: 'tool-call',
+        toolCallId: 'c1',
+        toolName: 'fn',
+        args: {},
+      });
+
+      await expect(
+        streamText({
+          resumeKey: key,
+          streamEventStore: store,
+          continueUpstream: true,
+          model: mockStreamingModel(),
+          prompt: 'x',
+        }),
+      ).rejects.toBeInstanceOf(ContinueUpstreamMidToolCallError);
+      expect(phases).toEqual(['continue_upstream_blocked_mid_tool_call']);
+      expect(phases).not.toContain('replay_start');
+    } finally {
+      setResumableStreamObserver(null);
+    }
   });
 
   it('fires observer on stale expectedNextIndex before throwing', async () => {
