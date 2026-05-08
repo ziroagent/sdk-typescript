@@ -1,5 +1,13 @@
 # @ziro-agent/checkpoint-redis
 
+## 0.5.1
+
+### Patch Changes
+
+- Updated dependencies [[`d1383a2`](https://github.com/ziroagent/sdk-typescript/commit/d1383a2df6f8532104fa45e79ed8f5f6831a6dd2), [`d1383a2`](https://github.com/ziroagent/sdk-typescript/commit/d1383a2df6f8532104fa45e79ed8f5f6831a6dd2)]:
+  - @ziro-agent/core@0.11.0
+  - @ziro-agent/agent@0.17.5
+
 ## 0.5.0
 
 ### Minor Changes

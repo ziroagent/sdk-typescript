@@ -1,5 +1,12 @@
 # @ziro-agent/ollama
 
+## 0.2.12
+
+### Patch Changes
+
+- Updated dependencies [[`d1383a2`](https://github.com/ziroagent/sdk-typescript/commit/d1383a2df6f8532104fa45e79ed8f5f6831a6dd2), [`d1383a2`](https://github.com/ziroagent/sdk-typescript/commit/d1383a2df6f8532104fa45e79ed8f5f6831a6dd2)]:
+  - @ziro-agent/core@0.11.0
+
 ## 0.2.11
 
 ### Patch Changes
