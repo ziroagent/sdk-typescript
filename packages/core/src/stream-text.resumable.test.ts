@@ -338,4 +338,75 @@ describe('streamText resumable', () => {
     expect(events).toContain('continue_upstream_end');
     expect(events).toContain('replay_end');
   });
+
+  it('replay accepts matching expectedNextIndex', async () => {
+    const store = new InMemoryResumableStreamEventStore();
+    const first = await streamText({
+      model: mockStreamingModel(),
+      prompt: 'hi',
+      resumable: true,
+      streamEventStore: store,
+    });
+    await first.text();
+    const meta = await store.getSessionMeta(first.resumeKey as string);
+    expect(meta?.nextIndex).toBe(3);
+
+    const again = await streamText({
+      resumeKey: first.resumeKey as string,
+      resumeFromIndex: 0,
+      expectedNextIndex: 3,
+      streamEventStore: store,
+    });
+    await expect(again.text()).resolves.toBe('Hello');
+  });
+
+  it('replay throws when expectedNextIndex does not match server log', async () => {
+    const store = new InMemoryResumableStreamEventStore();
+    const first = await streamText({
+      model: mockStreamingModel(),
+      prompt: 'hi',
+      resumable: true,
+      streamEventStore: store,
+    });
+    await first.text();
+
+    await expect(
+      streamText({
+        resumeKey: first.resumeKey as string,
+        resumeFromIndex: 0,
+        expectedNextIndex: 99,
+        streamEventStore: store,
+      }),
+    ).rejects.toThrow(/expectedNextIndex 99 does not match server log/);
+  });
+
+  it('fires observer on stale expectedNextIndex before throwing', async () => {
+    const phases: string[] = [];
+    setResumableStreamObserver({
+      onEvent(e) {
+        phases.push(e.phase);
+      },
+    });
+    try {
+      const store = new InMemoryResumableStreamEventStore();
+      const first = await streamText({
+        model: mockStreamingModel(),
+        prompt: 'hi',
+        resumable: true,
+        streamEventStore: store,
+      });
+      await first.text();
+
+      await expect(
+        streamText({
+          resumeKey: first.resumeKey as string,
+          expectedNextIndex: 0,
+          streamEventStore: store,
+        }),
+      ).rejects.toThrow(ResumableStreamError);
+      expect(phases).toContain('replay_stale_expected_index');
+    } finally {
+      setResumableStreamObserver(null);
+    }
+  });
 });

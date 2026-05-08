@@ -107,10 +107,11 @@ const { stream } = await streamText({
 ```
 
 Server caches stream events in a pluggable `ResumableStreamEventStore`, keyed
-by `resumeKey` with a TTL (Redis adapter). **Shipped (MVP):** replay of cached
-`ModelStreamPart` slices only. **Planned:** replay events with index `>=
-resumeFromIndex` from the store, then, when the run is not yet completed, open
-a new upstream `model.stream` and append more parts to the same log — see
+by `resumeKey` with a TTL (Redis adapter). **Shipped:** replay of cached
+`ModelStreamPart` slices, optional **`continueUpstream: true`** to replay then
+append a live `model.stream` into the same log when the session is incomplete,
+optional Redis single-writer lock, session metadata (`getSessionMeta`), and
+optional **`expectedNextIndex`** stale-client guard — see
 [RFC 0017 — resumable streamText, continue upstream](./0017-resumable-stream-continue-upstream.md).
 
 ### Postgres adapter schema

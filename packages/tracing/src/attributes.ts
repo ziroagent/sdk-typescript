@@ -107,6 +107,12 @@ export const ATTR = {
   MemoryProcessorName: 'ziroagent.memory.processor.name',
   /** Character length of working-memory markdown after `WorkingMemory.read()`. */
   MemoryWorkingCharCount: 'ziroagent.memory.working.char_count',
+
+  /** Resumable `streamText` replay / continue-upstream — Ziro extensions; RFC 0017. */
+  ResumableResumeKey: 'ziroagent.resumable.resume_key',
+  ResumableReplayCount: 'ziroagent.resumable.replay_count',
+  ResumableExpectedNextIndex: 'ziroagent.resumable.expected_next_index',
+  ResumableServerNextIndex: 'ziroagent.resumable.server_next_index',
 } as const;
 
 /** Value type accepted by the span attribute API. */
