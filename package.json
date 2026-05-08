@@ -33,7 +33,8 @@
     "release": "pnpm --filter \"./packages/*\" build && node ./scripts/publish-with-sandbox-rescue.js",
     "publint": "turbo run publint",
     "attw": "turbo run attw",
-    "prepare": "husky || true"
+    "prepare": "husky || true",
+    "bench": "pnpm --filter @ziro-agent/core exec vitest bench --run src/benchmarks/core-overhead.bench.ts"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",

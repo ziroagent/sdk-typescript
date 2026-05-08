@@ -76,6 +76,28 @@ const out = await streamText({
 });
 ```
 
+### Manual completion: `markCompleted`
+
+If the provider never emitted a terminal `finish` / `error` part, the stored log
+can remain **incomplete** forever and `continueUpstream: true` would keep trying
+to open another model leg. When you know no further tokens should be appended
+(for example after your own timeout or operator intervention), call
+`markCompleted(resumeKey)` on the **same** `ResumableStreamEventStore`
+implementation the session uses (in-memory or Redis). That flips `completed` to
+true **without** adding a synthetic stream part; further `append` calls fail,
+and `continueUpstream` stops issuing upstream once replay catches up.
+
+Use sparingly — incorrect completion can block legitimate continuation.
+
+### Budget: replay vs continue-upstream
+
+Replay emits bytes already in the log; those chunks do **not** trigger a new
+`model.stream` call and do **not** consume fresh provider tokens for history.
+The **live** leg after replay runs through the normal `streamText` budget path:
+pre-flight applies before opening `model.stream`, and mid-stream guards apply
+only to parts emitted on that continued leg (RFC 0017: replay is historically
+“already priced”; continuation may incur new usage).
+
 ## Redis (TTL, multi-process readers)
 
 Use `RedisResumableStreamEventStore` from `@ziro-agent/checkpoint-redis` with the

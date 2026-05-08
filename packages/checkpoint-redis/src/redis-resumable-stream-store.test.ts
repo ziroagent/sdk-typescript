@@ -244,4 +244,36 @@ describe('RedisResumableStreamEventStore', () => {
     await store.releaseContinueLock(lock);
     await expect(store.acquireContinueLock(key)).resolves.toBeDefined();
   });
+
+  it('markCompleted throws for unknown resumeKey', async () => {
+    const redis = redisListStub();
+    const store = new RedisResumableStreamEventStore({ client: redis });
+    await expect(store.markCompleted('missing')).rejects.toThrow(/Unknown resumeKey/);
+  });
+
+  it('markCompleted closes incomplete log without a terminal part', async () => {
+    const redis = redisListStub();
+    const store = new RedisResumableStreamEventStore({ client: redis });
+    const key = store.createResumeKey();
+    await store.append(key, 0, { type: 'text-delta', textDelta: 'x' });
+    await expect(store.getSessionMeta(key)).resolves.toMatchObject({ completed: false });
+    await store.markCompleted(key);
+    await expect(store.getSessionMeta(key)).resolves.toMatchObject({
+      completed: true,
+      nextIndex: 1,
+    });
+    await expect(store.append(key, 1, { type: 'text-delta', textDelta: 'y' })).rejects.toThrow(
+      /already completed/,
+    );
+  });
+
+  it('markCompleted works from a reader store instance without localIssued', async () => {
+    const redis = redisListStub();
+    const writer = new RedisResumableStreamEventStore({ client: redis });
+    const key = writer.createResumeKey();
+    await writer.append(key, 0, { type: 'text-delta', textDelta: 'x' });
+    const reader = new RedisResumableStreamEventStore({ client: redis });
+    await reader.markCompleted(key);
+    await expect(reader.getSessionMeta(key)).resolves.toMatchObject({ completed: true });
+  });
 });

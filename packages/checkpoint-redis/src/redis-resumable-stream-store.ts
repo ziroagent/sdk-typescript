@@ -317,6 +317,37 @@ export class RedisResumableStreamEventStore
     return raw.map((line) => deserializePart(line));
   }
 
+  async markCompleted(resumeKey: string): Promise<void> {
+    const meta = await this.getSessionMeta(resumeKey);
+    if (meta === null) {
+      throw new ResumableStreamError(`Unknown resumeKey: ${resumeKey}`);
+    }
+    if (meta.completed) {
+      return;
+    }
+    const compS: (string | number)[] = ['SET', this.compKey(resumeKey), '1'];
+    if (this.ttlSeconds !== undefined) {
+      compS.push('EX', this.ttlSeconds);
+    }
+    await this.client.command<unknown>(compS);
+
+    const t = String(this.now());
+    const ttlArgs: (string | number)[] = [this.tsKey(resumeKey), t];
+    if (this.ttlSeconds !== undefined) {
+      ttlArgs.push('EX', this.ttlSeconds);
+    }
+    await this.client.command<unknown>(['SET', ...ttlArgs]);
+
+    if (this.ttlSeconds !== undefined) {
+      const ttl = this.ttlSeconds;
+      await this.client.command<unknown>(['EXPIRE', this.regKey(resumeKey), ttl]);
+      await this.client.command<unknown>(['EXPIRE', this.logKey(resumeKey), ttl]);
+      await this.client.command<unknown>(['EXPIRE', this.bytesKey(resumeKey), ttl]);
+      await this.client.command<unknown>(['EXPIRE', this.tsKey(resumeKey), ttl]);
+      await this.client.command<unknown>(['EXPIRE', this.compKey(resumeKey), ttl]);
+    }
+  }
+
   private accountPartBytes(part: ModelStreamPart, wire: string): number {
     if (this.measurePartBytes) {
       return this.measurePartBytes(part);

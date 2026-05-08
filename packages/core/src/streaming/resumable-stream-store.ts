@@ -7,6 +7,18 @@ export class ResumableStreamError extends Error {
   }
 }
 
+/** Thrown when `streamText({ continueUpstream: true })` would extend a log whose tail is mid-tool-call or awaiting tool execution (RFC 0018). */
+export class ContinueUpstreamMidToolCallError extends ResumableStreamError {
+  readonly code = 'CONTINUE_UPSTREAM_MID_TOOL_CALL' as const;
+
+  constructor(
+    message = 'Cannot continue upstream: persisted stream ends mid-tool-call or with pending tool execution. Resume via the agent runtime or RFC 0002 human-in-the-loop suspend/resume instead of bare streamText({ continueUpstream: true }).',
+  ) {
+    super(message);
+    this.name = 'ContinueUpstreamMidToolCallError';
+  }
+}
+
 /**
  * True when the model run for this `resumeKey` has emitted a terminal part
  * (`finish` or `error`). Used for RFC 0017 continue-upstream and observability.
@@ -48,6 +60,13 @@ export interface ResumableStreamEventStore {
    * never created in this store (or no longer exists, e.g. evicted in Redis).
    */
   getSessionMeta(resumeKey: string): Promise<ResumableStreamSessionMeta | null>;
+  /**
+   * RFC 0017 Phase G: mark the session **completed** without appending a terminal
+   * `ModelStreamPart`. Use when the log would otherwise stay “incomplete” forever
+   * (e.g. provider never emitted `finish`) and you must stop `continueUpstream`
+   * from issuing another model call. Idempotent if already completed.
+   */
+  markCompleted(resumeKey: string): Promise<void>;
 }
 
 interface StreamSession {
@@ -159,6 +178,18 @@ export class InMemoryResumableStreamEventStore implements ResumableStreamEventSt
       );
     }
     return session.parts.slice(fromIndex);
+  }
+
+  async markCompleted(resumeKey: string): Promise<void> {
+    const session = this.sessions.get(resumeKey);
+    if (!session) {
+      throw new ResumableStreamError(`Unknown resumeKey: ${resumeKey}`);
+    }
+    if (session.completed) {
+      return;
+    }
+    session.completed = true;
+    session.updatedAt = this.now();
   }
 }
 

@@ -420,3 +420,34 @@ queue.
 Workflows are wired for `RELEASE_BOT_TOKEN` (fallback to `GITHUB_TOKEN`
 until the secret is added). Until then, use **Approve and run** or an
 admin merge on the version PR when CI does not auto-start.
+
+---
+
+## Signed commits and the version PR (`mergeable_state: blocked`)
+
+Branch protection **Require signed commits** on `main` applies to commits
+that land via PR merge. The squash merge commit GitHub creates for the
+version PR is usually verified as **Verified** (GitHub web flow). If your
+rule instead requires **every commit on the PR branch** to be signed,
+the commits on `changeset-release/main` from `changesets/action` are
+typically **unsigned** unless the bot/PAT account signs them.
+
+**Symptoms:** Status checks are green, reviews are approved, auto-merge is
+enabled, but the PR shows **Merging is blocked** and REST API reports
+`mergeable_state: blocked` while `mergeable: true`.
+
+**Fixes (pick one):**
+
+1. **Signing for the release bot account** — Configure **SSH signing**
+   or **GPG signing** for the GitHub user behind `RELEASE_BOT_TOKEN`
+   (machine user). See [GitHub docs: signing commits](https://docs.github.com/en/authentication/managing-commit-signature-verification/about-commit-signature-verification).
+   Future version PR commits become verified and satisfy strict rules.
+2. **Adjust branch protection** — If org policy allows, scope **Require
+   signed commits** so it does not reject squash merges from GitHub Actions
+   / unsigned bot commits (exact wording depends on GitHub Enterprise vs
+   Free — verify in **Settings → Branches → edit rule**).
+3. **Last resort** — Maintainer with admin rights: `gh pr merge <n>
+   --squash --admin` after CI green (auditable; use sparingly).
+
+Setting `RELEASE_BOT_TOKEN` fixes the **CI cascade** issue above; it does
+not by itself add signatures unless that account has signing configured.

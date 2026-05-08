@@ -67,6 +67,7 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "test": "vitest run",
+    "bench": "vitest bench --run src/benchmarks/core-overhead.bench.ts",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist .turbo *.tsbuildinfo",

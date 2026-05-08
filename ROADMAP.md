@@ -33,7 +33,7 @@ Our roadmap is shaped by one question: **"What stops 88% of agent projects from 
 - [x] `@ziro-agent/core` — `LanguageModel` interface, `generateText`, `streamText`, error taxonomy
 - [x] **`@ziro-agent/cli` ships day 1** — `ziroagent chat`, `ziroagent run`, interactive API-key setup → `~/.ziroagent/config.json`
 - [x] `npm create ziro@latest` — scaffold an agent in <60s
-- [ ] `BENCHMARKS.md` + `pnpm bench` harness (vs. Vercel AI SDK + Mastra)
+- [x] `pnpm bench` minimal harness + first numbers in [`BENCHMARKS.md`](./BENCHMARKS.md) (mock overhead); comparison vs Vercel AI SDK / Mastra still **open**
 
 ### Week 2 — Providers + MCP bidirectional + Tools
 - [x] `@ziro-agent/openai` — with explicit prompt-cache control
@@ -56,7 +56,7 @@ Our roadmap is shaped by one question: **"What stops 88% of agent projects from 
 - [x] `apps/playground` — chat UI + trace timeline + tool inspector + replay
 - [x] `apps/docs` — Fumadocs site, getting-started in 4 languages (EN, VI, JA, KO)
 - [ ] **v0.1.0 release** to npm with provenance + GitHub Release + launch post (HN, Reddit, X)
-- [ ] First public benchmark numbers published
+- [x] First public benchmark numbers published (incremental — mock overhead in [`BENCHMARKS.md`](./BENCHMARKS.md); full competitor suite still open)
 
 **v0.1 success criteria**
 - `npm create ziro@latest` → working agent in <60s on a fresh machine

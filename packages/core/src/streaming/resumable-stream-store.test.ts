@@ -57,6 +57,33 @@ describe('InMemoryResumableStreamEventStore', () => {
         e instanceof ResumableStreamError && /already completed/.test(String((e as Error).message)),
     );
   });
+
+  it('markCompleted throws for unknown resumeKey', async () => {
+    const store = new InMemoryResumableStreamEventStore();
+    await expect(store.markCompleted('unknown')).rejects.toThrow(ResumableStreamError);
+  });
+
+  it('markCompleted closes incomplete session without terminal part', async () => {
+    const store = new InMemoryResumableStreamEventStore();
+    const key = store.createResumeKey();
+    await store.append(key, 0, { type: 'text-delta', textDelta: 'x' });
+    await expect(store.getSessionMeta(key)).resolves.toMatchObject({ completed: false });
+    await store.markCompleted(key);
+    await expect(store.getSessionMeta(key)).resolves.toMatchObject({
+      completed: true,
+      nextIndex: 1,
+    });
+    await expect(store.append(key, 1, { type: 'text-delta', textDelta: 'y' })).rejects.toThrow(
+      /already completed/,
+    );
+  });
+
+  it('markCompleted is idempotent when already completed', async () => {
+    const store = new InMemoryResumableStreamEventStore();
+    const key = store.createResumeKey();
+    await store.append(key, 0, { type: 'finish', finishReason: 'stop', usage: { totalTokens: 0 } });
+    await expect(store.markCompleted(key)).resolves.toBeUndefined();
+  });
 });
 
 describe('isTerminalModelStreamPart', () => {
