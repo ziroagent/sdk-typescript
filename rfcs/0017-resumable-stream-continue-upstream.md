@@ -133,8 +133,8 @@ If a `LanguageModel` / provider can resume without resending the full message li
 | C | Redis `SET NX EX` continue lock (`acquireContinueLock` / `releaseContinueLock`) | **Shipped** — `@ziro-agent/checkpoint-redis`; auto-used from `streamText` when the store implements the lock interface |
 | D | Replay/continue observability hooks | **Shipped** — `setResumableStreamObserver` + phase events (`replay_*`, `continue_upstream_*`, lock acquire/release); added `replay_stale_expected_index` when `expectedNextIndex` mismatches |
 | E | `@ziro-agent/tracing` maps observer phases → OTel spans (`instrumentResumableStreams`) | **Shipped** — `ziro.resumable.replay` + events; `ziro.resumable.stale_expected_index` marker; core emits `replay_end` on continue-upstream errors for paired lifecycle |
-| F | Agent-loop integration (RFC 0002) when log ends mid-tool-call | **Open** — likely “resume agent, not raw `streamText`” |
-| G | Manual `markCompleted(resumeKey)` escape hatch for false-incomplete logs | **Open** |
+| F | Agent-loop integration when log ends mid-tool-call | **Partially shipped** — `continueUpstream` throws `ContinueUpstreamMidToolCallError` when the replay tail blocks continuation ([RFC 0018](./0018-phase-f-mid-toolcall-agent-resume.md)); full agent resume wiring remains future work |
+| G | Manual `markCompleted(resumeKey)` escape hatch for false-incomplete logs | **Shipped** — `ResumableStreamEventStore.markCompleted` in `@ziro-agent/core`; Redis store sets `comp` key |
 
 ## Decisions (locked in code)
 
@@ -142,6 +142,6 @@ If a `LanguageModel` / provider can resume without resending the full message li
 
 ## Unresolved questions
 
-- How to represent **tool-call** mid-stream: if the log ends mid-tool-call, is continuation allowed, or do we require resuming the **agent** loop (RFC 0002) instead of raw `streamText`?
+- **Mid-tool-call continuation:** Raw `streamText({ continueUpstream: true })` is **rejected** when `tailBlocksContinueUpstream` applies (`@ziro-agent/core`). Callers must recover via the **agent** loop / RFC 0002 — further ergonomics TBD.
 - Should **budget** be charged for replay bytes as 0 tokens, or a configurable “replay free” mode only when `!continueUpstream`?
 - Should continuation require **`expectedNextIndex`** when `continueUpstream: true` in a future semver-major tightening?

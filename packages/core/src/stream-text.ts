@@ -5,8 +5,10 @@ import { getCurrentScope, withBudget } from './budget/scope.js';
 import { computeActualUsd, type GenerateTextOptions, resolveEstimate } from './generate-text.js';
 import { getPricing } from './pricing/index.js';
 import { chainAbortSignals, wrapStreamWithBudget } from './streaming/budget-stream.js';
+import { tailBlocksContinueUpstream } from './streaming/model-stream-tail.js';
 import { fireResumableStreamEvent } from './streaming/resumable-stream-observer.js';
 import {
+  ContinueUpstreamMidToolCallError,
   type ResumableStreamContinueLock,
   type ResumableStreamContinueLockStore,
   ResumableStreamError,
@@ -106,6 +108,19 @@ export async function streamText(options: StreamTextOptions): Promise<StreamText
       options.resumeKey,
       options.resumeFromIndex ?? 0,
     );
+    if (
+      'continueUpstream' in options &&
+      options.continueUpstream === true &&
+      !metaProbe.completed &&
+      tailBlocksContinueUpstream(replayParts)
+    ) {
+      fireResumableStreamEvent({
+        phase: 'continue_upstream_blocked_mid_tool_call',
+        resumeKey: options.resumeKey,
+        replayCount: replayParts.length,
+      });
+      throw new ContinueUpstreamMidToolCallError();
+    }
     fireResumableStreamEvent({
       phase: 'replay_start',
       resumeKey: options.resumeKey,

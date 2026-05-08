@@ -77,6 +77,21 @@ function traceResumableEvent(
   const key = event.resumeKey;
 
   switch (event.phase) {
+    case 'continue_upstream_blocked_mid_tool_call': {
+      const attrs: Record<string, AttrValue> = {
+        [ATTR.ResumableResumeKey]: key,
+      };
+      if (event.replayCount !== undefined) {
+        attrs[ATTR.ResumableReplayCount] = event.replayCount;
+      }
+      const span = tracer.startSpan('ziro.resumable.continue_upstream_blocked_mid_tool_call', {
+        kind: 'internal',
+        attributes: attrs,
+      });
+      span.setStatus({ code: 2, message: 'mid-tool-call tail' });
+      span.end();
+      break;
+    }
     case 'replay_stale_expected_index': {
       const attrs: Record<string, AttrValue> = {
         [ATTR.ResumableResumeKey]: key,
