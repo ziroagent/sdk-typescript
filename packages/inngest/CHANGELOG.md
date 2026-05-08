@@ -1,5 +1,12 @@
 # @ziro-agent/inngest
 
+## 0.3.17
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @ziro-agent/agent@0.17.6
+
 ## 0.3.16
 
 ### Patch Changes
