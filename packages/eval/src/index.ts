@@ -14,6 +14,11 @@ export {
   type RegexOptions,
   regex,
 } from './graders/index.js';
+export {
+  createRecordingRegressionCase,
+  defineRecordingRegressionEval,
+  expectedAssistantTextFromRecording,
+} from './recording-regression.js';
 export { formatTextReport, toJSONReport } from './reporters.js';
 export { defineEval, runEval } from './run-eval.js';
 export type {

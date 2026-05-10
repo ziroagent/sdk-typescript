@@ -73,6 +73,8 @@ module.exports = {
         'providers-anthropic',
         'providers-google',
         'providers-ollama',
+        'providers-groq',
+        'openapi',
         'checkpoint-memory',
         'checkpoint-postgres',
         'checkpoint-redis',

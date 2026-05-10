@@ -1,0 +1,58 @@
+import { describe, expect, it } from 'vitest';
+import { exactMatch } from './graders/exact-match.js';
+import {
+  createRecordingRegressionCase,
+  defineRecordingRegressionEval,
+  expectedAssistantTextFromRecording,
+} from './recording-regression.js';
+import { runEval } from './run-eval.js';
+
+describe('recording regression helpers', () => {
+  it('extracts expected text from last step', () => {
+    const jsonl = [
+      '{"v":1,"kind":"step","step":{"index":0,"text":"first","content":[],"toolCalls":[],"toolResults":[],"finishReason":"stop","usage":{"totalTokens":1}}}',
+      '{"v":1,"kind":"step","step":{"index":1,"text":"final answer","content":[],"toolCalls":[],"toolResults":[],"finishReason":"stop","usage":{"totalTokens":2}}}',
+    ].join('\n');
+
+    const c = createRecordingRegressionCase(jsonl, 'user question', {
+      id: 't1',
+    });
+    expect(c.input).toEqual({ prompt: 'user question' });
+    expect(c.expected).toBe('final answer');
+    expect(c.metadata?.ziroRecordingSteps).toBe(2);
+  });
+
+  it('defineRecordingRegressionEval + runEval passes exactMatch when output matches', async () => {
+    const jsonl =
+      '{"v":1,"kind":"step","step":{"index":0,"text":"done","content":[],"toolCalls":[],"toolResults":[],"finishReason":"stop","usage":{"totalTokens":1}}}';
+    const spec = defineRecordingRegressionEval({
+      name: 'recording-regression-smoke',
+      recordingJsonl: jsonl,
+      prompt: 'ignored-by-run',
+      run: async () => 'done',
+      graders: [exactMatch()],
+    });
+    const r = await runEval(spec);
+    expect(r.gate.passed).toBe(true);
+    expect(r.cases[0]?.passed).toBe(true);
+  });
+
+  it('expectedAssistantTextFromRecording is consistent', () => {
+    const lines = [
+      {
+        v: 1 as const,
+        kind: 'step' as const,
+        step: {
+          index: 0,
+          text: 'a',
+          content: [],
+          toolCalls: [],
+          toolResults: [],
+          finishReason: 'stop' as const,
+          usage: { totalTokens: 1 },
+        },
+      },
+    ];
+    expect(expectedAssistantTextFromRecording(lines)).toBe('a');
+  });
+});
