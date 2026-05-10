@@ -22,7 +22,7 @@ These figures are **not** comparable across hardware; they illustrate relative c
 | Field | Value |
 | ----- | ----- |
 | Command | `pnpm bench` |
-| Commit | `0ff24bb` (latest refresh — replace when you re-run locally) |
+| Commit | refresh locally after merge (`git rev-parse HEAD`) |
 | Node.js | v25.8.1 (capture locally; CI bench workflow uses `.nvmrc`) |
 | pnpm | 10.33.0 |
 | Vitest | 4.1.4 |
