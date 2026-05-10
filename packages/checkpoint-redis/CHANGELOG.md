@@ -1,5 +1,15 @@
 # @ziro-agent/checkpoint-redis
 
+## 0.5.3
+
+### Patch Changes
+
+- [#115](https://github.com/ziroagent/sdk-typescript/pull/115) [`c5dc6d8`](https://github.com/ziroagent/sdk-typescript/commit/c5dc6d88292f9c32a5b7a2fecc64deaaeb12a0a1) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Add `ResumableStreamEventStore.markCompleted(resumeKey)` (RFC 0017 Phase G) to forcibly close incomplete sessions without appending a terminal part. Implemented on `InMemoryResumableStreamEventStore` and `RedisResumableStreamEventStore`. Document cookbook sections for `markCompleted` and budget semantics for replay vs continue-upstream.
+
+- Updated dependencies [[`c5dc6d8`](https://github.com/ziroagent/sdk-typescript/commit/c5dc6d88292f9c32a5b7a2fecc64deaaeb12a0a1), [`c5dc6d8`](https://github.com/ziroagent/sdk-typescript/commit/c5dc6d88292f9c32a5b7a2fecc64deaaeb12a0a1), [`c5dc6d8`](https://github.com/ziroagent/sdk-typescript/commit/c5dc6d88292f9c32a5b7a2fecc64deaaeb12a0a1), [`c5dc6d8`](https://github.com/ziroagent/sdk-typescript/commit/c5dc6d88292f9c32a5b7a2fecc64deaaeb12a0a1), [`c5dc6d8`](https://github.com/ziroagent/sdk-typescript/commit/c5dc6d88292f9c32a5b7a2fecc64deaaeb12a0a1)]:
+  - @ziro-agent/core@0.13.0
+  - @ziro-agent/agent@0.18.0
+
 ## 0.5.2
 
 ### Patch Changes
