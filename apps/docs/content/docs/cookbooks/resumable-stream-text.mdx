@@ -28,6 +28,15 @@ When the stored log is already complete (`finish`/`error` recorded),
 `continueUpstream: true` becomes a no-op for upstream and only replays cached
 parts.
 
+### Mid-tool-call: use the agent loop
+
+If the replay tail ends **mid-tool-call** (or otherwise blocks bare
+continue-upstream), `streamText({ continueUpstream: true })` throws
+**`ContinueUpstreamMidToolCallError`**. Do not retry the same anonymous upstream
+leg; branch to tool execution and/or **`agent.resume` / checkpoints** — see
+[Resumable streamText + agent recovery](/docs/cookbooks/resumable-stream-agent-recovery)
+(RFC 0018).
+
 ## In-memory (tests, single process)
 
 ```ts

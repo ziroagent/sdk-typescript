@@ -43,6 +43,13 @@ export {
 } from './network.js';
 export type { PrepareStep, PrepareStepContext, PrepareStepResult } from './prepare-step.js';
 export {
+  ContinueUpstreamMidToolCallError,
+  isContinueUpstreamMidToolCallError,
+  MID_TOOL_CALL_CONTINUE_UPSTREAM_HINT,
+  streamTailNeedsAgentRecovery,
+  tailBlocksContinueUpstream,
+} from './resumable-stream-recovery.js';
+export {
   type AgentResumeOptions,
   type AgentSnapshot,
   AgentSuspendedError,

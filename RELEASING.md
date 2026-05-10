@@ -44,6 +44,23 @@ typically 8–12 minutes (gate → version PR → CI on version PR →
 auto-merge → publish), with no human intervention after the initial
 release PR merge.
 
+### Protected `dev` and PR history
+
+If `dev` is **branch-protected** (no force-push), you cannot rewrite history to
+fix **commitlint** failures on old commits inside a long-lived branch. Options:
+
+- Open a **release/integration branch** from `main`, squash the integration work
+  into **one** conventional commit on top of `main`, and open the PR from that
+  branch (see recent release PRs in git history).
+- Ensure **every** commit message on integration branches satisfies
+  [commitlint](https://github.com/conventional-changelog/commitlint) (subject
+  case, etc.), or squash-merge feature work before it stacks problematic
+  commits.
+
+Optional benchmarks run on a schedule / manual dispatch via
+[`.github/workflows/bench.yml`](./.github/workflows/bench.yml); they do **not**
+block `main`.
+
 ---
 
 ## Workflows

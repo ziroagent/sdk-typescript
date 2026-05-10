@@ -31,11 +31,10 @@ continuation belongs on **`streamText`** alone or on the **agent loop**.
    rely on `continueUpstream` alone for correctness; they should surface state
    to the agent runtime.
 
-3. **Implemented (core):** Before opening a live leg, `streamText({ continueUpstream: true })` checks the replay tail via `tailBlocksContinueUpstream`. When unsafe, it throws **`ContinueUpstreamMidToolCallError`** (`code: 'CONTINUE_UPSTREAM_MID_TOOL_CALL'`) and emits observer phase `continue_upstream_blocked_mid_tool_call`. Agent-level suspend/resume ([RFC 0002](./0002-human-in-the-loop.md)) remains the recovery path; `@ziro-agent/agent` wiring for resumable streams is still future work.
+3. **Implemented:** Core throws **`ContinueUpstreamMidToolCallError`** when unsafe (see §3 in RFC 0017). **`@ziro-agent/agent`** re-exports **`tailBlocksContinueUpstream`**, **`isContinueUpstreamMidToolCallError`**, and **`MID_TOOL_CALL_CONTINUE_UPSTREAM_HINT`** so hosts branch to **`agent.resume`** / **`resumeFromCheckpoint`** ([RFC 0002](./0002-human-in-the-loop.md)) instead of retrying bare `continueUpstream`. Full product UI flows remain out of repo.
 
 ## Non-goals (this RFC)
 
-- Implementing agent resume wiring in this iteration.
 - Provider-native response IDs as the primary continuation mechanism (already a
   non-goal of RFC 0017).
 
