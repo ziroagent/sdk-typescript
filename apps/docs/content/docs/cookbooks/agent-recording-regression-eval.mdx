@@ -1,0 +1,73 @@
+---
+title: Agent recording → regression eval
+description: Turn RFC 0015 JSONL recordings into eval cases and gate regressions with runEval.
+---
+
+Use **`runWithAgentRecording`** / **`recordAgentRun`** (`@ziro-agent/agent`) to capture one JSON line per finished agent step. Then build a regression **`EvalCase`** with **`createRecordingRegressionCase`** (`@ziro-agent/eval`) and run **`runEval`** with graders such as **`exactMatch`**.
+
+The recording **does not store the original user prompt** — you must pass the **same** `prompt` string you used when recording.
+
+```ts
+import {
+  createAgent,
+  recordAgentRun,
+} from '@ziro-agent/agent';
+import {
+  createRecordingRegressionCase,
+  defineEval,
+  exactMatch,
+  runEval,
+} from '@ziro-agent/eval';
+
+// 1) Record once (e.g. in CI fixture generator)
+let jsonl = '';
+const agent = createAgent({ model, tools });
+await recordAgentRun(agent, {
+  prompt: 'What is 2+2?',
+  recording: { writeLine: (line) => { jsonl += line; } },
+});
+
+// 2) Regression eval — expected text = last assistant step in the recording
+const evalSpec = defineEval({
+  name: 'math-regression',
+  dataset: [
+    createRecordingRegressionCase(jsonl, 'What is 2+2?', {
+      id: 'two-plus-two',
+    }),
+  ],
+  run: async ({ prompt }) => {
+    const replayed = await agent.run({ prompt });
+    return replayed.text;
+  },
+  graders: [exactMatch()],
+});
+
+const result = await runEval(evalSpec);
+```
+
+Or use **`defineRecordingRegressionEval`** when you only need a single case:
+
+```ts
+import { defineRecordingRegressionEval, runEval, exactMatch } from '@ziro-agent/eval';
+
+const spec = defineRecordingRegressionEval({
+  name: 'snapshot',
+  recordingJsonl: jsonl,
+  prompt: 'What is 2+2?',
+  run: async ({ prompt }) => (await agent.run({ prompt })).text,
+  graders: [exactMatch()],
+});
+
+await runEval(spec);
+```
+
+## Limits
+
+- **HITL / suspended** runs are not replay targets for the MVP recording format.
+- Compare **`exactMatch`** only when deterministic replay is expected (same tools + replay model).
+
+## See also
+
+- [Evals](../evals)
+- [Human-in-the-loop](../hitl)
+- [RFC 0015 — Resilience](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0015-resilience.md)

@@ -26,6 +26,7 @@
     "cookbooks/durable-inngest",
     "cookbooks/resumable-stream-text",
     "cookbooks/resumable-stream-agent-recovery",
+    "cookbooks/agent-recording-regression-eval",
     "---Reference---",
     "comparison",
     "migration",

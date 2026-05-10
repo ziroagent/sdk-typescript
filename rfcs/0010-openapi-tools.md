@@ -2,7 +2,7 @@
 
 - Start date: 2026-04-20
 - Authors: @ziro-agent/maintainers
-- Status: **stub** (detailed design TBD before v0.3 milestone start)
+- Status: **partial** — GET + non-GET verbs with inline `application/json` object bodies shipped in `@ziro-agent/openapi`; `$ref` / multipart remain future work
 - Affected packages: `@ziro-agent/openapi` (new), `@ziro-agent/tools`
 - Parent: [RFC 0008 — Roadmap v3](./0008-roadmap-v3.md) §C (v0.3) and §A row H3
 

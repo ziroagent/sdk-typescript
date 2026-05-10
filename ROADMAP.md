@@ -21,6 +21,29 @@ Our roadmap is shaped by one question: **"What stops 88% of agent projects from 
 
 ---
 
+## Cross-inspiration: Hermes Agent (Nous Research)
+
+[Hermes Agent](https://github.com/NousResearch/hermes-agent) (Nous Research) is a full-stack *agent OS*: TUI, multi-platform messaging gateway, skills, cron, sandbox terminal backends, and a Python `AIAgent` loop. ZiroAgent stays a **TypeScript SDK for production embeddings** — we adopt **patterns and gap-fill items**, not a line-by-line port. Deep-dive reference (competitive / architecture notes): [docs/hermes-agent-nous-research.md](./docs/hermes-agent-nous-research.md).
+
+**Capabilities already covered elsewhere in this roadmap (do not duplicate work):** MCP distribution (`ziroagent mcp serve`, v0.3); durable execution + checkpointer + `@ziro-agent/inngest` (v0.2); workflow / handoffs for delegation; hybrid memory + citation-first RAG (v0.4); sandbox + browser adapters (v0.7); governance + compliance slices (v0.5 / v0.8).
+
+### Adoption matrix — Hermes Agent → ZiroAgent
+
+| Inspired by (Hermes) | Keep | Reject |
+| --- | --- | --- |
+| [agentskills.io](https://agentskills.io) skill documents | First-class documentation + Post-v1 **`agentskills.io` loader** mapping skill Markdown → tools / system context (small RFC when scoped) | A proprietary skill format that breaks community interop |
+| Closed learning loop / skill Markdown | Skills as **versioned artifacts** + eval gates; **no default autonomous self-editing skills** (approval + audit story first) | Ungoverned agent-authored skill mutation |
+| Session search / recall (e.g. FTS) | **Conversation transcript search** hooks — app-owned store with Postgres FTS / BM25 aligned to hybrid memory (Post-v1 backlog) | SQLite-centric FTS baked in as the only supported implementation |
+| Single long-running messaging gateway | **Integration recipes** — platform webhooks → HTTP route → `createAgent` / durable resume | Shipping a **multi-platform gateway daemon** inside `@ziro-agent/*` (see Anti-roadmap) |
+| Cron / scheduled agent prompts | Document **Inngest (or host cron) + agent** as the supported path (parity with “cron-first” UX); optional cookbook example | A second built-in scheduler process beside host/Inngest adapters |
+| `/goal` “Ralph loop” / goal lock | **`F4`** — explicit goal / task-lock primitive or hardened `prepareStep` pattern + tests (v0.9) | Implicit goal state with no budget, trace, or resume semantics |
+| Subagents / parallel workstreams | Continue to lean on **workflow graph + tools + checkpoints** (v0.2 / workflow package) | — |
+| Durable multi-agent Kanban | **Defer P2** — see Future / exploratory; possible Ziro Cloud surface | Shipping a full Kanban orchestrator in OSS core without partner pull |
+| ACP / IDE steer | Align with **AG-UI + `@ziro-agent/react`** (Post-v1 backlog) | IDE-specific protocols inside `@ziro-agent/core` |
+| Pluggable providers | Already: middleware + multiple `@ziro-agent/*` providers; gateway virtual keys remain README-planned | — |
+
+---
+
 ## v0.1 — Foundation (4 weeks, current)
 
 **Goal**: prove the production-safety thesis with a working SDK + CLI + 2 providers + MCP server. Time-to-first-token under 60 seconds.
@@ -294,6 +317,7 @@ This milestone exists because the 12-SDK review (RFC 0004) surfaced eight gaps w
 - [ ] **A3** — zero-dep core audit (drop accidental deps from refactors)
 - [ ] **F2** — loop-guard defaults documented + asserted in tests
 - [ ] **F3** — sub-agent budget propagation hardened
+- [ ] **F4** — **Goal lock / task persistence across turns** (Hermes `/goal` parity): explicit API on `createAgent` or documented + tested `prepareStep` pattern; must compose with budget + tracing — depends on **F2** / **F3**
 - [ ] **G1** — idempotency-key API formalised on `defineTool`
 - [ ] **G2** — auto-checkpoint cadence formalised
 - [ ] **M1** — three-layer docs audit pass 2
@@ -325,7 +349,7 @@ This milestone exists because the 12-SDK review (RFC 0004) surfaced eight gaps w
 
 P1 items deferred from v1.0 GA per RFC 0008 tier definitions. Backwards-compatible additions only; no breaking changes once v1.0 freezes the API.
 
-- **B4** — CLI breadth (`dev` watch, `deploy`)
+- **B4** — CLI breadth (`dev` watch, `deploy`); optional **multi-profile / workspace dirs** (Hermes-style isolated config home / env prefix) if demand materialises
 - **C2** / **C3** — Per-tenant budget + egress allowlist (if not promoted to P0)
 - **C5** — Adversarial eval suite (`@ziro-agent/eval/safety`)
 - **D2** — Cost attribution by tag (tenant / user / session)
@@ -341,6 +365,9 @@ P1 items deferred from v1.0 GA per RFC 0008 tier definitions. Backwards-compatib
 - AG-UI / `@ziro-agent/agui` + `@ziro-agent/react` frontend layer (carried from RFC 0004 v0.3 Track 3)
 - `@ziro-agent/nestjs` integration (carried from RFC 0004 v0.3 Track 1)
 - Edge deployment recipes (Cloudflare Workers, Vercel Edge, Deno Deploy, Bun) (carried from RFC 0004 v0.3 Track 5)
+- **`agentskills.io` interop** — loader + mapping skill Markdown → `defineTool` / system context surfaces (Hermes-inspired; RFC when scoped)
+- **Conversation transcript search** — optional FTS / BM25 hooks on stored turns in the app’s DB (complements **E6** vector adapters; Hermes-style cross-session recall without mandating SQLite in core)
+- **Scheduled agent runs cookbook** — docs + example pairing host cron / Inngest schedules with `createAgent` / resume (cron-first UX parity with Hermes; no new daemon)
 
 ---
 
@@ -360,6 +387,7 @@ P1 items deferred from v1.0 GA per RFC 0008 tier definitions. Backwards-compatib
 - Enterprise SSO + RBAC for Ziro Cloud (SAML, SCIM)
 - Native tokenizer (Rust via `napi-rs`) — bench-driven
 - Optional `@ziro-agent/effect` adapter
+- **Durable multi-agent task board** (Kanban-style orchestration, Hermes v0.13-class) — P2 only; evaluate OSS vs **Ziro Cloud** once design-partner demand exists
 
 ---
 
@@ -391,3 +419,7 @@ To avoid the LangChain trap of feature-creep, and informed by RFC 0004's 12-SDK 
 - ❌ **Opinionated full-stack** — every Ziro primitive is replaceable / unbundleable. No `withMastra(everything)` god-object. *(Source: Mastra)*
 - ❌ **Coupling AI SDK V-major version to consumer types** — never expose a 3rd-party `LanguageModelV3` type publicly; keep our `LanguageModel` stable. *(Source: Mastra issue #14351)*
 - ❌ **Empty pillars in marketing** — every pillar in `README.md` must map to a *shipped* package by v0.2. *(Source: own retrospective)*
+
+### Pattern rejection — full-stack “agent OS” products (e.g. Hermes-class)
+- ❌ **Bundled multi-platform messaging gateway** — one long-running daemon shipping Telegram + Discord + Slack + WhatsApp + … inside `@ziro-agent/*`. Integrate via **webhooks + your HTTP layer** calling `createAgent` / checkpointer / Inngest; see Cross-inspiration matrix. *(Pattern: [Hermes Agent](https://github.com/NousResearch/hermes-agent) gateway; reinforces “Standalone gateway daemon” above.)*
+- ❌ **Python runtime parity or embedded Hermes fork** — Ziro remains TypeScript-native; no obligation to replicate Hermes’s Python `AIAgent` stack in monorepo core.
