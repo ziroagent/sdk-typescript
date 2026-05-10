@@ -41,7 +41,7 @@ Our roadmap is shaped by one question: **"What stops 88% of agent projects from 
 - [x] `@ziro-agent/ollama` — local-first, sovereign mode
 - [x] `@ziro-agent/tools` — `defineTool`, parallel calls, JSON schema from Zod
 - [x] **`@ziro-agent/mcp` — server + client both directions.** `ziroagent mcp serve ./tools.ts`
-- [ ] `examples/mcp-server` — published in Claude Desktop ecosystem
+- [x] `examples/mcp-server` — published in Claude Desktop ecosystem (see `examples/mcp-server/README.md`)
 
 ### Week 3 — Agent loop + Budget guards + HITL
 - [x] `@ziro-agent/agent` — loop, step events, stop conditions, error recovery

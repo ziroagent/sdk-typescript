@@ -34,7 +34,7 @@
     "publint": "turbo run publint",
     "attw": "turbo run attw",
     "prepare": "husky || true",
-    "bench": "pnpm --filter @ziro-agent/core exec vitest bench --run src/benchmarks/core-overhead.bench.ts"
+    "bench": "pnpm --filter @ziro-agent/core exec vitest bench --run src/benchmarks"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",

@@ -8,3 +8,8 @@ subscriptions, and `maxSteps`.
 export OPENAI_API_KEY=sk-...
 pnpm --filter @ziro-agent/example-agent-with-tools start
 ```
+
+## Claude Desktop / MCP
+
+To expose tools over MCP instead of running this example as a script, see
+[`examples/mcp-server`](../mcp-server) (`ziroagent mcp serve`).

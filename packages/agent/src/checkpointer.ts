@@ -51,8 +51,12 @@ export interface CheckpointMeta {
  * driver dependencies. See RFC 0006 for the design rationale.
  *
  * `agent.resumeFromCheckpoint` / `agent.listCheckpoints` integrate with
- * concrete adapters as of `@ziro-agent/agent` v0.2; resumable *streams*
- * (`streamText` + `resumeKey`) remain future work per RFC 0006.
+ * concrete adapters as of `@ziro-agent/agent` v0.2. For resumable
+ * `streamText` + `resumeKey`, when `continueUpstream` throws
+ * `ContinueUpstreamMidToolCallError` from `@ziro-agent/core`, recover via the
+ * agent loop (`agent.resume` / `resumeFromCheckpoint`) — see RFC 0018 and
+ * `@ziro-agent/agent` exports `isContinueUpstreamMidToolCallError`,
+ * `MID_TOOL_CALL_CONTINUE_UPSTREAM_HINT`.
  */
 export interface Checkpointer {
   /**

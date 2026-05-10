@@ -25,6 +25,7 @@
     "cookbooks/rag-budget-cap",
     "cookbooks/durable-inngest",
     "cookbooks/resumable-stream-text",
+    "cookbooks/resumable-stream-agent-recovery",
     "---Reference---",
     "comparison",
     "migration",
