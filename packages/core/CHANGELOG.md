@@ -1,5 +1,19 @@
 # @ziro-agent/core
 
+## 0.14.0
+
+### Minor Changes
+
+- [#120](https://github.com/ziroagent/sdk-typescript/pull/120) [`99d2485`](https://github.com/ziroagent/sdk-typescript/commit/99d2485a9ff7f50b99ca396230a81a22b2523b42) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Reject `streamText({ continueUpstream: true })` when the persisted stream tail is mid-tool-call or implies pending tool execution: new `ContinueUpstreamMidToolCallError`, `tailBlocksContinueUpstream`, and observer phase `continue_upstream_blocked_mid_tool_call`. Tracing maps that phase to `ziro.resumable.continue_upstream_blocked_mid_tool_call`.
+
+- [#120](https://github.com/ziroagent/sdk-typescript/pull/120) [`99d2485`](https://github.com/ziroagent/sdk-typescript/commit/99d2485a9ff7f50b99ca396230a81a22b2523b42) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Add `ResumableStreamEventStore.markCompleted(resumeKey)` (RFC 0017 Phase G) to forcibly close incomplete sessions without appending a terminal part. Implemented on `InMemoryResumableStreamEventStore` and `RedisResumableStreamEventStore`. Document cookbook sections for `markCompleted` and budget semantics for replay vs continue-upstream.
+
+- [#120](https://github.com/ziroagent/sdk-typescript/pull/120) [`99d2485`](https://github.com/ziroagent/sdk-typescript/commit/99d2485a9ff7f50b99ca396230a81a22b2523b42) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Add optional `expectedNextIndex` on replay-mode `streamText({ resumeKey, ... })` so clients can assert the server log length (`getSessionMeta().nextIndex`) and fail fast on stale tabs or split-brain reconnects.
+
+### Patch Changes
+
+- [#120](https://github.com/ziroagent/sdk-typescript/pull/120) [`99d2485`](https://github.com/ziroagent/sdk-typescript/commit/99d2485a9ff7f50b99ca396230a81a22b2523b42) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Add `instrumentResumableStreams()` mapping resumable stream observer phases to OpenTelemetry spans and events (RFC 0017 Phase E). `setResumableStreamObserver` now returns the previous observer for chaining. Emit `replay_end` when the continue-upstream path errors after `replay_start` so instrumentation can always close the replay span.
+
 ## 0.13.0
 
 ### Minor Changes
