@@ -1,5 +1,19 @@
 # @ziro-agent/agent
 
+## 0.19.0
+
+### Minor Changes
+
+- [#120](https://github.com/ziroagent/sdk-typescript/pull/120) [`99d2485`](https://github.com/ziroagent/sdk-typescript/commit/99d2485a9ff7f50b99ca396230a81a22b2523b42) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Export `isContinueUpstreamMidToolCallError`, `MID_TOOL_CALL_CONTINUE_UPSTREAM_HINT`, `streamTailNeedsAgentRecovery`, and re-export `ContinueUpstreamMidToolCallError` / `tailBlocksContinueUpstream` for RFC 0018 recovery ergonomics.
+
+### Patch Changes
+
+- Updated dependencies [[`99d2485`](https://github.com/ziroagent/sdk-typescript/commit/99d2485a9ff7f50b99ca396230a81a22b2523b42), [`99d2485`](https://github.com/ziroagent/sdk-typescript/commit/99d2485a9ff7f50b99ca396230a81a22b2523b42), [`99d2485`](https://github.com/ziroagent/sdk-typescript/commit/99d2485a9ff7f50b99ca396230a81a22b2523b42), [`99d2485`](https://github.com/ziroagent/sdk-typescript/commit/99d2485a9ff7f50b99ca396230a81a22b2523b42)]:
+  - @ziro-agent/core@0.14.0
+  - @ziro-agent/tracing@0.12.0
+  - @ziro-agent/memory@0.5.7
+  - @ziro-agent/tools@0.6.11
+
 ## 0.18.0
 
 ### Minor Changes

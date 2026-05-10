@@ -1,5 +1,12 @@
 # @ziro-agent/mcp-server
 
+## 0.2.13
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @ziro-agent/tools@0.6.11
+
 ## 0.2.12
 
 ### Patch Changes
