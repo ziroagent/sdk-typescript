@@ -1,0 +1,29 @@
+---
+title: Resumable streamText + agent recovery (mid-tool-call)
+description: When bare streamText cannot continue upstream, use the agent loop and checkpoints per RFC 0018 / RFC 0002.
+---
+
+Bare `streamText` (see the **Resumable streamText** cookbook) with `continueUpstream` extends the **same** persisted event log with another model leg. That is correct for text-only tails, but **not** when the log ends **mid-tool-call** or with **`finishReason: 'tool-calls'`** while the session is still incomplete — the next step is **tool execution** and/or **agent** reasoning, not another anonymous upstream chunk.
+
+## What core does
+
+`streamText({ continueUpstream: true })` throws **`ContinueUpstreamMidToolCallError`** when the replay tail would be unsafe. Import helpers from **`@ziro-agent/agent`**:
+
+```ts
+import {
+  isContinueUpstreamMidToolCallError,
+  MID_TOOL_CALL_CONTINUE_UPSTREAM_HINT,
+} from '@ziro-agent/agent';
+```
+
+Use `isContinueUpstreamMidToolCallError(err)` in your HTTP handler after `streamText` rejects.
+
+## Recovery paths
+
+1. **Human-in-the-loop / approvals** — suspend with `AgentSuspendedError`, persist via **`checkpointer`**, then **`agent.resume(snapshot, { decisions })`** or **`agent.resumeFromCheckpoint(threadId, …)`** (see the Human-in-the-loop docs).
+2. **Execute pending tools** — inject **`tool-result`** messages into the conversation and start a **new** `generateText` / `agent.run` turn (do not retry bare `continueUpstream` on the same ambiguous tail).
+
+## Related RFCs
+
+- [RFC 0017 — Resumable streamText](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0017-resumable-stream-continue-upstream.md)
+- [RFC 0018 — Mid-tool-call / agent loop](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0018-phase-f-mid-toolcall-agent-resume.md)

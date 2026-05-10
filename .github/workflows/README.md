@@ -43,6 +43,7 @@ isn't duplicated and the security posture stays auditable:
 | `codeql.yml`               | push / PR / cron Sun                     | Static analysis (security-and-quality query suite) → Security tab | ✅ recommended |
 | `scorecard.yml`            | push `main` / cron Tue / branch-protection-rule | OpenSSF Scorecard → Security tab + public Scorecard API badge | ❌ |
 | `osv-scanner.yml`          | push / PR / cron Mon                     | OSV.dev vulnerability scan → Security tab | ✅ recommended |
+| `bench.yml`                | `workflow_dispatch` / cron Mon 06:00 UTC | Runs `pnpm bench` (`@ziro-agent/core` Vitest benchmarks); informational only | ❌ |
 
 ## Security model (defense in depth)
 
