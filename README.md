@@ -156,9 +156,9 @@ ziro eval ./evals/*.ts --gate 0.95     # CI gate: fail merge if score < 95%
 | [`@ziro-agent/anthropic`](packages/providers-anthropic) | shipped (v0.1.x) | Anthropic provider with explicit prompt-cache control |
 | [`@ziro-agent/ollama`](packages/providers-ollama) | shipped (v0.1.9) | Local-first provider (sovereign mode) — first Sovereign-pillar package |
 | [`@ziro-agent/google`](packages/providers-google) | shipped (v0.2) | Google Gemini provider |
-| `@ziro-agent/groq` | planned (v0.2) | Groq provider (fastest inference benchmark) |
+| [`@ziro-agent/groq`](packages/providers-groq) | shipped (v0.1.x) | Groq Cloud — OpenAI-compatible chat API (`GROQ_API_KEY`) |
 | [`@ziro-agent/tools`](packages/tools) | shipped (v0.1.x) | `defineTool`, parallel calls, JSON schema from Zod |
-| [`@ziro-agent/openapi`](packages/openapi) | shipped (v0.3, [RFC 0010](rfcs/0010-openapi-tools.md)) | `toolsFromOpenAPISpec` / `toolsFromOpenAPIUrl` (GET + `operationId` first) |
+| [`@ziro-agent/openapi`](packages/openapi) | shipped (v0.3, [RFC 0010](rfcs/0010-openapi-tools.md)) | `toolsFromOpenAPISpec` / `toolsFromOpenAPIUrl` — GET/POST/PUT/PATCH/DELETE + JSON body slice |
 | [`@ziro-agent/mcp-server`](packages/mcp-server) | shipped (v0.3, [RFC 0009](rfcs/0009-mcp-server.md)) | MCP **stdio server** for `defineTool` maps — `ziroagent mcp serve ./tools.mjs` |
 | [`@ziro-agent/agent`](packages/agent) | shipped (v0.1.x) | Agent loop, HITL approval, suspend/resume, step events, multi-agent `handoffs[]` + `createNetwork` (v0.2, [RFC 0007](rfcs/0007-handoffs-and-router.md)) |
 | [`@ziro-agent/eval`](packages/eval) | shipped (v0.1.x) | `defineEval`, graders (exact/contains/regex/cost/latency/llm-judge), CI gate |
@@ -189,6 +189,7 @@ ziro eval ./evals/*.ts --gate 0.95     # CI gate: fail merge if score < 95%
 | Example | Status | Description |
 | --- | --- | --- |
 | [`examples/basic-chat`](examples/basic-chat) | shipped | Minimal `generateText`. |
+| [`examples/groq-chat`](examples/groq-chat) | shipped | `generateText` via Groq Cloud (`GROQ_API_KEY`). |
 | [`examples/agent-with-tools`](examples/agent-with-tools) | shipped | Agent + tools (no budget guard). |
 | [`examples/agent-with-budget`](examples/agent-with-budget) | shipped | Agent loop with `BudgetSpec` enforcement. |
 | [`examples/budget-guard`](examples/budget-guard) | shipped | Budget Guard standalone, fallback-on-exceed. |
