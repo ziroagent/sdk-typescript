@@ -147,7 +147,7 @@ describe('toolsFromOpenAPISpec', () => {
       fetchImpl,
     });
 
-    await tools.listProjects.execute({ orgId: 'acme', filter: 'x' }, { toolCallId: '1' });
+    await tools.listProjects?.execute({ orgId: 'acme', filter: 'x' }, { toolCallId: '1' });
     expect(fetchImpl).toHaveBeenCalledWith(
       'https://api.example.com/orgs/acme/projects?filter=x',
       expect.objectContaining({ method: 'GET' }),
@@ -195,7 +195,7 @@ describe('toolsFromOpenAPISpec', () => {
       fetchImpl,
     });
 
-    await tools.createItemRef.execute({ body: { name: 'a' } }, { toolCallId: '1' });
+    await tools.createItemRef?.execute({ body: { name: 'a' } }, { toolCallId: '1' });
     expect(fetchImpl).toHaveBeenCalledWith(
       'https://api.example.com/items',
       expect.objectContaining({
@@ -243,7 +243,7 @@ describe('toolsFromOpenAPISpec', () => {
       fetchImpl,
     });
 
-    await tools.postBodyRef.execute({ body: { n: 1 } }, { toolCallId: '1' });
+    await tools.postBodyRef?.execute({ body: { n: 1 } }, { toolCallId: '1' });
     expect(fetchImpl).toHaveBeenCalledWith(
       'https://api.example.com/x',
       expect.objectContaining({
