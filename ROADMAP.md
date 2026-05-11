@@ -72,7 +72,7 @@ Our roadmap is shaped by one question: **"What stops 88% of agent projects from 
 - [x] **HITL**: `requiresApproval: true` on tools → suspend / resume primitives
 - [x] `@ziro-agent/memory` — vector store interface, in-memory + pgvector
 - [x] `@ziro-agent/workflow` — minimal graph engine
-- [ ] `examples/agent-with-tools`, `examples/sovereign-ollama`, `examples/rag-pgvector`
+- [x] `examples/agent-with-tools`, `examples/sovereign-ollama`, `examples/rag-pgvector` (plus `examples/eval-json-dataset` for declarative `*.eval.json` smoke)
 
 ### Week 4 — Tracing + Docs + Release
 - [x] `@ziro-agent/tracing` — OpenTelemetry spans on every LLM call / tool call / agent step
@@ -128,7 +128,7 @@ This milestone exists because the 12-SDK review (RFC 0004) surfaced eight gaps w
 
 **Goal**: ship the four "blow up in production" primitives that unblock paying design-partner upgrades — middleware composition, graceful durability, provider depth, and replayable evals.
 
-> **Status (2026-04).** v0.2 **P0 scope is closed**: Tracks 1–3 and the Inngest adapter (Track 4) shipped. What remains below are **explicit follow-ups**, not v0.2 blockers — either moved to **v0.6 / v0.8 / v0.9** on the RFC 0008 schedule, partner-pulled (**Temporal**, **Groq**), or **examples / eval ergonomics** that can land anytime without re-opening the v0.2 milestone.
+> **Status (2026-04).** v0.2 **P0 scope is closed**: Tracks 1–3 and the Inngest adapter (Track 4) shipped. What remains below are **explicit follow-ups**, not v0.2 blockers — either moved to **v0.6 / v0.8 / v0.9** on the RFC 0008 schedule, partner-pulled (**Temporal**), or **examples / eval ergonomics** that can land anytime without re-opening the v0.2 milestone. **`@ziro-agent/groq` shipped** under Track 3 (see below).
 
 ### Adoption matrix
 
@@ -158,7 +158,7 @@ This milestone exists because the 12-SDK review (RFC 0004) surfaced eight gaps w
 
 ### Track 3 — Provider depth (week 5-6)
 - [x] `@ziro-agent/google` (Gemini)
-- [ ] `@ziro-agent/groq` (fastest inference benchmark wedge) — moved to v0.8 sovereign track
+- [x] `@ziro-agent/groq` — Groq Cloud (OpenAI-compatible HTTP); inference / latency wedge ([`BENCHMARKS.md`](./BENCHMARKS.md) optional network bench)
 - [ ] Cache-control parameters surfaced on `@ziro-agent/anthropic` (`cache_control` blocks) — v0.9 stabilisation
 - [ ] `@ziro-agent/openai` prompt-cache control parity — v0.9 stabilisation
 
@@ -169,8 +169,8 @@ This milestone exists because the 12-SDK review (RFC 0004) surfaced eight gaps w
 - [x] `examples/durable-support-agent` end-to-end with Inngest
 
 ### Track 5 — Evals polish (parallel, throughout)
-- [ ] **Replay-from-trace** (deferred from RFC 0003 §Q4) — folded into RFC 0015 (v0.6)
-- [ ] JSON / YAML datasets accepted by `ziroagent eval` (currently TS-only) — v0.9 stabilisation
+- [ ] **Replay-from-trace** (deferred from RFC 0003 §Q4) — folded into RFC 0015 (v0.6). **Recording JSONL → regression eval** is shipped (`createRecordingRegressionCase`, `defineRecordingRegressionEval`, tests); ties [RFC 0015](./rfcs/0015-resilience.md) to [RFC 0003](./rfcs/0003-evals-as-first-class.md) eval gates.
+- [x] **Declarative JSON eval datasets (v1)** — `*.eval.json` (`ziroEvalDataset`) accepted by `ziroagent eval`; **`exactMatch`** graders + **`runKind: "modelText"`** first. Broader YAML / multi-grader schemas remain **v0.9 stabilisation**.
 - [ ] Online sampling middleware: `samplingEval({ rate: 0.05 })` writes 5% of production traces into eval store — D4 in RFC 0008 (P1, post-v1.0)
 
 ---
@@ -194,7 +194,7 @@ This milestone exists because the 12-SDK review (RFC 0004) surfaced eight gaps w
 - [x] **A6** — MCP server (`ziroagent mcp serve <entry.mjs>` + `@ziro-agent/mcp-server`) — see [RFC 0009](./rfcs/0009-mcp-server.md)
 - [x] **A7** — Standard Schema (`~standard`) interop in `@ziro-agent/tools` (`defineTool` accepts `StandardSchemaV1`, `zodFromStandardSchema`, `parseAsync` in `executeToolCalls`)
 - [x] **B6** — Mock / record provider exposed from `@ziro-agent/core/testing` (`createMockLanguageModel`, `recordLanguageModel`)
-- [x] **H3** — OpenAPI → tools generator — `@ziro-agent/openapi` (`toolsFromOpenAPISpec`, `toolsFromOpenAPIUrl`) — see [RFC 0010](./rfcs/0010-openapi-tools.md) (GET-only first slice)
+- [x] **H3** — OpenAPI → tools generator — `@ziro-agent/openapi` (`toolsFromOpenAPISpec`, `toolsFromOpenAPIUrl`) — see [RFC 0010](./rfcs/0010-openapi-tools.md); HTTP slice includes GET plus POST/PUT/PATCH with JSON bodies (and DELETE/HEAD), not “GET-only”.
 - [x] **M1** — Three-layer docs audit (Quickstart / Tutorial / Reference) in `apps/docs` — TypeDoc wired into `prebuild`; cookbooks + blog live; deeper editorial pass remains incremental
 
 ---

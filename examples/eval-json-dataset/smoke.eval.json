@@ -1,0 +1,16 @@
+{
+  "ziroEvalDataset": 1,
+  "name": "smoke-json-dataset",
+  "description": "Declarative eval fixture for ziroagent eval *.eval.json",
+  "runKind": "modelText",
+  "cases": [
+    {
+      "id": "aligned",
+      "input": { "prompt": "fixture" },
+      "expected": "expected-output",
+      "modelText": "expected-output"
+    }
+  ],
+  "graders": [{ "kind": "exactMatch" }],
+  "gate": { "kind": "meanScore", "min": 1 }
+}

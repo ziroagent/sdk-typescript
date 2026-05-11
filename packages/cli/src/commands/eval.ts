@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { glob, opendir } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -7,6 +7,7 @@ import {
   type EvalRun,
   type EvalSpec,
   evaluateGate,
+  evalSpecFromJsonDataset,
   formatTextReport,
   runEval,
   toJSONReport,
@@ -48,7 +49,9 @@ interface EvalSummary {
  */
 export async function runEvalCommand(opts: EvalCommandOptions): Promise<number> {
   if (opts.patterns.length === 0) {
-    opts.logger.error('Missing path. Usage: ziroagent eval <file-or-glob>... [--gate 0.95]');
+    opts.logger.error(
+      'Missing path. Usage: ziroagent eval <file-or-glob>... [--gate 0.95]  (supports .ts/.mjs and *.eval.json)',
+    );
     return 2;
   }
 
@@ -60,6 +63,19 @@ export async function runEvalCommand(opts: EvalCommandOptions): Promise<number> 
 
   const specs: Array<{ source: string; spec: EvalSpec }> = [];
   for (const file of files) {
+    if (file.endsWith('.eval.json')) {
+      try {
+        const raw = readFileSync(file, 'utf8');
+        const doc = JSON.parse(raw) as unknown;
+        const spec = evalSpecFromJsonDataset(doc);
+        specs.push({ source: file, spec });
+      } catch (err) {
+        opts.logger.error(`Failed to load ${file}: ${(err as Error).message}`);
+        return 2;
+      }
+      continue;
+    }
+
     let mod: Record<string, unknown>;
     try {
       mod = (await import(pathToFileURL(file).href)) as Record<string, unknown>;
@@ -149,7 +165,7 @@ async function resolvePatterns(patterns: string[], cwd: string): Promise<string[
         for await (const entry of await opendir(abs, { recursive: true })) {
           if (
             entry.isFile() &&
-            /\.(?:m?js|m?ts)$/.test(entry.name) &&
+            /\.(?:m?js|m?ts|eval\.json)$/.test(entry.name) &&
             !entry.name.endsWith('.d.ts') &&
             !entry.name.endsWith('.test.js') &&
             !entry.name.endsWith('.test.ts')

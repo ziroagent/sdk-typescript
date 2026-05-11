@@ -5,6 +5,26 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createLogger } from '../util/logger.js';
 import { runEvalCommand } from './eval.js';
 
+const JSON_SPEC_PASS = JSON.stringify(
+  {
+    ziroEvalDataset: 1,
+    name: 'json-pass',
+    runKind: 'modelText',
+    cases: [
+      {
+        id: 'a',
+        input: {},
+        expected: 'x',
+        modelText: 'x',
+      },
+    ],
+    graders: [{ kind: 'exactMatch' }],
+    gate: { kind: 'meanScore', min: 0.9 },
+  },
+  null,
+  2,
+);
+
 // Spec fixtures must live inside the CLI package so Node can resolve
 // `@ziro-agent/eval` via its workspace symlink. tmpdir() can't resolve that.
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -81,6 +101,18 @@ describe('runEvalCommand', () => {
       logger: silentLogger(),
     });
     expect(code).toBe(2);
+  });
+
+  it('loads *.eval.json declarative specs', async () => {
+    const file = writeSpec('decl.eval.json', JSON_SPEC_PASS);
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    const code = await runEvalCommand({
+      patterns: [file],
+      cwd: tmpDir,
+      logger: silentLogger(),
+    });
+    writeSpy.mockRestore();
+    expect(code).toBe(0);
   });
 
   it('returns 0 when all specs pass their gate', async () => {

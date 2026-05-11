@@ -1,0 +1,36 @@
+---
+title: Groq + OpenAPI-derived tools
+description: Fast chat completions via Groq Cloud with HTTP tools from an OpenAPI document (RFC 0010).
+---
+
+Use **`@ziro-agent/groq`** for OpenAI-compatible Groq inference and **`@ziro-agent/openapi`** to turn an OpenAPI 3.x spec into **`defineTool`-compatible** callables — including POST/PUT/PATCH with JSON bodies ([RFC 0010](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0010-openapi-tools.md)).
+
+```ts
+import { createAgent } from '@ziro-agent/agent';
+import { createGroq } from '@ziro-agent/groq';
+import { toolsFromOpenAPIUrl } from '@ziro-agent/openapi';
+
+const groq = createGroq({ apiKey: process.env.GROQ_API_KEY! });
+
+const tools = await toolsFromOpenAPIUrl('https://petstore.swagger.io/v2/swagger.json', {
+  baseUrl: 'https://petstore.swagger.io/v2',
+  // Optional: bearerToken: process.env.PETSTORE_API_KEY,
+});
+
+const agent = createAgent({
+  model: groq(process.env.GROQ_MODEL ?? 'llama-3.3-70b-versatile'),
+  tools,
+});
+```
+
+## Operational notes
+
+- Set **`GROQ_API_KEY`** in production; never commit keys.
+- Generated tools follow your spec’s operations — **curate** which paths become tools if the document is large ([reference package README](https://github.com/ziroagent/sdk-typescript/tree/main/packages/openapi)).
+- For strict regression testing without HTTP variance, combine this pattern with [recording regression](./agent-recording-regression-eval) or declarative **`*.eval.json`** datasets ([Evals](../evals)).
+
+## See also
+
+- [Tools](../tools)
+- [Budget guard](../budget-guard)
+- [Benchmarks](https://github.com/ziroagent/sdk-typescript/blob/main/BENCHMARKS.md) (optional Groq network bench)

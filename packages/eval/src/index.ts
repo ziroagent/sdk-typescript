@@ -19,6 +19,7 @@ export {
   defineRecordingRegressionEval,
   expectedAssistantTextFromRecording,
 } from './recording-regression.js';
+export { JSON_EVAL_DATASET_VERSION, evalSpecFromJsonDataset } from './json-dataset.js';
 export { formatTextReport, toJSONReport } from './reporters.js';
 export { defineEval, runEval } from './run-eval.js';
 export type {
