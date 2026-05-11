@@ -1,5 +1,12 @@
 # @ziro-agent/checkpoint-memory
 
+## 0.2.22
+
+### Patch Changes
+
+- Updated dependencies [[`8fd017a`](https://github.com/ziroagent/sdk-typescript/commit/8fd017adb526115f711296f748213e6e08712fc6)]:
+  - @ziro-agent/agent@0.20.0
+
 ## 0.2.21
 
 ### Patch Changes

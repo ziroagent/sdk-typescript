@@ -1,5 +1,18 @@
 # @ziro-agent/tracing
 
+## 0.13.0
+
+### Minor Changes
+
+- [#125](https://github.com/ziroagent/sdk-typescript/pull/125) [`8fd017a`](https://github.com/ziroagent/sdk-typescript/commit/8fd017adb526115f711296f748213e6e08712fc6) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Add `instrumentResumableStreams()` mapping resumable stream observer phases to OpenTelemetry spans and events (RFC 0017 Phase E). `setResumableStreamObserver` now returns the previous observer for chaining. Emit `replay_end` when the continue-upstream path errors after `replay_start` so instrumentation can always close the replay span.
+
+### Patch Changes
+
+- [#125](https://github.com/ziroagent/sdk-typescript/pull/125) [`8fd017a`](https://github.com/ziroagent/sdk-typescript/commit/8fd017adb526115f711296f748213e6e08712fc6) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Reject `streamText({ continueUpstream: true })` when the persisted stream tail is mid-tool-call or implies pending tool execution: new `ContinueUpstreamMidToolCallError`, `tailBlocksContinueUpstream`, and observer phase `continue_upstream_blocked_mid_tool_call`. Tracing maps that phase to `ziro.resumable.continue_upstream_blocked_mid_tool_call`.
+
+- Updated dependencies [[`8fd017a`](https://github.com/ziroagent/sdk-typescript/commit/8fd017adb526115f711296f748213e6e08712fc6), [`8fd017a`](https://github.com/ziroagent/sdk-typescript/commit/8fd017adb526115f711296f748213e6e08712fc6), [`8fd017a`](https://github.com/ziroagent/sdk-typescript/commit/8fd017adb526115f711296f748213e6e08712fc6), [`8fd017a`](https://github.com/ziroagent/sdk-typescript/commit/8fd017adb526115f711296f748213e6e08712fc6)]:
+  - @ziro-agent/core@0.15.0
+
 ## 0.12.0
 
 ### Minor Changes
