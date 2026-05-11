@@ -48,6 +48,20 @@ Same output; stream pump awaits `Promise.resolve()` before enqueueing each part.
 
 Interpretation: streaming carries higher per-call overhead than one-shot `generateText`, especially when each chunk crosses an async boundary; **network I/O still dominates** real deployments.
 
+## Optional — Groq Cloud latency (network)
+
+Groq is tracked as the Track 3 inference wedge ([`ROADMAP.md`](./ROADMAP.md)). Unlike `pnpm bench`, this hits **live HTTPS** and only runs when **`GROQ_API_KEY`** is present (skipped otherwise — safe for CI).
+
+```bash
+export GROQ_API_KEY=...
+# Optional override (defaults to llama-3.3-70b-versatile):
+# export GROQ_BENCH_MODEL=...
+
+pnpm --filter @ziro-agent/groq bench
+```
+
+Capture methodology alongside core benches (machine, Node, commit hash). Numbers vary widely by region and model; use as a **sanity / regression** signal on one machine, not as cross-repo apples-to-apples latency claims.
+
 ## Next steps
 
 - Cold vs warm runs against reference HTTP providers (pinned versions).

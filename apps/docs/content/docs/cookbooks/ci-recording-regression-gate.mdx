@@ -1,0 +1,35 @@
+---
+title: CI gate with recording regression
+description: Block merges when replayed agent output diverges from a checked-in JSONL recording (RFC 0003 exit codes).
+---
+
+Pair **`recordAgentRun`** / **`runWithAgentRecording`** ([Agent recording → regression eval](./agent-recording-regression-eval)) with **`ziroagent eval`** in CI so regressions fail the build before release.
+
+## Recipe
+
+1. **Capture** a sanitized fixture — one JSON line per finished agent step (`recording.writeLine`). Store **`recording.jsonl`** next to your eval module or generate it in a fixture script.
+2. **Define** a regression spec with **`createRecordingRegressionCase`** or **`defineRecordingRegressionEval`** (`@ziro-agent/eval`). Use **`exactMatch()`** when replay should be deterministic (same tools + stable model).
+3. **Gate** in CI — mean score or pass-rate gate matches [Evals](../evals):
+
+```bash
+pnpm exec ziroagent eval ./evals/regression.ts --gate 0.95 --fail-fast
+```
+
+Exit codes (RFC 0003): **`0`** all gates pass · **`1`** gate failure · **`2`** loader/config error.
+
+## GitHub Actions sketch
+
+```yaml
+- run: pnpm install --frozen-lockfile
+- run: pnpm exec ziroagent eval ./evals/recording-regression.ts --gate 0.95
+  env:
+    OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+```
+
+Prefer **`--fail-fast`** when you want the first divergence only. Keep recordings **small** and scrub secrets — recordings are not encrypted audit logs.
+
+## See also
+
+- [Agent recording → regression eval](./agent-recording-regression-eval)
+- [Choosing eval graders](./eval-graders-choice)
+- [Evals](../evals)

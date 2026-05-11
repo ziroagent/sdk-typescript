@@ -37,6 +37,18 @@ describe('recording regression helpers', () => {
     expect(r.cases[0]?.passed).toBe(true);
   });
 
+  it('handles empty recording JSONL', () => {
+    const c = createRecordingRegressionCase('', 'q', { id: 'empty' });
+    expect(c.expected).toBe('');
+    expect(c.metadata?.ziroRecordingSteps).toBe(0);
+  });
+
+  it('single-step recording yields that step text', () => {
+    const jsonl =
+      '{"v":1,"kind":"step","step":{"index":0,"text":"only","content":[],"toolCalls":[],"toolResults":[],"finishReason":"stop","usage":{"totalTokens":1}}}';
+    expect(createRecordingRegressionCase(jsonl, 'q').expected).toBe('only');
+  });
+
   it('expectedAssistantTextFromRecording is consistent', () => {
     const lines = [
       {
