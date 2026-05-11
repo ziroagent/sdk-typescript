@@ -5,7 +5,8 @@ import type { EvalCase, EvalGate, EvalSpec, Grader } from './types.js';
 /** Supported JSON declarative eval format (CLI + tooling). */
 export const JSON_EVAL_DATASET_VERSION = 1;
 
-interface JsonDatasetDoc {
+/** Shape of a `ziroEvalDataset` JSON document (v1). Exported for integrators / tooling. */
+export interface JsonDatasetDoc {
   ziroEvalDataset: typeof JSON_EVAL_DATASET_VERSION;
   name: string;
   description?: string;
@@ -71,9 +72,7 @@ function parseGraders(raw: unknown): Grader[] {
 export function evalSpecFromJsonDataset(doc: unknown): EvalSpec {
   if (!isPlainObject(doc)) throw new Error('Invalid JSON eval: root must be an object');
   if (doc.ziroEvalDataset !== JSON_EVAL_DATASET_VERSION) {
-    throw new Error(
-      `Invalid JSON eval: ziroEvalDataset must be ${JSON_EVAL_DATASET_VERSION}`,
-    );
+    throw new Error(`Invalid JSON eval: ziroEvalDataset must be ${JSON_EVAL_DATASET_VERSION}`);
   }
   const name = doc.name;
   if (typeof name !== 'string' || !name.trim()) throw new Error('Invalid JSON eval: name required');

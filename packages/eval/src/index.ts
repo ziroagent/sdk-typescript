@@ -14,12 +14,12 @@ export {
   type RegexOptions,
   regex,
 } from './graders/index.js';
+export { evalSpecFromJsonDataset, JSON_EVAL_DATASET_VERSION } from './json-dataset.js';
 export {
   createRecordingRegressionCase,
   defineRecordingRegressionEval,
   expectedAssistantTextFromRecording,
 } from './recording-regression.js';
-export { JSON_EVAL_DATASET_VERSION, evalSpecFromJsonDataset } from './json-dataset.js';
 export { formatTextReport, toJSONReport } from './reporters.js';
 export { defineEval, runEval } from './run-eval.js';
 export type {
