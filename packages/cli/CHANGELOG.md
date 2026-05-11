@@ -1,5 +1,14 @@
 # @ziro-agent/cli
 
+## 0.5.7
+
+### Patch Changes
+
+- Updated dependencies [[`99d2485`](https://github.com/ziroagent/sdk-typescript/commit/99d2485a9ff7f50b99ca396230a81a22b2523b42)]:
+  - @ziro-agent/eval@0.3.0
+  - @ziro-agent/tools@0.6.11
+  - @ziro-agent/mcp-server@0.2.13
+
 ## 0.5.6
 
 ### Patch Changes

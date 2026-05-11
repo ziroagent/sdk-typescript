@@ -1,5 +1,12 @@
 # @ziro-agent/sandbox-e2b
 
+## 0.2.11
+
+### Patch Changes
+
+- Updated dependencies [[`99d2485`](https://github.com/ziroagent/sdk-typescript/commit/99d2485a9ff7f50b99ca396230a81a22b2523b42), [`99d2485`](https://github.com/ziroagent/sdk-typescript/commit/99d2485a9ff7f50b99ca396230a81a22b2523b42), [`99d2485`](https://github.com/ziroagent/sdk-typescript/commit/99d2485a9ff7f50b99ca396230a81a22b2523b42), [`99d2485`](https://github.com/ziroagent/sdk-typescript/commit/99d2485a9ff7f50b99ca396230a81a22b2523b42)]:
+  - @ziro-agent/core@0.14.0
+
 ## 0.2.10
 
 ### Patch Changes
