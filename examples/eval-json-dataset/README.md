@@ -1,19 +1,31 @@
 # eval-json-dataset
 
-Demonstrates **declarative eval datasets** (`*.eval.json`) run by:
+Declarative **`*.eval.json`** fixtures (`ziroEvalDataset` v1, `runKind: "modelText"`).
+
+## Run locally
+
+From this directory (after `pnpm install` at repo root so `ziroagent` is linked):
 
 ```bash
-pnpm exec tsx "$(pnpm root)/../packages/cli/dist/cli.mjs" eval ./smoke.eval.json
+pnpm smoke
 ```
 
-From the repo root (after `pnpm build`), or from dev:
+Or from repo root:
 
 ```bash
-pnpm --filter @ziro-agent/cli exec tsx src/cli.ts eval examples/eval-json-dataset/smoke.eval.json
+pnpm --filter @ziro-agent/example-eval-json-dataset smoke
+```
+
+Equivalent without the script (after `pnpm build`):
+
+```bash
+pnpm exec ziroagent eval examples/eval-json-dataset/smoke.eval.json examples/eval-json-dataset/contains-smoke.eval.json
 ```
 
 ## Format
 
-See **`ziroEvalDataset` version 1** in [`packages/eval/src/json-dataset.ts`](../../packages/eval/src/json-dataset.ts): `runKind: "modelText"` supplies synthetic **`modelText`** per case for graders (e.g. `exactMatch`) without executing an LLM.
+See [`packages/eval/src/json-dataset.ts`](../../packages/eval/src/json-dataset.ts): graders **`exactMatch`**, **`contains`** (optional `caseSensitive`, `negate`), **`regex`** (`pattern`, optional `negate`). Each case supplies **`modelText`** (synthetic run output) and **`expected`** as required by the grader (substring for `contains`, full string for `exactMatch`; `regex` ignores `expected`).
 
-Full **`defineEval` in TypeScript** remains the primary path for real `run()` implementations.
+**`pnpm run typecheck`** is a no-op here (fixture-only package); CI still typechecks other examples that ship TypeScript.
+
+Full **`defineEval`** in TypeScript remains the path for **`llmJudge`**, live `run()`, and YAML — see the Evals doc page in `apps/docs/content/docs/evals.mdx`.

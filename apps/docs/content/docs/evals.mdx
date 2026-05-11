@@ -9,9 +9,7 @@ your CI on `meanScore` / `passRate` / per-grader thresholds. Everything is
 JSON-serialisable so eval runs persist, post to PRs, or stream to a hosted
 store without bespoke wiring.
 
-> **Status.** Shipped in `@ziro-agent/eval` v0.1.x. Replay-from-trace and
-> JSON/YAML datasets land in v0.2 Track 5 (RFC 0004 §v0.2). See
-> [`packages/eval/src`](https://github.com/ziroagent/sdk-typescript/tree/main/packages/eval/src).
+> **Status.** Shipped in `@ziro-agent/eval`. Declarative **`*.eval.json`** (`ziroEvalDataset` v1, `runKind: "modelText"`) runs via **`ziroagent eval`** with graders **`exactMatch`**, **`contains`**, **`regex`**. Full **`llmJudge`** / YAML datasets remain incremental (Track 5 / v0.9). See [`packages/eval/src`](https://github.com/ziroagent/sdk-typescript/tree/main/packages/eval/src).
 
 ## Why it exists
 
@@ -55,6 +53,16 @@ ziroagent eval ./evals --gate 0.85
 ```
 
 CI fails if the weighted mean across cases × graders is below `0.85`.
+
+## Declarative `*.eval.json` (no TypeScript)
+
+For CI fixtures and config-as-data, use a JSON file with top-level **`ziroEvalDataset`: `1`**, **`runKind`: `"modelText"`**, and per-case **`modelText`** (synthetic run output). Graders are objects with **`kind`**: **`exactMatch`**, **`contains`** (optional **`caseSensitive`**, **`negate`**), or **`regex`** (required string **`pattern`**, optional **`negate`**). **`expected`** is the substring / exact string / (ignored by regex) ground truth as documented per grader.
+
+```bash
+ziroagent eval ./fixtures/smoke.eval.json --gate 1
+```
+
+See [`examples/eval-json-dataset`](https://github.com/ziroagent/sdk-typescript/tree/main/examples/eval-json-dataset) in the repo.
 
 ## Built-in graders
 

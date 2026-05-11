@@ -49,6 +49,23 @@ describe('recording regression helpers', () => {
     expect(createRecordingRegressionCase(jsonl, 'q').expected).toBe('only');
   });
 
+  it('uses last step text even when earlier step had longer text', () => {
+    const jsonl = [
+      '{"v":1,"kind":"step","step":{"index":0,"text":"longer first answer","content":[],"toolCalls":[],"toolResults":[],"finishReason":"stop","usage":{"totalTokens":1}}}',
+      '{"v":1,"kind":"step","step":{"index":1,"text":"ok","content":[],"toolCalls":[],"toolResults":[],"finishReason":"stop","usage":{"totalTokens":2}}}',
+    ].join('\n');
+    expect(createRecordingRegressionCase(jsonl, 'q').expected).toBe('ok');
+  });
+
+  it('last step with empty assistant text yields empty expected', () => {
+    const jsonl = [
+      '{"v":1,"kind":"step","step":{"index":0,"text":"visible","content":[],"toolCalls":[],"toolResults":[],"finishReason":"stop","usage":{"totalTokens":1}}}',
+      '{"v":1,"kind":"step","step":{"index":1,"text":"","content":[],"toolCalls":[],"toolResults":[],"finishReason":"stop","usage":{"totalTokens":2}}}',
+    ].join('\n');
+    expect(createRecordingRegressionCase(jsonl, 'q').expected).toBe('');
+    expect(createRecordingRegressionCase(jsonl, 'q').metadata?.ziroRecordingSteps).toBe(2);
+  });
+
   it('expectedAssistantTextFromRecording is consistent', () => {
     const lines = [
       {
