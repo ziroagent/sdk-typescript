@@ -1,0 +1,24 @@
+---
+title: Choosing eval graders (exact vs LLM judge)
+description: When to use deterministic graders versus an LLM rubric — aligns RFC 0003 eval-as-code.
+---
+
+Ziro evals combine **`defineEval`** / **`runEval`** with one or more **graders**. Two common choices:
+
+| Grader style | Best for | Watch outs |
+| --- | --- | --- |
+| **`exactMatch`** (and **contains** / **regex**) | Regression tests, CI gates, **recording replay** where output should be **byte-stable** | Fails on harmless formatting drift; requires deterministic tools/models. |
+| **`llmJudge`** | Rubric scoring (“helpful”, policy checks), **semantic** equivalence when wording may vary | Extra model calls + cost; non-deterministic — tune temperature / seed and document variance. |
+
+## Practical rules
+
+1. **Recording JSONL regressions** ([RFC 0015](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0015-resilience.md)) — default to **`exactMatch`** on the final assistant text when your replay stack matches production (same tool wiring, pinned or mock model). See [Agent recording → regression eval](./agent-recording-regression-eval).
+
+2. **Product / safety criteria** (“refuses harmful request”, “cites source”) — prefer **`llmJudge`** with an explicit rubric in the grader config, or hybrid: hard **`regex`** / **contains** gates first, **`llmJudge`** second.
+
+3. **Declarative `*.eval.json` (v1)** — today supports **`exactMatch`** only with **`runKind: "modelText"`** (synthetic outputs). Broader graders in JSON are incremental; TypeScript **`defineEval`** remains the full surface ([RFC 0003](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0003-evals-as-first-class.md)).
+
+## See also
+
+- [Evals](../evals)
+- [CI gate with recording regression](./ci-recording-regression-gate)

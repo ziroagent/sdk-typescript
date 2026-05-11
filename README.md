@@ -156,7 +156,7 @@ ziro eval ./evals/*.ts --gate 0.95     # CI gate: fail merge if score < 95%
 | [`@ziro-agent/anthropic`](packages/providers-anthropic) | shipped (v0.1.x) | Anthropic provider with explicit prompt-cache control |
 | [`@ziro-agent/ollama`](packages/providers-ollama) | shipped (v0.1.9) | Local-first provider (sovereign mode) — first Sovereign-pillar package |
 | [`@ziro-agent/google`](packages/providers-google) | shipped (v0.2) | Google Gemini provider |
-| [`@ziro-agent/groq`](packages/providers-groq) | shipped (v0.1.x) | Groq Cloud — OpenAI-compatible chat API (`GROQ_API_KEY`) |
+| [`@ziro-agent/groq`](packages/providers-groq) | shipped (v0.2, Track 3) | Groq Cloud — OpenAI-compatible chat API (`GROQ_API_KEY`) |
 | [`@ziro-agent/tools`](packages/tools) | shipped (v0.1.x) | `defineTool`, parallel calls, JSON schema from Zod |
 | [`@ziro-agent/openapi`](packages/openapi) | shipped (v0.3, [RFC 0010](rfcs/0010-openapi-tools.md)) | `toolsFromOpenAPISpec` / `toolsFromOpenAPIUrl` — GET/POST/PUT/PATCH/DELETE + JSON body slice |
 | [`@ziro-agent/mcp-server`](packages/mcp-server) | shipped (v0.3, [RFC 0009](rfcs/0009-mcp-server.md)) | MCP **stdio server** for `defineTool` maps — `ziroagent mcp serve ./tools.mjs` |
@@ -197,14 +197,15 @@ ziro eval ./evals/*.ts --gate 0.95     # CI gate: fail merge if score < 95%
 | [`examples/agent-with-evals`](examples/agent-with-evals) | shipped | `defineEval` + CI gate. |
 | [`examples/multi-agent-workflow`](examples/multi-agent-workflow) | shipped | Workflow graph. |
 | [`examples/rag-pgvector`](examples/rag-pgvector) | shipped | RAG over Postgres. |
+| [`examples/sovereign-ollama`](examples/sovereign-ollama) | shipped | Fully on-prem `generateText` via local Ollama (`OLLAMA_BASE_URL`, `OLLAMA_MODEL`). |
+| [`examples/eval-json-dataset`](examples/eval-json-dataset) | shipped | Declarative `*.eval.json` smoke for `ziroagent eval` (`ziroEvalDataset` v1). |
 | [`examples/durable-support-agent`](examples/durable-support-agent) | shipped | Inngest-style durable run + `MemoryCheckpointer` + HITL resume. |
 | [`examples/mcp-server`](examples/mcp-server) | shipped | MCP stdio + Claude Desktop (`ziroagent mcp serve`). |
-| `examples/sovereign-ollama` | planned (v0.1.9) | Fully on-prem agent, no internet. |
-| `examples/multi-agent-handoff` | planned (v0.3, [RFC 0007](rfcs/0007-handoffs-and-router.md)) | Replaces over-engineered `multi-agent-workflow` for the simple handoff case. |
+| [`examples/multi-agent-handoff`](examples/multi-agent-handoff) | shipped | Minimal multi-agent handoff ([RFC 0007](rfcs/0007-handoffs-and-router.md)); see also `multi-agent-workflow`. |
 
 ## Benchmarks
 
-We publish reproducible benchmarks against Vercel AI SDK, Mastra, and LangGraph for every release. See [BENCHMARKS.md](BENCHMARKS.md) for methodology and current results (latency, cost-per-task, type-safety score, agent success rate on GAIA / SWE-bench-mini).
+See [BENCHMARKS.md](BENCHMARKS.md) for reproducible **in-repo** numbers (core mock overhead today; optional Groq Cloud network bench when `GROQ_API_KEY` is set). Head-to-head competitor harnesses remain on the [roadmap](./ROADMAP.md).
 
 ## Positioning vs. other SDKs
 

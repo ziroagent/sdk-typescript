@@ -316,6 +316,8 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  examples/eval-json-dataset: {}
+
   examples/groq-chat:
     dependencies:
       '@ziro-agent/core':
@@ -427,6 +429,22 @@ importers:
       '@ziro-agent/tools':
         specifier: workspace:*
         version: link:../../packages/tools
+    devDependencies:
+      tsx:
+        specifier: ^4.20.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  examples/sovereign-ollama:
+    dependencies:
+      '@ziro-agent/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@ziro-agent/ollama':
+        specifier: workspace:*
+        version: link:../../packages/providers-ollama
     devDependencies:
       tsx:
         specifier: ^4.20.0
