@@ -1,5 +1,22 @@
 # @ziro-agent/groq
 
+## 0.3.0
+
+### Minor Changes
+
+- [#125](https://github.com/ziroagent/sdk-typescript/pull/125) [`8fd017a`](https://github.com/ziroagent/sdk-typescript/commit/8fd017adb526115f711296f748213e6e08712fc6) Thanks [@vokhoadev](https://github.com/vokhoadev)! - **OpenAPI (RFC 0010):** Emit tools for POST/PUT/PATCH/DELETE/HEAD with `application/json` object bodies (nested `body` input), path substitution, optional bearer token, sorted query keys. Resolve same-document **`#/components/schemas/*`** and **`requestBody` `$ref`**; merge path-item **`parameters`** with operation parameters (operation wins on duplicate `in`+`name`).
+
+  **Groq:** New `@ziro-agent/groq` provider wrapping OpenAI-compatible Groq Cloud HTTP API.
+
+  **Eval:** `createRecordingRegressionCase`, `defineRecordingRegressionEval`, and `expectedAssistantTextFromRecording` bridge agent JSONL recordings to regression evals (RFC 0015). **Declarative `*.eval.json`** — `evalSpecFromJsonDataset` (v1: `ziroEvalDataset`, `runKind: "modelText"`, `exactMatch` graders) for `ziroagent eval`.
+
+  **CLI:** Load `*.eval.json` files alongside TypeScript eval modules; directory walk includes `*.eval.json`.
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @ziro-agent/openai@0.2.18
+
 ## 0.2.0
 
 ### Minor Changes
