@@ -58,12 +58,12 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",
-    "@browserbasehq/sdk": "^2.10.0",
-    "playwright-core": "^1.52.0",
-    "publint": "^0.3.18",
+    "@browserbasehq/sdk": "^2.11.0",
+    "playwright-core": "^1.60.0",
+    "publint": "^0.3.21",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.4"
+    "vitest": "^4.1.6"
   },
   "engines": {
     "node": ">=20.10.0"
