@@ -1,5 +1,12 @@
 # @ziro-agent/cli
 
+## 0.5.9
+
+### Patch Changes
+
+- Updated dependencies [[`bb5ace3`](https://github.com/ziroagent/sdk-typescript/commit/bb5ace333cf1f98c3900090c2dc08bf8b56b9b7b)]:
+  - @ziro-agent/eval@0.5.0
+
 ## 0.5.8
 
 ### Patch Changes
