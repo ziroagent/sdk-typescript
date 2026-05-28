@@ -3,6 +3,12 @@ name: Release
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Why this manual release run (e.g. retry after NPM_TOKEN rotation)'
+        required: false
+        default: manual-retry
 
 # Only one Release run can be in flight per ref. We do NOT cancel-in-progress
 # here — interrupting a publish that already wrote half the npm tarballs would
@@ -83,32 +89,13 @@ jobs:
       - name: Build packages
         run: pnpm --filter "./packages/*" build
 
-      # Explicitly configure npm auth BEFORE changesets/action runs.
-      # We've seen ~/.npmrc written by changesets/action get rejected with
-      # opaque 404s in CI even though local `changeset publish` against the
-      # same NPM_TOKEN works. Writing the file ourselves with the registry
-      # line included, then verifying with `npm whoami`, gives us a hard
-      # signal whether the auth path is at fault before any publish runs.
-      #
-      # SECURITY: NEVER `set -x` here. Token is wired via env (no echo) and
-      # piped through tee /dev/null to suppress incidental command echo.
-      - name: Configure npm auth + verify
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [ -z "${NPM_TOKEN:-}" ]; then
-            echo "::error::NPM_TOKEN secret is not set"
-            exit 1
-          fi
-          umask 077
-          # Use printf with %s so the token never appears in shell trace
-          # output even if a future maintainer enables `set -x` for debug.
-          printf '//registry.npmjs.org/:_authToken=%s\nregistry=https://registry.npmjs.org/\nalways-auth=true\n' "${NPM_TOKEN}" > "${HOME}/.npmrc"
-          echo "Wrote ~/.npmrc ($(wc -c < "${HOME}/.npmrc") bytes, mode $(stat -c '%a' "${HOME}/.npmrc" 2>/dev/null || stat -f '%A' "${HOME}/.npmrc"))"
-          echo "--- npm whoami ---"
-          npm whoami
-          echo "--- npm token check OK ---"
+      # NPM_TOKEN when valid; otherwise npm Trusted Publishers (OIDC) on
+      # GitHub-hosted runners. See RELEASING.md and .github/actions/setup-npm-publish-auth.
+      - name: Configure npm publish auth
+        id: npm_publish_auth
+        uses: ./.github/actions/setup-npm-publish-auth
+        with:
+          npm-token: ${{ secrets.NPM_TOKEN }}
 
       - name: Create Release PR or publish
         id: changesets
@@ -128,9 +115,9 @@ jobs:
           # via the workflow `GITHUB_TOKEN`, which does not trigger downstream
           # workflows. Falls back to `GITHUB_TOKEN` until the secret exists.
           GITHUB_TOKEN: ${{ secrets.RELEASE_BOT_TOKEN || secrets.GITHUB_TOKEN }}
-          # changesets/action reads NPM_TOKEN and writes ~/.npmrc with the
-          # actual token value (not a placeholder), then runs `pnpm release`.
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # Omit NPM_TOKEN when using OIDC so changesets/action does not overwrite
+          # setup-node's registry auth (changesets/action#542).
+          NPM_TOKEN: ${{ steps.npm_publish_auth.outputs.auth-method == 'oidc' && '' || secrets.NPM_TOKEN }}
           # `pnpm release` runs `scripts/publish-with-sandbox-rescue.js` (changeset retries + optional sandbox rescue).
           # When the log tail matches npm 429 / rate limit, wait at least 429_MIN (registry cooldown).
           # Keep per-wait cap modest for non-429 backoff so many attempts do not exceed job timeout.

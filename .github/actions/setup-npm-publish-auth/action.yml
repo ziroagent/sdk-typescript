@@ -1,0 +1,69 @@
+name: Setup npm publish auth
+description: |
+  Prefer a valid NPM_TOKEN (verified with `npm whoami`). On failure or when unset,
+  configure npm Trusted Publishers (OIDC) via setup-node + npm CLI >= 11.5.1.
+  Outputs `auth-method` as `token` or `oidc` for the changesets/action env.
+
+inputs:
+  npm-token:
+    description: 'Repository secret NPM_TOKEN (classic automation token fallback).'
+    required: false
+    default: ''
+
+outputs:
+  auth-method:
+    description: 'Either `token` or `oidc`.'
+    value: ${{ steps.finalize.outputs.method }}
+
+runs:
+  using: composite
+  steps:
+    - name: Try NPM_TOKEN auth
+      id: token_try
+      if: inputs.npm-token != ''
+      shell: bash
+      env:
+        NPM_TOKEN: ${{ inputs.npm-token }}
+      run: |
+        set -euo pipefail
+        # GitHub secrets occasionally include a trailing newline when pasted.
+        NPM_TOKEN="$(printf '%s' "${NPM_TOKEN}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+        if [ -z "${NPM_TOKEN}" ]; then
+          echo "NPM_TOKEN is empty after trim"
+          exit 1
+        fi
+        umask 077
+        printf '//registry.npmjs.org/:_authToken=%s\nregistry=https://registry.npmjs.org/\nalways-auth=true\n' "${NPM_TOKEN}" > "${HOME}/.npmrc"
+        echo "Wrote ~/.npmrc ($(wc -c < "${HOME}/.npmrc") bytes)"
+        npm whoami
+        echo "::notice::npm auth OK (NPM_TOKEN)"
+
+    - name: Setup npm registry (Trusted Publishers / OIDC)
+      if: steps.token_try.outcome != 'success'
+      uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      with:
+        # npm trusted publishing requires Node >= 22.14.0 (see npm docs).
+        node-version: '22.14.0'
+        registry-url: 'https://registry.npmjs.org'
+        always-auth: true
+
+    - name: Upgrade npm for OIDC
+      if: steps.token_try.outcome != 'success'
+      shell: bash
+      run: npm install -g npm@11.5.1
+
+    - name: Finalize auth method
+      id: finalize
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ "${{ steps.token_try.outcome }}" = "success" ]; then
+          echo "method=token" >> "${GITHUB_OUTPUT}"
+          exit 0
+        fi
+        echo "method=oidc" >> "${GITHUB_OUTPUT}"
+        if [ "${{ steps.token_try.outcome }}" = "failure" ]; then
+          echo "::warning::NPM_TOKEN was rejected or invalid — using Trusted Publishers (OIDC). Ensure each @ziro-agent package has workflow \`release.yml\` configured on npmjs.com (see RELEASING.md)."
+        else
+          echo "::notice::NPM_TOKEN not set — using Trusted Publishers (OIDC)."
+        fi
