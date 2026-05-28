@@ -1,0 +1,19 @@
+{
+  "ziroEvalDataset": 1,
+  "name": "contains-smoke",
+  "description": "Single case must satisfy both contains and regex graders",
+  "runKind": "modelText",
+  "cases": [
+    {
+      "id": "both-graders",
+      "input": {},
+      "expected": "order",
+      "modelText": "order 99 confirmed"
+    }
+  ],
+  "graders": [
+    { "kind": "contains", "caseSensitive": true },
+    { "kind": "regex", "pattern": "\\d+" }
+  ],
+  "gate": { "kind": "meanScore", "min": 1 }
+}

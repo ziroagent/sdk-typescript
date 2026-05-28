@@ -170,7 +170,7 @@ This milestone exists because the 12-SDK review (RFC 0004) surfaced eight gaps w
 
 ### Track 5 — Evals polish (parallel, throughout)
 - [ ] **Replay-from-trace** (deferred from RFC 0003 §Q4) — folded into RFC 0015 (v0.6). **Recording JSONL → regression eval** is shipped (`createRecordingRegressionCase`, `defineRecordingRegressionEval`, tests); ties [RFC 0015](./rfcs/0015-resilience.md) to [RFC 0003](./rfcs/0003-evals-as-first-class.md) eval gates.
-- [x] **Declarative JSON eval datasets (v1)** — `*.eval.json` (`ziroEvalDataset`) accepted by `ziroagent eval`; **`exactMatch`** graders + **`runKind: "modelText"`** first. Broader YAML / multi-grader schemas remain **v0.9 stabilisation**.
+- [x] **Declarative JSON eval datasets (v1)** — `*.eval.json` (`ziroEvalDataset`) accepted by `ziroagent eval`; **`runKind: "modelText"`** with graders **`exactMatch`**, **`contains`**, **`regex`**. YAML / **`llmJudge`** in JSON / richer schemas remain **v0.9 stabilisation**.
 - [ ] Online sampling middleware: `samplingEval({ rate: 0.05 })` writes 5% of production traces into eval store — D4 in RFC 0008 (P1, post-v1.0)
 
 ---

@@ -62,6 +62,18 @@ pnpm --filter @ziro-agent/groq bench
 
 Capture methodology alongside core benches (machine, Node, commit hash). Numbers vary widely by region and model; use as a **sanity / regression** signal on one machine, not as cross-repo apples-to-apples latency claims.
 
+### Captured Groq run (fill after local bench)
+
+After `pnpm --filter @ziro-agent/groq bench` with `GROQ_API_KEY` set, paste one Vitest summary row here so the doc stays honest between releases.
+
+| Field | Value |
+| ----- | ----- |
+| Command | `pnpm --filter @ziro-agent/groq bench` |
+| Commit | _(e.g. `git rev-parse HEAD`)_ |
+| Model | _(e.g. `llama-3.3-70b-versatile` or `GROQ_BENCH_MODEL`)_ |
+| Benchmark | Mean (ms) | ops/s |
+| `generateText short prompt` | _TBD_ | _TBD_ |
+
 ## Next steps
 
 - Cold vs warm runs against reference HTTP providers (pinned versions).

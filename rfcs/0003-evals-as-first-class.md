@@ -303,8 +303,7 @@ the spec specifies.
 ```
 ziroagent eval <path-or-glob>... [options]
 
-Loads each path (file or glob) as an ES module via `tsx`. Each module's
-default export OR every named export matching `EvalSpec` is collected.
+Loads each path (file or glob). Files ending in **`.eval.json`** are parsed as **`ziroEvalDataset` v1** JSON (`evalSpecFromJsonDataset` in `@ziro-agent/eval`): **`runKind: "modelText"`** plus per-case **`modelText`**, with graders **`exactMatch`**, **`contains`**, or **`regex`**. Other paths are loaded as ES modules (e.g. via `tsx`): each module's default export OR every named export matching `EvalSpec` is collected.
 
 Options
   --gate <number|spec>   Override gate. Number → meanScore min. (default 0.95)

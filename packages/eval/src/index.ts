@@ -14,7 +14,11 @@ export {
   type RegexOptions,
   regex,
 } from './graders/index.js';
-export { evalSpecFromJsonDataset, JSON_EVAL_DATASET_VERSION } from './json-dataset.js';
+export {
+  evalSpecFromJsonDataset,
+  JSON_EVAL_DATASET_VERSION,
+  type JsonDatasetDoc,
+} from './json-dataset.js';
 export {
   createRecordingRegressionCase,
   defineRecordingRegressionEval,
