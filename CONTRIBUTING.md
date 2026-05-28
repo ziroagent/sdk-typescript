@@ -46,6 +46,15 @@ pnpm changeset      # create a changeset for your PR
 6. Sign off your commits (DCO, see below): `git commit -s`.
 7. Open a PR. Fill out the template. CI must be green.
 
+## Pull requests to `main` (releases)
+
+`main` is **release-only**: merges trigger Changesets + npm per [`RELEASING.md`](RELEASING.md).
+
+- **Reviews:** branch protection typically requires **at least one approving review from a maintainer who is not the PR author**. You **cannot** self-approve your own PR; ask a teammate or use the team review rotation.
+- **Long integration branches:** if a PR contains **many commits** with mixed commitlint history, prefer a **single squashed branch** off `main` (one conventional commit + one changeset) so the **Lint commits + PR title** gate passes — see recent `release/squash-*` integration PRs.
+- **Version packages PR** (`chore(release): version packages`): same review rules; merging it completes the publish wave to npm.
+- **`gh pr merge --admin`:** only for maintainers with admin rights, when CI is green but review quorum cannot be met in time — **use sparingly** and note the reason in the PR thread.
+
 ## Developer Certificate of Origin (DCO)
 
 We use [DCO](https://developercertificate.org/) instead of a CLA. Every commit must include a `Signed-off-by` trailer:

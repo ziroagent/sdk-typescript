@@ -316,7 +316,11 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  examples/eval-json-dataset: {}
+  examples/eval-json-dataset:
+    devDependencies:
+      '@ziro-agent/cli':
+        specifier: workspace:*
+        version: link:../../packages/cli
 
   examples/groq-chat:
     dependencies:

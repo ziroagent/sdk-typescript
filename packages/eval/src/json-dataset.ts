@@ -1,4 +1,6 @@
+import { contains } from './graders/contains.js';
 import { exactMatch } from './graders/exact-match.js';
+import { regex } from './graders/regex.js';
 import { defineEval } from './run-eval.js';
 import type { EvalCase, EvalGate, EvalSpec, Grader } from './types.js';
 
@@ -17,7 +19,11 @@ export interface JsonDatasetDoc {
   cases: ReadonlyArray<Record<string, unknown>>;
   /** Only `"modelText"` is supported in v1 — `run` returns each case's `modelText`. */
   runKind: 'modelText';
-  graders: ReadonlyArray<{ kind: string }>;
+  /**
+   * Graders for `runKind: "modelText"`. Supported `kind` values:
+   * `exactMatch`, `contains` (optional `caseSensitive`, `negate`), `regex` (`pattern` string, optional `negate`).
+   */
+  graders: ReadonlyArray<Record<string, unknown>>;
   gate?: unknown;
 }
 
@@ -58,6 +64,30 @@ function parseGraders(raw: unknown): Grader[] {
       out.push(exactMatch());
       continue;
     }
+    if (kind === 'contains') {
+      const caseSensitive = g.caseSensitive;
+      const negate = g.negate;
+      out.push(
+        contains({
+          caseSensitive: typeof caseSensitive === 'boolean' ? caseSensitive : true,
+          negate: typeof negate === 'boolean' ? negate : false,
+        }),
+      );
+      continue;
+    }
+    if (kind === 'regex') {
+      const pattern = g.pattern;
+      if (typeof pattern !== 'string' || !pattern.length) {
+        throw new Error('Invalid JSON eval: regex grader requires non-empty string "pattern"');
+      }
+      const negate = g.negate;
+      try {
+        out.push(regex(pattern, { negate: typeof negate === 'boolean' ? negate : false }));
+      } catch {
+        throw new Error(`Invalid JSON eval: invalid regex pattern: ${JSON.stringify(pattern)}`);
+      }
+      continue;
+    }
     throw new Error(`Invalid JSON eval: unsupported grader kind "${String(kind)}"`);
   }
   return out;
@@ -68,6 +98,7 @@ function parseGraders(raw: unknown): Grader[] {
  *
  * **`runKind: "modelText"`** — each case must include **`modelText`** (string): the synthetic
  * output of the run under test (e.g. fixture replay). Graders compare `modelText` to `expected`.
+ * **Graders in JSON (v1):** `exactMatch`, `contains` (`caseSensitive?`, `negate?`), `regex` (`pattern`, `negate?`).
  */
 export function evalSpecFromJsonDataset(doc: unknown): EvalSpec {
   if (!isPlainObject(doc)) throw new Error('Invalid JSON eval: root must be an object');
