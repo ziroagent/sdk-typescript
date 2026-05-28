@@ -21,6 +21,7 @@ runs:
     - name: Try NPM_TOKEN auth
       id: token_try
       if: inputs.npm-token != ''
+      continue-on-error: true
       shell: bash
       env:
         NPM_TOKEN: ${{ inputs.npm-token }}
