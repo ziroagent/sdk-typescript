@@ -1,5 +1,11 @@
 # @ziro-agent/eval
 
+## 0.5.0
+
+### Minor Changes
+
+- [#133](https://github.com/ziroagent/sdk-typescript/pull/133) [`bb5ace3`](https://github.com/ziroagent/sdk-typescript/commit/bb5ace333cf1f98c3900090c2dc08bf8b56b9b7b) Thanks [@vokhoadev](https://github.com/vokhoadev)! - **Declarative `*.eval.json`:** support **`contains`** and **`regex`** graders (with options) alongside **`exactMatch`** for `runKind: "modelText"`. Export **`JsonDatasetDoc`** type from package index.
+
 ## 0.4.0
 
 ### Minor Changes
