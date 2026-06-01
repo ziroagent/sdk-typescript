@@ -59,11 +59,11 @@
     "@ziro-agent/core": "workspace:*"
   },
   "devDependencies": {
-    "@arethetypeswrong/cli": "^0.18.2",
-    "publint": "^0.3.18",
+    "@arethetypeswrong/cli": "^0.18.3",
+    "publint": "^0.3.21",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.4",
+    "vitest": "^4.1.8",
     "zod": "^4.3.6"
   },
   "peerDependencies": {
