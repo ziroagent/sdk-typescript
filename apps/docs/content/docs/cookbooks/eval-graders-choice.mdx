@@ -16,7 +16,7 @@ Ziro evals combine **`defineEval`** / **`runEval`** with one or more **graders**
 
 2. **Product / safety criteria** (“refuses harmful request”, “cites source”) — prefer **`llmJudge`** with an explicit rubric in the grader config, or hybrid: hard **`regex`** / **contains** gates first, **`llmJudge`** second.
 
-3. **Declarative `*.eval.json` (v1)** — supports **`exactMatch`**, **`contains`**, and **`regex`** with **`runKind: "modelText"`** (synthetic `modelText` per case). **`llmJudge`** and other graders remain TypeScript-only via **`defineEval`** ([RFC 0003](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0003-evals-as-first-class.md)).
+3. **Declarative `*.eval.json` / `*.eval.yaml` (v1)** — **`exactMatch`**, **`contains`**, **`regex`**, and **`llmJudge`** with **`judgeModel.kind: "mock"`** for deterministic CI. Live provider judges → TypeScript **`defineEval`** ([RFC 0003](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0003-evals-as-first-class.md)).
 
 ## See also
 

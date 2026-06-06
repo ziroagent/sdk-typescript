@@ -21,6 +21,8 @@ export interface OllamaProviderOptions {
    * still win.
    */
   defaultOptions?: Record<string, unknown>;
+  /** Default per-request timeout in ms (0 disables). Defaults to 120s. */
+  timeoutMs?: number;
 }
 
 export interface OllamaProvider {
@@ -52,6 +54,7 @@ export function createOllama(options: OllamaProviderOptions = {}): OllamaProvide
       headers,
       fetcher,
       ...(options.defaultOptions ? { defaultOptions: options.defaultOptions } : {}),
+      ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
     });
 
   const provider = ((modelId: OllamaChatModelId) => make(modelId)) as OllamaProvider;

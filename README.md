@@ -58,7 +58,7 @@ See [`POSITIONING.md`](POSITIONING.md) for the honest comparison and [`STRATEGY.
 1. **Production-safe by default.** Every primitive ships with retry, timeout, budget guard, and circuit breaker. Configurable, never silent.
 2. **Durable-execution-ready.** First-class adapters for Temporal, Inngest, and Restate. Long-running agents resume from crash without re-paying token costs.
 3. **MCP-native, both directions.** Consume any MCP server as tools; expose any `defineTool` as an MCP server with one line. No glue code.
-4. **Sovereign-ready.** Ollama / vLLM / LM Studio out of the box. No call-home, no telemetry, EU-AI-Act-friendly audit logs (hash-chained).
+4. **Sovereign-ready.** Ollama / vLLM / LM Studio out of the box. No call-home, no telemetry, hash-chained audit logs (tamper-**detection** — pair with signing or WORM storage for regulator-grade tamper-evidence).
 5. **Type-safe end-to-end.** Zod v4 is the single source of truth for tool I/O, message shapes, workflow nodes, and eval criteria.
 6. **Observable & replayable.** OpenTelemetry on every step. Capture a production trace, replay it locally with new code, regression-test before merge.
 
@@ -77,14 +77,15 @@ pnpm add @ziro-agent/core @ziro-agent/openai
 ```
 
 ```ts
-import { generateText } from '@ziro-agent/core';
+import { generateText, wrapModel } from '@ziro-agent/core';
 import { openai } from '@ziro-agent/openai';
+import { cache, retry } from '@ziro-agent/middleware';
 
-const { text, usage, costUsd } = await generateText({
-  model: openai('gpt-4o-mini'),
+const { text, usage } = await generateText({
+  // Caching + retry are composable middleware (onion order), not call options.
+  model: wrapModel(openai('gpt-4o-mini'), [cache({ ttlMs: 300_000 }), retry()]),
   prompt: 'Hello, Ziro!',
   budget: { maxUsd: 0.01 },        // throws BudgetExceededError before overspend
-  cache: { ttl: '5m' },            // explicit Anthropic/OpenAI prompt-cache control
 });
 ```
 
@@ -93,28 +94,36 @@ const { text, usage, costUsd } = await generateText({
 ```ts
 import { createAgent } from '@ziro-agent/agent';
 import { defineTool } from '@ziro-agent/tools';
+import { wrapModel } from '@ziro-agent/core';
 import { openai } from '@ziro-agent/openai';
-import { temporal } from '@ziro-agent/temporal';
+import { redactPII, blockPromptInjection } from '@ziro-agent/middleware';
+import { MemoryCheckpointer } from '@ziro-agent/checkpoint-memory';
 import { z } from 'zod';
 
 const refundOrder = defineTool({
   name: 'refundOrder',
   description: 'Issue a refund. Requires human approval.',
   input: z.object({ orderId: z.string(), amountUsd: z.number().max(500) }),
-  requiresApproval: true,                  // pauses agent until approved
+  requiresApproval: true,                  // suspends the run until approved
   execute: async ({ orderId, amountUsd }) => stripe.refunds.create({ /* ... */ }),
 });
 
 const agent = createAgent({
-  model: openai('gpt-4o'),
+  // Guardrails compose as middleware: PII redaction + prompt-injection blocking.
+  model: wrapModel(openai('gpt-4o'), [redactPII(), blockPromptInjection()]),
   tools: { refundOrder },
-  runtime: temporal({ taskQueue: 'support-agents' }),  // durable: survives crashes & deploys
-  budget: { maxUsdPerRun: 2.00, maxSteps: 20 },
-  guardrails: { redactPII: true, blockPrompts: ['ignore previous instructions'] },
+  maxSteps: 20,
+  // Durable: snapshots survive restarts. Swap for the Postgres/Redis checkpointer
+  // or drive with @ziro-agent/inngest in production.
+  checkpointer: new MemoryCheckpointer(),
 });
 
-const run = await agent.run({ prompt: 'Refund order #4231 for the customer.' });
-// run.id can be paused, resumed, replayed, audited.
+// Budget is enforced per run. An unresolved approval throws AgentSuspendedError
+// carrying a serializable snapshot you can persist and `agent.resume(...)`.
+const run = await agent.run({
+  prompt: 'Refund order #4231 for the customer.',
+  budget: { maxUsd: 2.0, maxSteps: 20 },
+});
 ```
 
 ### Expose your agent as an MCP server (one line)
@@ -147,13 +156,13 @@ ziro eval ./evals/*.ts --gate 0.95     # CI gate: fail merge if score < 95%
 > **Status legend.** `shipped (v0.1.x)` = published to npm under `@ziro-agent/*`
 > with current source under `packages/`. `planned (v0.x)` = scoped on
 > [`ROADMAP.md`](ROADMAP.md), no source published yet — `pnpm add` will 404.
-> Audited 2026-04-22 per RFC 0004 §v0.1.9 trust-recovery.
+> Audited 2026-05-28 (Sprint 1 npm parity). Earlier audit: RFC 0004 §v0.1.9 trust-recovery.
 
 | Package | Status | Description |
 | --- | --- | --- |
 | [`@ziro-agent/core`](packages/core) | shipped (v0.1.x) | Model interface, `generateText`, `streamText`, budget & cache primitives |
 | [`@ziro-agent/openai`](packages/providers-openai) | shipped (v0.1.x) | OpenAI provider |
-| [`@ziro-agent/anthropic`](packages/providers-anthropic) | shipped (v0.1.x) | Anthropic provider with explicit prompt-cache control |
+| [`@ziro-agent/anthropic`](packages/providers-anthropic) | shipped (v0.1.x) | Anthropic provider; surfaces cache-read/-write usage. Pass `cache_control` blocks via `providerOptions` (auto-injection on the roadmap) |
 | [`@ziro-agent/ollama`](packages/providers-ollama) | shipped (v0.1.9) | Local-first provider (sovereign mode) — first Sovereign-pillar package |
 | [`@ziro-agent/google`](packages/providers-google) | shipped (v0.2) | Google Gemini provider |
 | [`@ziro-agent/groq`](packages/providers-groq) | shipped (v0.2, Track 3) | Groq Cloud — OpenAI-compatible chat API (`GROQ_API_KEY`) |
@@ -161,19 +170,25 @@ ziro eval ./evals/*.ts --gate 0.95     # CI gate: fail merge if score < 95%
 | [`@ziro-agent/openapi`](packages/openapi) | shipped (v0.3, [RFC 0010](rfcs/0010-openapi-tools.md)) | `toolsFromOpenAPISpec` / `toolsFromOpenAPIUrl` — GET/POST/PUT/PATCH/DELETE + JSON body slice |
 | [`@ziro-agent/mcp-server`](packages/mcp-server) | shipped (v0.3, [RFC 0009](rfcs/0009-mcp-server.md)) | MCP **stdio server** for `defineTool` maps — `ziroagent mcp serve ./tools.mjs` |
 | [`@ziro-agent/agent`](packages/agent) | shipped (v0.1.x) | Agent loop, HITL approval, suspend/resume, step events, multi-agent `handoffs[]` + `createNetwork` (v0.2, [RFC 0007](rfcs/0007-handoffs-and-router.md)) |
-| [`@ziro-agent/eval`](packages/eval) | shipped (v0.1.x) | `defineEval`, graders (exact/contains/regex/cost/latency/llm-judge), CI gate |
+| [`@ziro-agent/eval`](packages/eval) | shipped (v0.5.x) | `defineEval`, graders (exact/contains/regex/cost/latency/llm-judge), `*.eval.json`, CI gate |
 | [`@ziro-agent/memory`](packages/memory) | shipped (v0.1.x) | Vector store interface, in-memory + pgvector |
 | [`@ziro-agent/workflow`](packages/workflow) | shipped (v0.1.x) | Graph engine for multi-agent flows |
 | [`@ziro-agent/tracing`](packages/tracing) | shipped (v0.1.x) | OpenTelemetry instrumentation |
 | [`@ziro-agent/cli`](packages/cli) | shipped (v0.1.x) | `ziroagent` CLI: `chat`, `run`, `eval`, `mcp`, `playground` |
-| [`@ziro-agent/middleware`](packages/middleware) | shipped (v0.1.9, [RFC 0005](rfcs/0005-language-model-middleware.md)) | `LanguageModelMiddleware` runtime + built-ins (`retry`, `cache`); `redactPII` / `blockPromptInjection` planned |
+| [`@ziro-agent/middleware`](packages/middleware) | shipped (v0.1.9, [RFC 0005](rfcs/0005-language-model-middleware.md)) | `LanguageModelMiddleware` runtime + built-ins: `retry` (honours `Retry-After`), `cache`, `redactPII`, `blockPromptInjection`, `modelFallback`. Compose with `wrapModel(model, [...])` |
 | [`@ziro-agent/checkpoint-memory`](packages/checkpoint-memory) | shipped (v0.1.9, [RFC 0006](rfcs/0006-checkpointer.md)) | Reference `Checkpointer` adapter (in-memory) — bootstrap for durable execution |
 | [`@ziro-agent/checkpoint-postgres`](packages/checkpoint-postgres) | shipped (v0.2, [RFC 0006](rfcs/0006-checkpointer.md)) | Production Postgres `Checkpointer` — row-locked atomic snapshots, UUID v7 ids, idempotent schema helper |
 | [`@ziro-agent/checkpoint-redis`](packages/checkpoint-redis) | shipped (v0.2, [RFC 0006](rfcs/0006-checkpointer.md)) | Production Redis `Checkpointer` adapter |
 | `@ziro-agent/gateway` | planned (v0.2) | Routing + fallback + virtual keys (cost tracking via `@ziro-agent/middleware`) |
 | `@ziro-agent/temporal` | planned (v0.2) | Durable runtime adapter (Temporal) |
 | [`@ziro-agent/inngest`](packages/inngest) | shipped (v0.2) | Durable runtime adapter (Inngest) — TS-first |
-| `@ziro-agent/audit` | planned (v0.3) | Hash-chained audit log (EU AI Act friendly) |
+| [`@ziro-agent/compliance`](packages/compliance) | shipped (v0.5) | GDPR-ordered `deleteUserDataInOrder`, EU AI Act template, SOC2 control map (RFC 0016) |
+| [`@ziro-agent/audit`](packages/audit) | shipped (v0.3) | Append-only SHA-256 hash-chained JSONL audit log + chain verification. Unkeyed chain = tamper-**detection** (catches edits if you hold the tip hash); not tamper-proof against an attacker with file write access — add HMAC/signing or WORM for that |
+| [`@ziro-agent/sandbox-e2b`](packages/sandbox-e2b) | shipped (v0.7) | E2B `SandboxAdapter` for `createCodeInterpreterTool` |
+| [`@ziro-agent/sandbox-daytona`](packages/sandbox-daytona) | shipped (v0.7) | Daytona `SandboxAdapter` |
+| [`@ziro-agent/sandbox-modal`](packages/sandbox-modal) | shipped (v0.7) | Modal `SandboxAdapter` |
+| [`@ziro-agent/browser-playwright`](packages/browser-playwright) | shipped (v0.7) | Playwright `BrowserAdapter` |
+| [`@ziro-agent/browser-browserbase`](packages/browser-browserbase) | shipped (v0.7) | Browserbase `BrowserAdapter` |
 | `@ziro-agent/agui` | planned (v0.3) | AG-UI 17-event protocol emitter |
 | `@ziro-agent/react` | planned (v0.3) | `<Chat>`, `<TraceTimeline>`, `<ToolApproval>` components |
 | `@ziro-agent/vllm` / `-lmstudio` | planned (v0.3) | Sovereign mode providers |

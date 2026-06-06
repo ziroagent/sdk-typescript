@@ -41,15 +41,24 @@ export function checkBeforeCall(scope: BudgetScope, estimate: CostEstimate | und
  * error surfaces.
  */
 export function recordUsage(scope: BudgetScope, usage: TokenUsage, actualUsd: number): void {
-  scope.used.llmCalls += 1;
-  scope.used.usd += Number.isFinite(actualUsd) ? actualUsd : 0;
-  const tokens =
+  const usdDelta = Number.isFinite(actualUsd) ? actualUsd : 0;
+  const tokenDelta =
     usage.totalTokens ??
     (usage.promptTokens ?? 0) + (usage.completionTokens ?? 0) + (usage.reasoningTokens ?? 0);
-  scope.used.tokens += tokens;
-  bumpDuration(scope);
+  // C2 / RFC 0001 §Composition: apply the delta to this scope AND every
+  // ancestor so spend made inside a nested scope (e.g. an LLM call within a
+  // budgeted tool) counts against the outer cap. The ancestor's own next
+  // pre-flight (`checkBeforeCall`) then refuses further calls once the
+  // aggregate crosses its limit. Single-threaded `+=` is atomic, so parallel
+  // siblings writing back to a shared parent cannot tear.
+  for (let s: BudgetScope | undefined = scope; s !== undefined; s = s.parent) {
+    s.used.llmCalls += 1;
+    s.used.usd += usdDelta;
+    s.used.tokens += tokenDelta;
+    bumpDuration(s);
+    fireWarnings(s);
+  }
   fireUsageUpdate(toContext(scope));
-  fireWarnings(scope);
 }
 
 /**

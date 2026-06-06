@@ -1,3 +1,4 @@
+import { brandZiroError, ZiroError } from '../errors.js';
 import type {
   LanguageModel,
   ModelCallOptions,
@@ -9,12 +10,15 @@ import type {
  * Thrown when {@link createReplayLanguageModel} has no pre-recorded
  * `generate()` response left for the next call.
  */
-export class ReplayExhaustedError extends Error {
+export class ReplayExhaustedError extends ZiroError {
   override readonly name = 'ReplayExhaustedError';
   readonly recordedCount: number;
   constructor(recordedCount: number) {
-    super(`Replay model exhausted after ${recordedCount} recorded generate() response(s).`);
+    super(`Replay model exhausted after ${recordedCount} recorded generate() response(s).`, {
+      code: 'replay_exhausted',
+    });
     this.recordedCount = recordedCount;
+    brandZiroError(this);
   }
 }
 

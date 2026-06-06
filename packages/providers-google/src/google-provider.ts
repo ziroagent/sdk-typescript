@@ -9,6 +9,8 @@ export interface GoogleProviderOptions {
   /** Extra headers (e.g. for Vertex OAuth bearer auth). */
   headers?: Record<string, string>;
   fetch?: typeof fetch;
+  /** Default per-request timeout in ms (0 disables). Defaults to 60s. */
+  timeoutMs?: number;
 }
 
 export interface GoogleProvider {
@@ -33,6 +35,7 @@ export function createGoogle(options: GoogleProviderOptions = {}): GoogleProvide
       apiKey,
       headers,
       fetcher,
+      ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
     });
 
   const provider = ((modelId: GoogleGenerativeModelId) => make(modelId)) as GoogleProvider;

@@ -14,6 +14,8 @@ export interface OpenAIProviderOptions {
   headers?: Record<string, string>;
   /** Custom `fetch`. Defaults to `globalThis.fetch`. */
   fetch?: typeof fetch;
+  /** Default per-request timeout in ms (0 disables). Defaults to 60s. */
+  timeoutMs?: number;
 }
 
 export interface OpenAIProvider {
@@ -40,6 +42,7 @@ export function createOpenAI(options: OpenAIProviderOptions = {}): OpenAIProvide
       baseURL,
       headers,
       fetcher,
+      ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
     });
 
   const provider = ((modelId: OpenAIChatModelId) => make(modelId)) as OpenAIProvider;

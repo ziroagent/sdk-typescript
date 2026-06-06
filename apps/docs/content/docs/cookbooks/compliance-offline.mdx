@@ -1,0 +1,84 @@
+---
+title: Compliance pack (offline)
+description: Generate EU AI Act / SOC2 starter artifacts and ordered user-data deletion hooks without Ziro Cloud.
+---
+
+[`@ziro-agent/compliance`](https://github.com/ziroagent/sdk-typescript/tree/main/packages/compliance)
+ships **offline-first** helpers for RFC 0016 — no network calls, suitable for air-gapped reviews.
+
+```bash
+pnpm add @ziro-agent/compliance
+```
+
+## Ordered deletion (GDPR-style)
+
+Wire your storage adapters; the package only sequences hooks:
+
+```ts
+import { deleteUserDataInOrder } from '@ziro-agent/compliance';
+
+await deleteUserDataInOrder(
+  { userId: 'user-42', threadIds: ['thread-a', 'thread-b'] },
+  {
+    revokeSessions: async () => { /* … */ },
+    deleteAgentCheckpoints: async (ids) => { /* Checkpointer */ },
+    deleteConversationArtifacts: async (ids) => { /* exports / files */ },
+    deleteVectorTenantData: async (userId) => { /* pgvector / memory */ },
+    deleteAuditRecords: async (userId) => { /* @ziro-agent/audit */ },
+  },
+);
+```
+
+Order is fixed: sessions → checkpoints → conversation → vectors → audit.
+
+## Reports (not legal advice)
+
+```ts
+import {
+  buildComplianceReportJson,
+  renderEuAiActTechnicalDocTemplate,
+  renderSoc2MarkdownReport,
+} from '@ziro-agent/compliance';
+
+const json = buildComplianceReportJson({
+  generatedAt: new Date().toISOString(),
+  productName: 'My Agent',
+  dataProcessingSummary: 'Processes end-user chat for support.',
+  retentionDaysByDataset: { messages: 90 },
+  packageVersions: { '@ziro-agent/agent': '0.20.0' },
+});
+
+const soc2Md = renderSoc2MarkdownReport({
+  generatedAt: json.generatedAt,
+  productName: json.productName,
+  dataProcessingSummary: json.dataProcessingSummary,
+  retentionDaysByDataset: json.retentionDaysByDataset,
+});
+
+const euDoc = renderEuAiActTechnicalDocTemplate({
+  productName: json.productName,
+  providerName: 'Your Org',
+  intendedPurpose: 'Customer support automation',
+});
+```
+
+Commit generated Markdown/JSON to your compliance repo — templates are starting points only.
+
+## Tamper-evident audit log
+
+Pair with [`@ziro-agent/audit`](https://github.com/ziroagent/sdk-typescript/tree/main/packages/audit):
+
+```ts
+import { JsonlAuditLog } from '@ziro-agent/audit';
+
+const log = new JsonlAuditLog({ filePath: './audit.jsonl' });
+await log.append({ actor: 'system', action: 'agent.run', resourceId: 'thread-1' });
+```
+
+Verify chains offline: `verifyJsonlAuditLogFile(path)`.
+
+## See also
+
+- [Sandbox & browser](../sandbox-browser)
+- [HITL](../hitl)
+- [RFC 0016](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0016-compliance-pack.md)

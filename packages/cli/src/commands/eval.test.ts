@@ -115,6 +115,32 @@ describe('runEvalCommand', () => {
     expect(code).toBe(0);
   });
 
+  it('loads *.eval.yaml declarative specs', async () => {
+    const yaml = `ziroEvalDataset: 1
+name: yaml-pass
+runKind: modelText
+cases:
+  - id: a
+    input: {}
+    expected: x
+    modelText: x
+graders:
+  - kind: exactMatch
+gate:
+  kind: meanScore
+  min: 0.9
+`;
+    const file = writeSpec('decl.eval.yaml', yaml);
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    const code = await runEvalCommand({
+      patterns: [file],
+      cwd: tmpDir,
+      logger: silentLogger(),
+    });
+    writeSpy.mockRestore();
+    expect(code).toBe(0);
+  });
+
   it('returns 0 when all specs pass their gate', async () => {
     const file = writeSpec('passing.mjs', SPEC_PASS);
     const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);

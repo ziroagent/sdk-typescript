@@ -2,11 +2,12 @@ import {
   type ApprovalDecision,
   type ApprovalRequest,
   type Approver,
-  BudgetExceededError,
+  type BudgetExceededError,
   type BudgetSpec,
   fireApprovalRequested,
   fireApprovalResolved,
   intersectSpecs,
+  isBudgetExceededError,
   type PendingApproval,
   type ToolCallPart,
   withBudget,
@@ -145,6 +146,20 @@ export async function executeToolCalls(options: ExecuteOptions): Promise<ToolExe
     repairToolCall,
     step,
   } = options;
+
+  // Sibling-abort (C2 / RFC 0001): when one tool trips the budget, signal the
+  // others to stop so a budget overrun does not keep paying for parallel work.
+  // Best-effort — only tools that honour `abortSignal` halt early; the budget
+  // write-back in core still accounts for whatever already ran. We forward the
+  // caller's signal into a batch-local controller so we can also trip it
+  // ourselves without aborting the caller's signal.
+  const batchAbort = new AbortController();
+  const forwardAbort = () => batchAbort.abort();
+  if (abortSignal) {
+    if (abortSignal.aborted) batchAbort.abort();
+    else abortSignal.addEventListener('abort', forwardAbort, { once: true });
+  }
+  const effectiveSignal = batchAbort.signal;
 
   const tasks = toolCalls.map(async (call): Promise<ToolExecutionResult> => {
     const start = performance.now();
@@ -305,7 +320,7 @@ export async function executeToolCalls(options: ExecuteOptions): Promise<ToolExe
       const value = await Promise.resolve(
         tool.execute(approvedInput, {
           toolCallId: call.toolCallId,
-          ...(abortSignal ? { abortSignal } : {}),
+          abortSignal: effectiveSignal,
           ...(metadata ? { metadata } : {}),
         }),
       );
@@ -327,7 +342,9 @@ export async function executeToolCalls(options: ExecuteOptions): Promise<ToolExe
         parsedArgs: approvedInput,
       };
     } catch (err) {
-      if (err instanceof BudgetExceededError) {
+      if (isBudgetExceededError(err)) {
+        // Stop sibling tools still in flight — the run is over budget.
+        batchAbort.abort();
         return {
           toolCallId: call.toolCallId,
           toolName: call.toolName,
@@ -354,7 +371,11 @@ export async function executeToolCalls(options: ExecuteOptions): Promise<ToolExe
     }
   });
 
-  return Promise.all(tasks);
+  try {
+    return await Promise.all(tasks);
+  } finally {
+    if (abortSignal) abortSignal.removeEventListener('abort', forwardAbort);
+  }
 }
 
 /**

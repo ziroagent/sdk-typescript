@@ -24,16 +24,37 @@ describe('evalSpecFromJsonDataset', () => {
     expect(run.cases[0]?.passed).toBe(true);
   });
 
-  it('rejects unsupported grader', () => {
+  it('requires judgeModel when llmJudge grader is used', () => {
     expect(() =>
       evalSpecFromJsonDataset({
         ziroEvalDataset: 1,
         name: 'bad',
         runKind: 'modelText',
         cases: [{ id: 'a', input: {}, expected: 'x', modelText: 'x' }],
-        graders: [{ kind: 'llmJudge' }],
+        graders: [{ kind: 'llmJudge', rubric: 'Is output acceptable?' }],
       }),
-    ).toThrow(/unsupported grader kind/);
+    ).toThrow(/judgeModel/);
+  });
+
+  it('accepts llmJudge with mock judgeModel', async () => {
+    const spec = evalSpecFromJsonDataset({
+      ziroEvalDataset: 1,
+      name: 'json-llm-judge',
+      runKind: 'modelText',
+      judgeModel: { kind: 'mock', response: '{"score":1,"reason":"pass"}' },
+      cases: [
+        {
+          id: 'a',
+          input: { q: 'hi' },
+          expected: 'ok',
+          modelText: 'hello there',
+        },
+      ],
+      graders: [{ kind: 'llmJudge', rubric: 'Greeting is polite.' }],
+      gate: { kind: 'meanScore', min: 0.5 },
+    });
+    const run = await runEval(spec);
+    expect(run.gate.passed).toBe(true);
   });
 
   it('accepts contains grader with substring expected', async () => {

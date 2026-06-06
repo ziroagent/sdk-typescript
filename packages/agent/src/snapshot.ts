@@ -1,12 +1,14 @@
-import type {
-  ApprovalDecision,
-  Approver,
-  BudgetSpec,
-  BudgetUsage,
-  ChatMessage,
-  PendingApproval,
-  SerializableBudgetSpec,
-  TokenUsage,
+import {
+  type ApprovalDecision,
+  type Approver,
+  type BudgetSpec,
+  type BudgetUsage,
+  brandZiroError,
+  type ChatMessage,
+  type PendingApproval,
+  type SerializableBudgetSpec,
+  type TokenUsage,
+  ZiroError,
 } from '@ziro-agent/core';
 import type { RepairToolCall, ToolExecutionResult } from '@ziro-agent/tools';
 import type { PrepareStep } from './prepare-step.js';
@@ -125,7 +127,7 @@ export function migrateSnapshot(snapshot: AgentSnapshot): AgentSnapshot {
  * The caller persists `error.snapshot` (it is JSON-serializable) and
  * later calls `agent.resume(snapshot, { decisions })` to continue.
  */
-export class AgentSuspendedError extends Error {
+export class AgentSuspendedError extends ZiroError {
   override readonly name = 'AgentSuspendedError';
   readonly snapshot: AgentSnapshot;
   /** Cross-realm-safe brand — survives `JSON.parse(JSON.stringify(err))` when re-thrown. */
@@ -136,8 +138,10 @@ export class AgentSuspendedError extends Error {
         `Agent suspended for human approval (step ${args.snapshot.step}, ` +
           `${args.snapshot.pendingApprovals.length} pending tool ` +
           `call${args.snapshot.pendingApprovals.length === 1 ? '' : 's'}).`,
+      { code: 'agent_suspended' },
     );
     this.snapshot = args.snapshot;
+    brandZiroError(this);
   }
 }
 

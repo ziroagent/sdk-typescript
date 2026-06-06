@@ -7,6 +7,8 @@ Our roadmap is shaped by one question: **"What stops 88% of agent projects from 
 > **2026-04-22 — v2.** This file was restructured per [RFC 0004](./rfcs/0004-roadmap-v2.md) after a 12-SDK competitive review. The v0.1 section is unchanged; v0.2 onwards is reordered, every milestone now carries an **adoption matrix** (what we keep / reject from competitors), and a v0.1.9 housekeeping milestone is inserted before v0.2. The original ROADMAP remains in git history.
 >
 > **2026-04-20 — v3.** Extended past v0.3 per [RFC 0008](./rfcs/0008-roadmap-v3.md) after a v0.2 retrospective + fresh sweep of 2026 best-practices for agentic SDKs. The v0.1 / v0.1.9 / v0.2 sections are **unchanged** (only `[ ] → [x]` status updates). Milestones v0.3 → v1.0 are rewritten with a per-feature **gap matrix** (status × P0/P1/P2 tier) and 8 child RFCs (0009–0016) cover the largest P0 surface areas. See RFC 0008 §A for the full 56-feature matrix.
+>
+> **2026-06-07 — v4 addendum.** Added [SOTA refresh (2026-06)](#sota-refresh-2026-06--net-new-gap-analysis) recording net-new gaps vs. the 2026 agentic SOTA: **A2A interop (A8, promoted P2→P0)**, **structured reflection/self-correction (F5, P0)**, **agentic RAG (E8)**, **memory cognition (E9)**, **agent identity/authz (Q1)**, **online output-safety eval (D5)**. Milestone sections are otherwise unchanged.
 
 ---
 
@@ -18,6 +20,32 @@ Our roadmap is shaped by one question: **"What stops 88% of agent projects from 
 - **OSS core, optional managed cloud.** The self-hostable SDK is always fully featured; Ziro Cloud is convenience, never lock-in.
 - **Transparent benchmarks every release.** Latency, cost, agent success rate vs. competitors, published in `BENCHMARKS.md`.
 - **Adoption is auditable.** Every milestone v0.2+ carries an adoption matrix citing the competitor patterns we keep and the ones we reject — with reasons.
+
+---
+
+## SOTA refresh (2026-06) — net-new gap analysis
+
+> **2026-06-07 — v4 addendum.** A fresh SOTA sweep of the 2026 agentic landscape (interop protocols, memory, multi-agent, durability, evals, guardrails, identity) confirmed Ziro is **at or ahead of SOTA on the production-infrastructure axis** (budget/cost governance, durable checkpoint + HITL, MCP both directions, OTel GenAI semconv, sovereign mode) but has **net-new gaps on the agent-intelligence / coordination axis** and the **emerging enterprise-identity frontier**. This section records those gaps and re-tiers them; the per-milestone sections below are otherwise unchanged. Sources are summarised in [RFC 0008 §SOTA-2026](./rfcs/0008-roadmap-v3.md) (to be appended).
+
+**Strongest evidence shift since v3:** A2A (agent-to-agent) is **no longer "future / when standardised"** — Google donated it to the Linux Foundation (2025-06), ACP merged into it (2025-09), and the **Agentic AI Foundation (AAIF)** became the joint home for MCP + A2A (2025-12) with 100+ enterprise supporters. The trigger condition on **A8** is therefore **met** and A8 is promoted out of the Future/exploratory bucket.
+
+| ID | Net-new gap (SOTA 2026) | Current Ziro | New tier / home | Notes |
+| --- | --- | --- | --- | --- |
+| **A8** | **A2A protocol** (agent↔agent interop, AAIF standard) | MCP both ways; no cross-agent protocol | **P0 → new `@ziro-agent/a2a`** (server + client) | Promoted from P2. The "3-layer stack" (MCP tools + A2A agents + commerce) is the 2026 consensus; Ziro only has the MCP layer. RFC required. |
+| **F5** | **Structured reflection / self-correction** on tool errors (diagnose→propose-fix as a trainable step) | `repairToolCall` repairs *parse* errors only | **P0 — `@ziro-agent/agent`** | Composable `reflect`/`critic` hook in the loop; large gains in multi-turn tool-call success per 2026 reliability research. Distinct from a "chain" abstraction (anti-roadmap §). |
+| **E8** | **Agentic RAG** — multi-hop retrieve-as-tool loop | Citation RAG + hybrid search (E2/E3) | **P1 — `@ziro-agent/memory`** | `createRetrievalTool()` the agent can call iteratively; agentic RAG is the 2026 *default* and beats vanilla RAG on accuracy. Builds on shipped E2–E4. |
+| **E9** | **Memory cognition** — explicit episodic / procedural scopes | working / conversation / long-term tiers (E1) | **P1 — extends RFC 0011** | SOTA standardised episodic/semantic/procedural scopes; we have semantic-ish only. Additive to existing tiers. |
+| **E7** | **Temporal knowledge-graph memory** (Graphiti / Zep-style) | none | **P2 (unchanged) — re-scoped** | Keep in Future/exploratory but note Graphiti/Zep as the reference design; pairs with E9. |
+| **Q1** | **Agent identity & delegated authz** (OAuth OBO, token-exchange, scoped/JIT tokens, least-privilege) | HITL approval + capability tags only | **P1 — evaluate `@ziro-agent/auth` vs. app-layer doc** | New 2026 enterprise frontier (IETF `draft-klrc-aiagent-auth`). Likely a thin scoped-token helper + integration doc, not a full IAM — respects "no gateway daemon" anti-roadmap. |
+| **D5** | **Output safety / quality scoring** (online) | offline eval graders + CI gate | **P1 — `@ziro-agent/eval`** | OTel GenAI semconv explicitly does **not** cover output evaluation — differentiation opportunity. Pairs with **D4** (eval-on-trace drift sampler) and the planned `samplingEval`. |
+
+**Already tracked (no new ID needed) — surfaced here so the gap list reads complete:**
+- **E6** Vector adapters (Qdrant / Pinecone / Weaviate / Chroma) — P1 backlog. Still only in-memory + pgvector shipped.
+- **O2** Long-context auto-compaction hook — P1 backlog. SOTA: compact ~50% context, fork sub-agent context. We have the `conversation.prepareForModel` hook but no built-in strategy.
+- **G5** Temporal durable adapter — P1 backlog. Now market baseline (Temporal $5B, adopted by OpenAI/Replit); reconsider promotion.
+- **K2** Semantic cache middleware — P1 backlog.
+
+**Anti-roadmap reaffirmed (still NOT building, even post-SOTA-refresh):** standalone gateway daemon, LLM-based routing agent, self-editing memory tools, full Letta-tier memory, visual no-code builder. A planner/reflection *hook* (F5) and an A2A *adapter* (A8) are composable primitives, not god-objects — consistent with the anti-roadmap.
 
 ---
 
@@ -368,17 +396,21 @@ P1 items deferred from v1.0 GA per RFC 0008 tier definitions. Backwards-compatib
 - **`agentskills.io` interop** — loader + mapping skill Markdown → `defineTool` / system context surfaces (Hermes-inspired; RFC when scoped)
 - **Conversation transcript search** — optional FTS / BM25 hooks on stored turns in the app’s DB (complements **E6** vector adapters; Hermes-style cross-session recall without mandating SQLite in core)
 - **Scheduled agent runs cookbook** — docs + example pairing host cron / Inngest schedules with `createAgent` / resume (cron-first UX parity with Hermes; no new daemon)
+- **E8** — Agentic RAG: `createRetrievalTool()` multi-hop retrieve-as-tool loop (builds on E2–E4) — see [SOTA refresh (2026-06)](#sota-refresh-2026-06--net-new-gap-analysis)
+- **E9** — Memory cognition: explicit episodic / procedural scopes (extends RFC 0011) — *ibid.*
+- **Q1** — Agent identity & delegated authz: scoped/JIT token helper + OAuth OBO integration doc (evaluate `@ziro-agent/auth` vs. app-layer) — *ibid.*
+- **D5** — Online output safety / quality scoring in `@ziro-agent/eval` (OTel semconv does not cover output eval) — *ibid.*
 
 ---
 
 ## Future / exploratory (post-v1, P2 / v2.0+)
 
-- **A8** — Agent-to-agent (A2A) protocol adapter (when standardised)
+- ~~**A8** — Agent-to-agent (A2A) protocol adapter (when standardised)~~ → **PROMOTED to P0** (2026-06): A2A is now an AAIF/Linux-Foundation standard. See [SOTA refresh (2026-06)](#sota-refresh-2026-06--net-new-gap-analysis).
 - **H6** — Tool capability manifest + signed marketplace
 - **K4** — Speculative execution (parallel models, fastest wins)
 - **N3** — Anonymous opt-in telemetry (post legal / UX review)
 - **O3** — Prompt versioning UI (dashboard product, not SDK)
-- **E7** — Knowledge graph storage
+- **E7** — Knowledge graph storage (temporal KG memory; reference design: Graphiti / Zep — pairs with **E9**; see [SOTA refresh (2026-06)](#sota-refresh-2026-06--net-new-gap-analysis))
 - **I6** — Video parts
 - **L3** — Property-based test helpers
 - **G6** — S3 cold-tier checkpoint adapter
