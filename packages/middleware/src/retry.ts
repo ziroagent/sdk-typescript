@@ -23,7 +23,8 @@
  * ```
  */
 import {
-  APICallError,
+  type APICallError,
+  isAPICallError,
   type LanguageModelMiddleware,
   type ModelGenerateResult,
   type ModelStreamPart,
@@ -59,7 +60,18 @@ export interface RetryOptions {
 }
 
 const defaultIsRetryable = (err: unknown): boolean => {
-  return err instanceof APICallError && err.isRetryable;
+  return isAPICallError(err) && (err as APICallError).isRetryable;
+};
+
+/**
+ * Server-requested backoff (ms) parsed from a `Retry-After` header by the
+ * provider, if present. Realm-safe — reads the field rather than relying on
+ * `instanceof APICallError`.
+ */
+const retryAfterMsOf = (err: unknown): number | undefined => {
+  if (!isAPICallError(err)) return undefined;
+  const ms = (err as APICallError).retryAfterMs;
+  return typeof ms === 'number' && Number.isFinite(ms) ? ms : undefined;
 };
 
 const defaultSleep = (ms: number, signal?: AbortSignal): Promise<void> => {
@@ -88,7 +100,16 @@ export function retry(options: RetryOptions = {}): LanguageModelMiddleware {
   const random = options.random ?? Math.random;
   const sleep = options.sleep ?? defaultSleep;
 
-  const computeDelay = (attempt: number): number => {
+  const computeDelay = (attempt: number, err: unknown): number => {
+    // Honour a server `Retry-After` (e.g. on 429 / 503) when the provider
+    // captured one — the server's instruction beats our blind backoff. We add
+    // a little jitter on top to avoid a synchronised retry stampede. The
+    // server value is authoritative, so it is NOT capped at `maxDelayMs`.
+    const retryAfter = retryAfterMsOf(err);
+    if (retryAfter !== undefined) {
+      const jitter = Math.floor(random() * Math.min(baseDelayMs, 1_000));
+      return retryAfter + jitter;
+    }
     // Full Jitter: random(0, base * 2 ** attempt) capped at maxDelay.
     const expCap = Math.min(maxDelayMs, baseDelayMs * 2 ** attempt);
     return Math.floor(random() * expCap);
@@ -106,7 +127,7 @@ export function retry(options: RetryOptions = {}): LanguageModelMiddleware {
         lastErr = err;
         const isLast = attempt === maxAttempts - 1;
         if (isLast || !isRetryable(err, attempt)) throw err;
-        const delayMs = computeDelay(attempt);
+        const delayMs = computeDelay(attempt, err);
         options.onRetry?.({ attempt, delayMs, error: err });
         await sleep(delayMs, signal);
       }

@@ -32,7 +32,7 @@ ${kleur.bold('Examples:')}
   $ ziroagent run basic-chat
   $ ziroagent eval ./evals --gate 0.95
   $ ziroagent eval './evals/**/*.eval.js' --reporter json --out report.json
-  $ ziroagent eval ./smoke.eval.json
+  $ ziroagent eval ./smoke.eval.json ./suite.eval.yaml
   $ ziroagent playground --port 4000
   $ ziroagent mcp serve ./dist/mcp-tools.mjs
   $ ziroagent compliance report --framework soc2 --product MyApp --out soc2.md

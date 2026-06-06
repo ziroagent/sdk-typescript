@@ -284,13 +284,23 @@ Migration path (do this when we get a maintainer with package-admin rights):
 
 1. Generate a new automation token at npmjs.com → Profile → Access Tokens →
    "Generate New Token" → "Automation".
-2. In GitHub: **Settings → Secrets → Actions → `NPM_TOKEN` → Update**.
-3. Re-run the most recent failed `Release` workflow if applicable.
-4. Revoke the old token from npmjs.com.
+2. Either:
+   - Run `./scripts/rotate-npm-token-for-ci.sh` (verifies `npm whoami`, updates
+     the repo secret, triggers **Release** on `main`), or
+   - In GitHub: **Settings → Secrets → Actions → `NPM_TOKEN` → Update**, then
+     **Actions → Release → Run workflow** (`workflow_dispatch`).
+3. Revoke the old token from npmjs.com.
 
-The release workflow's first step (`Configure npm auth + verify`) will fail
-fast with a clear error if the token is missing or rejected — no silent
-half-publishes.
+The release job uses `.github/actions/setup-npm-publish-auth`: a valid
+`NPM_TOKEN` is verified with `npm whoami`; if missing or rejected (E401), the
+workflow falls back to **Trusted Publishers (OIDC)** — each published package
+must list workflow filename **`release.yml`** on npmjs.com.
+
+## Manual release retry
+
+After fixing auth, re-run without a new commit:
+
+**Actions → Release → Run workflow** on branch `main` (added `workflow_dispatch`).
 
 ---
 

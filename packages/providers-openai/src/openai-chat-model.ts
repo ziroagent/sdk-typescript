@@ -9,6 +9,7 @@ import {
   type ModelGenerateResult,
   type ModelStreamPart,
   type NormalizedMessage,
+  providerFetch,
   resolveMediaInput,
   type TokenUsage,
   type ToolCallPart,
@@ -40,7 +41,12 @@ interface OpenAIChatModelConfig {
   baseURL: string;
   headers: Record<string, string>;
   fetcher: typeof fetch;
+  /** Default per-request timeout in ms (0 disables). Defaults to 60s. */
+  timeoutMs?: number;
 }
+
+/** Default request timeout — a hung socket otherwise hangs forever. */
+const DEFAULT_TIMEOUT_MS = 60_000;
 
 export class OpenAIChatModel implements LanguageModel {
   readonly provider = 'openai';
@@ -255,19 +261,14 @@ export class OpenAIChatModel implements LanguageModel {
       headers,
       body: JSON.stringify(body),
     };
-    if (options.abortSignal) init.signal = options.abortSignal;
-
-    const res = await this.config.fetcher(url, init);
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new APICallError({
-        message: `OpenAI API error: ${res.status} ${res.statusText}`,
-        url,
-        statusCode: res.status,
-        responseBody: text,
-      });
-    }
-    return res;
+    return providerFetch({
+      fetcher: this.config.fetcher,
+      url,
+      init,
+      providerLabel: 'OpenAI',
+      ...(options.abortSignal ? { abortSignal: options.abortSignal } : {}),
+      timeoutMs: this.config.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    });
   }
 }
 

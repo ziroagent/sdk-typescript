@@ -46,6 +46,23 @@ pnpm changeset      # create a changeset for your PR
 6. Sign off your commits (DCO, see below): `git commit -s`.
 7. Open a PR. Fill out the template. CI must be green.
 
+## npm packages (adapter & governance)
+
+These packages are **public on npm** under `@ziro-agent/*` (verify with `npm view <name> version`):
+
+| Package | Typical use |
+| --- | --- |
+| `@ziro-agent/compliance` | Offline GDPR-ordered deletion hooks, EU AI Act / SOC2 starter reports |
+| `@ziro-agent/audit` | Hash-chained JSONL audit log |
+| `@ziro-agent/sandbox-e2b` / `-daytona` / `-modal` | `SandboxAdapter` for `createCodeInterpreterTool` |
+| `@ziro-agent/browser-playwright` / `-browserbase` | `BrowserAdapter` for browser tools |
+
+Docs-only PRs that update README / cookbooks for these packages **do not** require a changeset unless you change runtime code. See [`sprint.md`](./sprint.md) for release planning.
+
+### Syncing `dev` with `main`
+
+After a release wave, back-merge `main` into `dev` (open a `chore(sync): main -> dev` PR or merge locally) so integration branches do not drift on version bumps and changelog files.
+
 ## Pull requests to `main` (releases)
 
 `main` is **release-only**: merges trigger Changesets + npm per [`RELEASING.md`](RELEASING.md).

@@ -1,6 +1,6 @@
 # eval-json-dataset
 
-Declarative **`*.eval.json`** fixtures (`ziroEvalDataset` v1, `runKind: "modelText"`).
+Declarative **`*.eval.json`** / **`*.eval.yaml`** fixtures (`ziroEvalDataset` v1, `runKind: "modelText"`).
 
 ## Run locally
 
@@ -16,6 +16,13 @@ Or from repo root:
 pnpm --filter @ziro-agent/example-eval-json-dataset smoke
 ```
 
+The **`smoke`** script runs:
+
+- `smoke.eval.json`, `contains-smoke.eval.json` — text graders
+- `llm-judge-mock.eval.json` — **`llmJudge`** with **`judgeModel.kind: "mock"`** (no API keys)
+- `smoke.eval.yaml` — YAML equivalent of JSON smoke
+- `recording-smoke.mjs` — **`defineRecordingRegressionEval`** + **`exactMatch`**
+
 Equivalent without the script (after `pnpm build`):
 
 ```bash
@@ -24,8 +31,8 @@ pnpm exec ziroagent eval examples/eval-json-dataset/smoke.eval.json examples/eva
 
 ## Format
 
-See [`packages/eval/src/json-dataset.ts`](../../packages/eval/src/json-dataset.ts): graders **`exactMatch`**, **`contains`** (optional `caseSensitive`, `negate`), **`regex`** (`pattern`, optional `negate`). Each case supplies **`modelText`** (synthetic run output) and **`expected`** as required by the grader (substring for `contains`, full string for `exactMatch`; `regex` ignores `expected`).
+See [`packages/eval/src/json-dataset.ts`](../../packages/eval/src/json-dataset.ts): graders **`exactMatch`**, **`contains`**, **`regex`**, **`llmJudge`** (requires top-level **`judgeModel`**, v1: **`mock`** only). Each case supplies **`modelText`** and **`expected`** per grader rules.
 
-**`pnpm run typecheck`** is a no-op here (fixture-only package); CI still typechecks other examples that ship TypeScript.
+YAML uses the same schema via [`yaml-dataset.ts`](../../packages/eval/src/yaml-dataset.ts).
 
-Full **`defineEval`** in TypeScript remains the path for **`llmJudge`**, live `run()`, and YAML — see the Evals doc page in `apps/docs/content/docs/evals.mdx`.
+**`pnpm run typecheck`** is a no-op here (fixture-only package); CI runs **`pnpm smoke`** in this example via the examples workspace.

@@ -10,6 +10,8 @@
 export class PromptInjectionError extends Error {
   override readonly name = 'PromptInjectionError';
   readonly code = 'prompt_injection';
+  /** Stable docs link (mirrors `ZiroError.docsUrl` without taking the dep). */
+  readonly docsUrl = 'https://ziroagent.com/docs/errors/prompt_injection';
   /** Reason supplied by the adapter — e.g. matched rule id or model output. */
   readonly reason: string;
   /** Optional confidence score in [0, 1] when the adapter exposes one. */

@@ -1,4 +1,4 @@
-import { APICallError, TimeoutError } from '../errors.js';
+import { type APICallError, isAPICallError, isTimeoutError } from '../errors.js';
 import type {
   LanguageModel,
   ModelCallOptions,
@@ -14,8 +14,8 @@ export interface FallbackChainOptions {
 }
 
 function defaultShouldFallback(error: unknown): boolean {
-  if (error instanceof APICallError) return error.isRetryable;
-  if (error instanceof TimeoutError) return true;
+  if (isAPICallError(error)) return (error as APICallError).isRetryable;
+  if (isTimeoutError(error)) return true;
   return false;
 }
 

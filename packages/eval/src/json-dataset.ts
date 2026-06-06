@@ -1,6 +1,9 @@
+import type { LanguageModel } from '@ziro-agent/core';
 import { contains } from './graders/contains.js';
 import { exactMatch } from './graders/exact-match.js';
+import { llmJudge } from './graders/llm-judge.js';
 import { regex } from './graders/regex.js';
+import { resolveJsonJudgeModel } from './json-judge-model.js';
 import { defineEval } from './run-eval.js';
 import type { EvalCase, EvalGate, EvalSpec, Grader } from './types.js';
 
@@ -21,9 +24,14 @@ export interface JsonDatasetDoc {
   runKind: 'modelText';
   /**
    * Graders for `runKind: "modelText"`. Supported `kind` values:
-   * `exactMatch`, `contains` (optional `caseSensitive`, `negate`), `regex` (`pattern` string, optional `negate`).
+   * `exactMatch`, `contains` (optional `caseSensitive`, `negate`), `regex` (`pattern` string, optional `negate`),
+   * `llmJudge` (`rubric` string, optional `name`) — requires **`judgeModel`**.
    */
   graders: ReadonlyArray<Record<string, unknown>>;
+  /**
+   * Required when any grader uses `llmJudge`. v1: `{ "kind": "mock", "response?": "<judge JSON reply>" }`.
+   */
+  judgeModel?: unknown;
   gate?: unknown;
 }
 
@@ -52,10 +60,18 @@ function parseGate(raw: unknown): EvalGate | undefined {
   throw new Error(`Invalid JSON eval: unsupported gate.kind "${String(k)}"`);
 }
 
-function parseGraders(raw: unknown): Grader[] {
+function parseGraders(raw: unknown, judgeModel: LanguageModel | undefined): Grader[] {
   if (!Array.isArray(raw) || raw.length === 0) {
     throw new Error('Invalid JSON eval: graders must be a non-empty array');
   }
+  let needsJudge = false;
+  for (const g of raw) {
+    if (isPlainObject(g) && g.kind === 'llmJudge') needsJudge = true;
+  }
+  if (needsJudge && !judgeModel) {
+    throw new Error('Invalid JSON eval: llmJudge requires top-level judgeModel');
+  }
+
   const out: Grader[] = [];
   for (const g of raw) {
     if (!isPlainObject(g)) throw new Error('Invalid JSON eval: grader entry must be an object');
@@ -88,6 +104,21 @@ function parseGraders(raw: unknown): Grader[] {
       }
       continue;
     }
+    if (kind === 'llmJudge') {
+      const rubric = g.rubric;
+      if (typeof rubric !== 'string' || !rubric.trim()) {
+        throw new Error('Invalid JSON eval: llmJudge grader requires non-empty string "rubric"');
+      }
+      const name = g.name;
+      out.push(
+        llmJudge({
+          model: judgeModel!,
+          rubric,
+          name: typeof name === 'string' ? name : undefined,
+        }),
+      );
+      continue;
+    }
     throw new Error(`Invalid JSON eval: unsupported grader kind "${String(kind)}"`);
   }
   return out;
@@ -98,7 +129,7 @@ function parseGraders(raw: unknown): Grader[] {
  *
  * **`runKind: "modelText"`** — each case must include **`modelText`** (string): the synthetic
  * output of the run under test (e.g. fixture replay). Graders compare `modelText` to `expected`.
- * **Graders in JSON (v1):** `exactMatch`, `contains` (`caseSensitive?`, `negate?`), `regex` (`pattern`, `negate?`).
+ * **Graders in JSON (v1):** `exactMatch`, `contains`, `regex`, `llmJudge` (requires `judgeModel`).
  */
 export function evalSpecFromJsonDataset(doc: unknown): EvalSpec {
   if (!isPlainObject(doc)) throw new Error('Invalid JSON eval: root must be an object');
@@ -137,7 +168,9 @@ export function evalSpecFromJsonDataset(doc: unknown): EvalSpec {
     };
   });
 
-  const graders = parseGraders(doc.graders);
+  const judgeModel =
+    doc.judgeModel !== undefined ? resolveJsonJudgeModel(doc.judgeModel) : undefined;
+  const graders = parseGraders(doc.graders, judgeModel);
   const gate = parseGate(doc.gate);
   const description = typeof doc.description === 'string' ? doc.description : undefined;
 

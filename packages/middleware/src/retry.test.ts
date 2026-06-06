@@ -60,6 +60,27 @@ describe('retry middleware', () => {
     expect(onRetry).toHaveBeenCalledTimes(2);
   });
 
+  it('honours server Retry-After (retryAfterMs) instead of exponential backoff', async () => {
+    let calls = 0;
+    const model = makeModel(async () => {
+      calls++;
+      if (calls === 1) {
+        throw new APICallError({ message: '429', statusCode: 429, retryAfterMs: 4000 });
+      }
+      return okResult('after-backoff');
+    });
+    const onRetry = vi.fn();
+    // fixedRandom=0 zeroes the jitter, so delay === retryAfterMs exactly.
+    const wrapped = wrapModel(
+      model,
+      retry({ maxAttempts: 3, sleep: noWait, random: fixedRandom, onRetry }),
+    );
+    const r = await wrapped.generate(baseCall());
+    expect(r.text).toBe('after-backoff');
+    expect(onRetry).toHaveBeenCalledTimes(1);
+    expect(onRetry.mock.calls[0]?.[0]?.delayMs).toBe(4000);
+  });
+
   it('does not retry non-retryable APICallError (e.g. 400)', async () => {
     const err = new APICallError({ message: 'bad', statusCode: 400, isRetryable: false });
     const model = makeModel(async () => {

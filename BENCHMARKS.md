@@ -69,10 +69,13 @@ After `pnpm --filter @ziro-agent/groq bench` with `GROQ_API_KEY` set, paste one 
 | Field | Value |
 | ----- | ----- |
 | Command | `pnpm --filter @ziro-agent/groq bench` |
-| Commit | _(e.g. `git rev-parse HEAD`)_ |
-| Model | _(e.g. `llama-3.3-70b-versatile` or `GROQ_BENCH_MODEL`)_ |
+| Commit | refresh locally (`git rev-parse HEAD`) |
+| Model | `llama-3.3-70b-versatile` (default) |
+| Node.js | per `.nvmrc` on the capture machine |
 | Benchmark | Mean (ms) | ops/s |
-| `generateText short prompt` | _TBD_ | _TBD_ |
+| `generateText short prompt` | _skipped in maintainer CI capture — set `GROQ_API_KEY` and re-run locally_ | _fill after run_ |
+
+Maintainers: with `GROQ_API_KEY` exported, run the command above and replace the last row with the Vitest bench summary (mean ms + hz). CI does not require this network bench.
 
 ## Next steps
 

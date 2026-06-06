@@ -118,18 +118,11 @@ jobs:
 
       - run: pnpm --filter "./packages/*" build
 
-      - name: Configure npm auth
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [ -z "${NPM_TOKEN:-}" ]; then
-            echo "::error::NPM_TOKEN secret is not set"
-            exit 1
-          fi
-          umask 077
-          printf '//registry.npmjs.org/:_authToken=%s\nregistry=https://registry.npmjs.org/\nalways-auth=true\n' "${NPM_TOKEN}" > "${HOME}/.npmrc"
-          npm whoami
+      - name: Configure npm publish auth
+        id: npm_publish_auth
+        uses: ./.github/actions/setup-npm-publish-auth
+        with:
+          npm-token: ${{ secrets.NPM_TOKEN }}
 
       - name: Bump versions to snapshot
         id: bump

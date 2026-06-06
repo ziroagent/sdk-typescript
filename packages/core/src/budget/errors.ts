@@ -1,12 +1,5 @@
-import { ZiroError } from '../errors.js';
+import { brandZiroError as brand, isZiroError, ZiroError } from '../errors.js';
 import type { BudgetUsage } from './types.js';
-
-const ZIRO_ERROR_BRAND = '__ziro_error__';
-
-function brand<T extends ZiroError>(err: T): T {
-  Object.defineProperty(err, ZIRO_ERROR_BRAND, { value: true, enumerable: false });
-  return err;
-}
 
 export type BudgetExceededKind = 'usd' | 'tokens' | 'llmCalls' | 'steps' | 'duration';
 
@@ -48,4 +41,17 @@ export class BudgetExceededError extends ZiroError {
     this.preflight = options.preflight;
     brand(this);
   }
+}
+
+/**
+ * Realm-safe check for {@link BudgetExceededError}. The SDK's own money-safety
+ * control flow (tool execution, the agent loop, `onExceed` resolution) MUST use
+ * this instead of `instanceof`: a `BudgetExceededError` thrown by one copy of
+ * `@ziro-agent/core` fails `instanceof` against another copy's class (workers,
+ * vm contexts, dual ESM/CJS resolution, mismatched monorepo versions). When
+ * that happens with `instanceof`, the budget error silently degrades into a
+ * generic error and the run keeps spending — exactly the failure this guards.
+ */
+export function isBudgetExceededError(value: unknown): value is BudgetExceededError {
+  return isZiroError(value) && (value as ZiroError).code === 'budget_exceeded';
 }

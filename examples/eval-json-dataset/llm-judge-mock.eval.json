@@ -1,0 +1,25 @@
+{
+  "ziroEvalDataset": 1,
+  "name": "llm-judge-mock-smoke",
+  "description": "llmJudge with mock judgeModel (CI-safe, no API keys)",
+  "runKind": "modelText",
+  "judgeModel": {
+    "kind": "mock",
+    "response": "{\"score\":1,\"reason\":\"pass\"}"
+  },
+  "cases": [
+    {
+      "id": "helpful",
+      "input": { "q": "hours?" },
+      "expected": "business hours",
+      "modelText": "We are open Mon–Fri 9–5."
+    }
+  ],
+  "graders": [
+    {
+      "kind": "llmJudge",
+      "rubric": "Response mentions business hours or availability."
+    }
+  ],
+  "gate": { "kind": "meanScore", "min": 0.5 }
+}

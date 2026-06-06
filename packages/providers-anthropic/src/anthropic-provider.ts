@@ -12,6 +12,8 @@ export interface AnthropicProviderOptions {
   version?: string;
   headers?: Record<string, string>;
   fetch?: typeof fetch;
+  /** Default per-request timeout in ms (0 disables). Defaults to 60s. */
+  timeoutMs?: number;
 }
 
 export interface AnthropicProvider {
@@ -38,6 +40,7 @@ export function createAnthropic(options: AnthropicProviderOptions = {}): Anthrop
       baseURL,
       headers,
       fetcher,
+      ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
     });
 
   const provider = ((modelId: AnthropicMessagesModelId) => make(modelId)) as AnthropicProvider;

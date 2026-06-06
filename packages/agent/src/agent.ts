@@ -9,6 +9,7 @@ import {
   fireAgentSuspended,
   generateText,
   getCurrentBudget,
+  isBudgetExceededError,
   type LanguageModel,
   type PendingApproval,
   type SerializableBudgetSpec,
@@ -747,7 +748,7 @@ export function createAgent(options: CreateAgentOptions): Agent {
           ...(ro.abortSignal ? { abortSignal: ro.abortSignal } : {}),
         });
       } catch (err) {
-        if (err instanceof BudgetExceededError) {
+        if (isBudgetExceededError(err)) {
           await handleBudgetThrow(err, 'preflight');
           break;
         }
@@ -996,7 +997,7 @@ async function runWithBudget(
       presetUsage !== undefined ? { presetUsage } : undefined,
     );
   } catch (err) {
-    if (!(err instanceof BudgetExceededError)) throw err;
+    if (!isBudgetExceededError(err)) throw err;
     const onExceed = ro.budget.onExceed;
 
     if (typeof onExceed === 'function') {
@@ -1140,7 +1141,7 @@ async function applyDecisionToPending(
       parsedArgs: approvedInput,
     };
   } catch (err) {
-    if (err instanceof BudgetExceededError) {
+    if (isBudgetExceededError(err)) {
       return {
         toolCallId: pending.toolCallId,
         toolName: pending.toolName,
