@@ -30,6 +30,8 @@
     "cookbooks/ci-recording-regression-gate",
     "cookbooks/groq-openapi-tools",
     "cookbooks/eval-graders-choice",
+    "cookbooks/compliance-offline",
+    "cookbooks/sandbox-browser-smoke",
     "---Reference---",
     "comparison",
     "migration",

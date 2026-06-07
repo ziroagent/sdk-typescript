@@ -5,9 +5,10 @@
   "description": "Declarative *.eval.json fixtures (no TypeScript entry).",
   "scripts": {
     "typecheck": "node -e \"process.exit(0)\"",
-    "smoke": "ziroagent eval ./smoke.eval.json ./contains-smoke.eval.json"
+    "smoke": "ziroagent eval ./smoke.eval.json ./contains-smoke.eval.json ./llm-judge-mock.eval.json ./smoke.eval.yaml ./recording-smoke.mjs"
   },
   "devDependencies": {
-    "@ziro-agent/cli": "workspace:*"
+    "@ziro-agent/cli": "workspace:*",
+    "@ziro-agent/eval": "workspace:*"
   }
 }

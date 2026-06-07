@@ -1,21 +1,23 @@
+import { brandZiroError, ZiroError } from '../errors.js';
 import type { ModelStreamPart } from '../types/model.js';
 
-export class ResumableStreamError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'ResumableStreamError';
+export class ResumableStreamError extends ZiroError {
+  override readonly name: string = 'ResumableStreamError';
+  constructor(message: string, code = 'resumable_stream_error') {
+    super(message, { code });
+    brandZiroError(this);
   }
 }
 
 /** Thrown when `streamText({ continueUpstream: true })` would extend a log whose tail is mid-tool-call or awaiting tool execution (RFC 0018). */
 export class ContinueUpstreamMidToolCallError extends ResumableStreamError {
-  readonly code = 'CONTINUE_UPSTREAM_MID_TOOL_CALL' as const;
+  override readonly name = 'ContinueUpstreamMidToolCallError';
+  override readonly code = 'CONTINUE_UPSTREAM_MID_TOOL_CALL' as const;
 
   constructor(
     message = 'Cannot continue upstream: persisted stream ends mid-tool-call or with pending tool execution. Resume via the agent runtime or RFC 0002 human-in-the-loop suspend/resume instead of bare streamText({ continueUpstream: true }).',
   ) {
-    super(message);
-    this.name = 'ContinueUpstreamMidToolCallError';
+    super(message, 'CONTINUE_UPSTREAM_MID_TOOL_CALL');
   }
 }
 

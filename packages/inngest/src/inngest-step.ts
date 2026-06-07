@@ -179,6 +179,9 @@ export async function resumeAsStep(
  */
 export class InngestAgentSuspendedError extends Error {
   override readonly name = 'InngestAgentSuspendedError';
+  readonly code = 'agent_suspended';
+  /** Stable docs link (mirrors `ZiroError.docsUrl`; this package keeps a thin dep tree). */
+  readonly docsUrl = 'https://ziroagent.com/docs/errors/agent_suspended';
   readonly snapshot: AgentSnapshot;
   readonly checkpointId: CheckpointId | undefined;
   readonly __ziro_suspended__: true = true;

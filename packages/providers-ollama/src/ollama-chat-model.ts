@@ -9,6 +9,7 @@ import {
   type ModelGenerateResult,
   type ModelStreamPart,
   type NormalizedMessage,
+  providerFetch,
   type TokenUsage,
   type ToolCallPart,
 } from '@ziro-agent/core';
@@ -49,7 +50,15 @@ interface OllamaChatModelConfig {
   fetcher: typeof fetch;
   /** Forwarded into Ollama's per-request `options` block. */
   defaultOptions?: Record<string, unknown>;
+  /** Default per-request timeout in ms (0 disables). Defaults to 120s. */
+  timeoutMs?: number;
 }
+
+/**
+ * Default request timeout. Local models can be slow to load on first call, so
+ * the default is more generous than the cloud providers'.
+ */
+const DEFAULT_TIMEOUT_MS = 120_000;
 
 /**
  * `LanguageModel` adapter for the local Ollama HTTP API
@@ -209,19 +218,14 @@ export class OllamaChatModel implements LanguageModel {
       headers,
       body: JSON.stringify(body),
     };
-    if (options.abortSignal) init.signal = options.abortSignal;
-
-    const res = await this.config.fetcher(url, init);
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new APICallError({
-        message: `Ollama API error: ${res.status} ${res.statusText}`,
-        url,
-        statusCode: res.status,
-        responseBody: text,
-      });
-    }
-    return res;
+    return providerFetch({
+      fetcher: this.config.fetcher,
+      url,
+      init,
+      providerLabel: 'Ollama',
+      ...(options.abortSignal ? { abortSignal: options.abortSignal } : {}),
+      timeoutMs: this.config.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    });
   }
 }
 

@@ -1,6 +1,6 @@
 import type { z } from 'zod';
 import { z as zod } from 'zod';
-import { BudgetExceededError } from './budget/errors.js';
+import { isBudgetExceededError } from './budget/errors.js';
 import { applyResolution } from './budget/resolver.js';
 import { withBudget } from './budget/scope.js';
 import type { BudgetSpec } from './budget/types.js';
@@ -274,7 +274,7 @@ export async function generateObject<T>(
     try {
       return await withBudget(budget, exec);
     } catch (err) {
-      if (err instanceof BudgetExceededError) {
+      if (isBudgetExceededError(err)) {
         const syntheticScope = {
           id: err.scopeId,
           spec: budget,

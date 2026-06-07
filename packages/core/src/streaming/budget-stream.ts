@@ -1,5 +1,5 @@
 import { checkMidStream } from '../budget/enforce.js';
-import { BudgetExceededError } from '../budget/errors.js';
+import { isBudgetExceededError } from '../budget/errors.js';
 import type { BudgetScope } from '../budget/scope.js';
 import type { ModelPricing } from '../pricing/data.js';
 import type { LanguageModel, ModelStreamPart } from '../types/model.js';
@@ -76,7 +76,7 @@ export function wrapStreamWithBudget(args: {
       try {
         checkMidStream(scope, projectedTokens, projectedUsd);
       } catch (err) {
-        if (err instanceof BudgetExceededError) {
+        if (isBudgetExceededError(err)) {
           aborted = true;
           // Abort the underlying HTTP request first — providers that respect
           // the chained signal will tear down their socket. We do NOT await

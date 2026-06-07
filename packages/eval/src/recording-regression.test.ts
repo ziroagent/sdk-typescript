@@ -66,6 +66,21 @@ describe('recording regression helpers', () => {
     expect(createRecordingRegressionCase(jsonl, 'q').metadata?.ziroRecordingSteps).toBe(2);
   });
 
+  it('fails gate when replay output diverges from recording', async () => {
+    const jsonl =
+      '{"v":1,"kind":"step","step":{"index":0,"text":"canonical","content":[],"toolCalls":[],"toolResults":[],"finishReason":"stop","usage":{"totalTokens":1}}}';
+    const spec = defineRecordingRegressionEval({
+      name: 'recording-regression-fail',
+      recordingJsonl: jsonl,
+      prompt: 'p',
+      run: async () => 'different',
+      graders: [exactMatch()],
+      gate: { kind: 'meanScore', min: 1 },
+    });
+    const r = await runEval(spec);
+    expect(r.gate.passed).toBe(false);
+  });
+
   it('expectedAssistantTextFromRecording is consistent', () => {
     const lines = [
       {

@@ -1,0 +1,14 @@
+ziroEvalDataset: 1
+name: yaml-smoke
+description: YAML declarative eval (same schema as JSON)
+runKind: modelText
+cases:
+  - id: yaml-case
+    input: {}
+    expected: ok
+    modelText: ok
+graders:
+  - kind: exactMatch
+gate:
+  kind: meanScore
+  min: 1

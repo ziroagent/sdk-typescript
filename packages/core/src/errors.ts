@@ -1,15 +1,29 @@
 /**
+ * Base URL for the per-error documentation pages. A `ZiroError`'s `docsUrl`
+ * defaults to `${ERROR_DOCS_BASE}/${code}` so every error links to its own
+ * troubleshooting page (RC milestone R1).
+ */
+export const ERROR_DOCS_BASE = 'https://ziroagent.com/docs/errors';
+
+/**
  * Base class for every ZiroAgent SDK error. Always check with `isZiroError()` —
  * never `instanceof` across realms (e.g. workers, vm contexts).
+ *
+ * Every subclass carries a stable, machine-readable `code` and a `docsUrl`
+ * (auto-derived from `code` unless overridden) so operators can jump straight
+ * to the relevant docs from a log line or trace.
  */
 export class ZiroError extends Error {
   override readonly name: string = 'ZiroError';
   readonly code: string;
+  /** Stable docs link for this error class; defaults to `${ERROR_DOCS_BASE}/${code}`. */
+  readonly docsUrl: string;
   override readonly cause?: unknown;
 
-  constructor(message: string, options: { code: string; cause?: unknown }) {
+  constructor(message: string, options: { code: string; docsUrl?: string; cause?: unknown }) {
     super(message);
     this.code = options.code;
+    this.docsUrl = options.docsUrl ?? `${ERROR_DOCS_BASE}/${options.code}`;
     if (options.cause !== undefined) {
       this.cause = options.cause;
     }
@@ -17,7 +31,13 @@ export class ZiroError extends Error {
   }
 }
 
-const ZIRO_ERROR_BRAND = '__ziro_error__';
+/**
+ * Single source of truth for the realm-safe error brand. Re-exported so other
+ * modules (e.g. `budget/errors.ts`) brand their errors with the *same* literal
+ * instead of duplicating it — a desynced copy would silently break
+ * `isZiroError()` across modules.
+ */
+export const ZIRO_ERROR_BRAND = '__ziro_error__';
 
 export function isZiroError(value: unknown): value is ZiroError {
   return (
@@ -27,10 +47,16 @@ export function isZiroError(value: unknown): value is ZiroError {
   );
 }
 
-function brand<T extends ZiroError>(err: T): T {
+/**
+ * Stamp the realm-safe brand onto a Ziro error. Exported for sibling error
+ * modules so the brand literal lives in exactly one place.
+ */
+export function brandZiroError<T extends object>(err: T): T {
   Object.defineProperty(err, ZIRO_ERROR_BRAND, { value: true, enumerable: false });
   return err;
 }
+
+const brand = brandZiroError;
 
 export class APICallError extends ZiroError {
   override readonly name = 'APICallError';
@@ -38,6 +64,13 @@ export class APICallError extends ZiroError {
   readonly url?: string;
   readonly responseBody?: string;
   readonly isRetryable: boolean;
+  /**
+   * Server-requested backoff in milliseconds, parsed from a `Retry-After`
+   * header (or equivalent) by the provider. When present, retry middleware
+   * SHOULD honour this instead of its own exponential backoff. `undefined`
+   * when the server did not specify one.
+   */
+  readonly retryAfterMs?: number;
 
   constructor(options: {
     message: string;
@@ -45,15 +78,52 @@ export class APICallError extends ZiroError {
     statusCode?: number;
     responseBody?: string;
     isRetryable?: boolean;
+    retryAfterMs?: number;
     cause?: unknown;
   }) {
     super(options.message, { code: 'api_call_error', cause: options.cause });
     if (options.statusCode !== undefined) this.statusCode = options.statusCode;
     if (options.url !== undefined) this.url = options.url;
     if (options.responseBody !== undefined) this.responseBody = options.responseBody;
+    if (options.retryAfterMs !== undefined && Number.isFinite(options.retryAfterMs)) {
+      this.retryAfterMs = Math.max(0, options.retryAfterMs);
+    }
     this.isRetryable = options.isRetryable ?? defaultIsRetryable(options.statusCode);
     brand(this);
   }
+}
+
+/**
+ * Realm-safe check for {@link APICallError}. Prefer this over `instanceof`
+ * when an error may have crossed a realm/bundle boundary (workers, vm,
+ * duplicate package copies).
+ */
+export function isAPICallError(value: unknown): value is APICallError {
+  return isZiroError(value) && (value as ZiroError).code === 'api_call_error';
+}
+
+/**
+ * Realm-safe check for {@link TimeoutError}. See {@link isAPICallError}.
+ */
+export function isTimeoutError(value: unknown): value is TimeoutError {
+  return isZiroError(value) && (value as ZiroError).code === 'timeout';
+}
+
+/**
+ * Parse a `Retry-After` header value into milliseconds. Supports both the
+ * delta-seconds form (`"120"`) and the HTTP-date form
+ * (`"Wed, 21 Oct 2026 07:28:00 GMT"`). Returns `undefined` when absent or
+ * unparseable so callers fall back to their own backoff.
+ */
+export function parseRetryAfterMs(headerValue: string | null | undefined): number | undefined {
+  if (!headerValue) return undefined;
+  const trimmed = headerValue.trim();
+  if (trimmed === '') return undefined;
+  const asSeconds = Number(trimmed);
+  if (Number.isFinite(asSeconds)) return Math.max(0, asSeconds * 1000);
+  const asDate = Date.parse(trimmed);
+  if (Number.isFinite(asDate)) return Math.max(0, asDate - Date.now());
+  return undefined;
 }
 
 function defaultIsRetryable(status: number | undefined): boolean {

@@ -181,6 +181,42 @@ describe('executeToolCalls — budget enforcement', () => {
     expect(b?.result).toBe('fine');
   });
 
+  it('signals sibling tools to abort when one trips the budget (C2 sibling-abort)', async () => {
+    let siblingSawAbort: boolean | undefined;
+    const tripping = defineTool({
+      name: 'tripping',
+      input: z.object({}),
+      budget: { maxLlmCalls: 0 }, // first nested LLM call fails pre-flight
+      execute: async () => {
+        await generateText({ model: mockModel(), prompt: 'x' });
+        return 'unreachable';
+      },
+    });
+    const cooperativeSibling = defineTool({
+      name: 'slow',
+      input: z.object({}),
+      execute: async (_input, ctx) => {
+        // Outlive the tripping tool so the batch abort has fired by the time
+        // we observe the signal.
+        await new Promise((r) => setTimeout(r, 30));
+        siblingSawAbort = ctx.abortSignal?.aborted;
+        return 'done';
+      },
+    });
+
+    const results = await executeToolCalls({
+      tools: { tripping, slow: cooperativeSibling },
+      toolCalls: [
+        { type: 'tool-call', toolCallId: 'a', toolName: 'tripping', args: {} },
+        { type: 'tool-call', toolCallId: 'b', toolName: 'slow', args: {} },
+      ],
+    });
+
+    const trip = results.find((r) => r.toolCallId === 'a');
+    expect(trip?.budgetExceeded?.kind).toBe('llmCalls');
+    expect(siblingSawAbort).toBe(true);
+  });
+
   it('non-budget errors are still surfaced without budgetExceeded field', async () => {
     const t = defineTool({
       name: 'crashes',

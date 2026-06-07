@@ -37,7 +37,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.4
-        version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@22.19.17)(msw@2.13.4(@types/node@22.19.17)(typescript@5.9.3))(vite@8.0.8(@types/node@22.19.17)(esbuild@0.28.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@22.19.17)(msw@2.13.4(@types/node@22.19.17)(typescript@5.9.3))(vite@8.0.8(@types/node@22.19.17)(esbuild@0.27.7)(tsx@4.21.0)(yaml@2.8.3))
 
   apps/docs:
     dependencies:
@@ -321,6 +321,9 @@ importers:
       '@ziro-agent/cli':
         specifier: workspace:*
         version: link:../../packages/cli
+      '@ziro-agent/eval':
+        specifier: workspace:*
+        version: link:../../packages/eval
 
   examples/groq-chat:
     dependencies:
@@ -489,7 +492,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.4
-        version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@22.19.17)(msw@2.13.4(@types/node@22.19.17)(typescript@5.9.3))(vite@8.0.8(@types/node@22.19.17)(esbuild@0.27.7)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@22.19.17)(msw@2.13.4(@types/node@22.19.17)(typescript@5.9.3))(vite@8.0.8(@types/node@22.19.17)(esbuild@0.28.0)(tsx@4.21.0)(yaml@2.8.3))
 
   packages/audit:
     devDependencies:
@@ -733,6 +736,9 @@ importers:
       '@ziro-agent/core':
         specifier: workspace:*
         version: link:../core
+      yaml:
+        specifier: ^2.8.3
+        version: 2.8.3
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: ^0.18.2

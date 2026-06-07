@@ -51,4 +51,20 @@ describe('error hierarchy', () => {
     expect(new InvalidPromptError('x').code).toBe('invalid_prompt');
     expect(new TimeoutError(1).code).toBe('timeout');
   });
+
+  it('derives docsUrl from code by default (R1)', () => {
+    expect(new TimeoutError(1).docsUrl).toBe('https://ziroagent.com/docs/errors/timeout');
+    expect(new InvalidPromptError('x').docsUrl).toBe(
+      'https://ziroagent.com/docs/errors/invalid_prompt',
+    );
+  });
+
+  it('honours an explicit docsUrl override', () => {
+    class Custom extends ZiroError {
+      constructor() {
+        super('msg', { code: 'custom', docsUrl: 'https://example.com/x' });
+      }
+    }
+    expect(new Custom().docsUrl).toBe('https://example.com/x');
+  });
 });

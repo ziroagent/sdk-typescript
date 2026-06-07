@@ -17,7 +17,7 @@
  */
 
 import { AsyncLocalStorage } from 'node:async_hooks';
-import type { ChatMessage } from '@ziro-agent/core';
+import { brandZiroError, type ChatMessage, ZiroError } from '@ziro-agent/core';
 import { defineTool, type Tool } from '@ziro-agent/tools';
 import { ATTR, getTracer } from '@ziro-agent/tracing';
 import { z } from 'zod';
@@ -88,7 +88,7 @@ export const handoffStore = new AsyncLocalStorage<HandoffFrame>();
  * catch the "triage agent calls itself" recursive misconfiguration
  * before it costs real money.
  */
-export class HandoffLoopError extends Error {
+export class HandoffLoopError extends ZiroError {
   override readonly name = 'HandoffLoopError';
   readonly depth: number;
   readonly maxDepth: number;
@@ -99,10 +99,12 @@ export class HandoffLoopError extends Error {
       `Handoff depth ${args.depth} exceeded max ${args.maxDepth}. ` +
         `Chain: ${args.chain.join(' → ')}. ` +
         `Configure CreateAgentOptions.maxHandoffDepth or fix the loop.`,
+      { code: 'handoff_loop' },
     );
     this.depth = args.depth;
     this.maxDepth = args.maxDepth;
     this.chain = args.chain;
+    brandZiroError(this);
   }
 }
 

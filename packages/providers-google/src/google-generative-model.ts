@@ -9,6 +9,8 @@ import {
   type ModelGenerateResult,
   type ModelStreamPart,
   type NormalizedMessage,
+  providerFetch,
+  redactQueryKey,
   resolveMediaInput,
   type TokenUsage,
   type ToolCallPart,
@@ -34,7 +36,12 @@ interface GoogleGenerativeModelConfig {
   apiKey: string | undefined;
   headers: Record<string, string>;
   fetcher: typeof fetch;
+  /** Default per-request timeout in ms (0 disables). Defaults to 60s. */
+  timeoutMs?: number;
 }
+
+/** Default request timeout — a hung socket otherwise hangs forever. */
+const DEFAULT_TIMEOUT_MS = 60_000;
 
 /**
  * Adapter for Google's Generative Language API (`generativelanguage.googleapis.com`).
@@ -263,19 +270,17 @@ export class GoogleGenerativeModel implements LanguageModel {
       headers,
       body: JSON.stringify(body),
     };
-    if (options.abortSignal) init.signal = options.abortSignal;
-
-    const res = await this.config.fetcher(url, init);
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new APICallError({
-        message: `Google Gemini API error: ${res.status} ${res.statusText}`,
-        url,
-        statusCode: res.status,
-        responseBody: text,
-      });
-    }
-    return res;
+    // `redactQueryKey` strips the `?key=...` secret from the URL stored on any
+    // thrown error so a Gemini API key never leaks via `error.url`.
+    return providerFetch({
+      fetcher: this.config.fetcher,
+      url,
+      init,
+      providerLabel: 'Google Gemini',
+      redactUrl: redactQueryKey,
+      ...(options.abortSignal ? { abortSignal: options.abortSignal } : {}),
+      timeoutMs: this.config.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    });
   }
 }
 

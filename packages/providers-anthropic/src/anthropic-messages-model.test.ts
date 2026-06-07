@@ -141,6 +141,43 @@ describe('Anthropic messages model — stream', () => {
     expect(usage.promptTokens).toBe(4);
     expect(usage.completionTokens).toBe(2);
   });
+
+  it('surfaces a mid-stream `error` event as an error part, not a clean finish', async () => {
+    const events: Array<[string, string]> = [
+      [
+        'message_start',
+        JSON.stringify({ type: 'message_start', message: { usage: { input_tokens: 4 } } }),
+      ],
+      [
+        'error',
+        JSON.stringify({
+          type: 'error',
+          error: { type: 'overloaded_error', message: 'Overloaded' },
+        }),
+      ],
+    ];
+    const fakeFetch = async () =>
+      new Response(sseBody(events), {
+        status: 200,
+        headers: { 'Content-Type': 'text/event-stream' },
+      });
+    const anthropic = createAnthropic({ apiKey: 'test', fetch: fakeFetch as typeof fetch });
+    const rs = await anthropic('claude-sonnet-4-5').stream({
+      messages: [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }],
+    });
+
+    const parts: Array<{ type: string }> = [];
+    const reader = rs.getReader();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      parts.push(value as { type: string });
+    }
+    expect(parts.some((p) => p.type === 'error')).toBe(true);
+    // Previously the error frame was dropped and the stream emitted a clean
+    // (empty) finish — assert that regression cannot recur.
+    expect(parts.some((p) => p.type === 'finish')).toBe(false);
+  });
 });
 
 describe('Anthropic messages model — estimateCost', () => {

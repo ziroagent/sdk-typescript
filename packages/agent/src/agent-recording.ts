@@ -1,4 +1,9 @@
-import type { LanguageModel, ModelGenerateResult } from '@ziro-agent/core';
+import {
+  brandZiroError,
+  type LanguageModel,
+  type ModelGenerateResult,
+  ZiroError,
+} from '@ziro-agent/core';
 import { createReplayLanguageModel } from '@ziro-agent/core/testing';
 import { defineTool, type Tool, type ToolExecutionResult } from '@ziro-agent/tools';
 import { z } from 'zod';
@@ -40,8 +45,12 @@ export interface AgentRecordingStepLine {
 }
 
 /** Thrown when replayed tool calls diverge from the recorded trace. */
-export class ReplayMismatchError extends Error {
+export class ReplayMismatchError extends ZiroError {
   override readonly name = 'ReplayMismatchError';
+  constructor(message: string) {
+    super(message, { code: 'replay_mismatch' });
+    brandZiroError(this);
+  }
 }
 
 function jsonSafeClone(value: unknown): unknown {

@@ -19,6 +19,7 @@ export {
   JSON_EVAL_DATASET_VERSION,
   type JsonDatasetDoc,
 } from './json-dataset.js';
+export { resolveJsonJudgeModel } from './json-judge-model.js';
 export {
   createRecordingRegressionCase,
   defineRecordingRegressionEval,
@@ -42,3 +43,4 @@ export type {
   RunEvalOptions,
   SerializableErrorInfo,
 } from './types.js';
+export { evalSpecFromYamlDataset } from './yaml-dataset.js';

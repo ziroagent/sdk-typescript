@@ -9,6 +9,7 @@ import {
   type ModelGenerateResult,
   type ModelStreamPart,
   type NormalizedMessage,
+  providerFetch,
   resolveMediaInput,
   type TokenUsage,
   type ToolCallPart,
@@ -37,7 +38,12 @@ interface AnthropicMessagesModelConfig {
   baseURL: string;
   headers: Record<string, string>;
   fetcher: typeof fetch;
+  /** Default per-request timeout in ms (0 disables). Defaults to 60s. */
+  timeoutMs?: number;
 }
+
+/** Default request timeout — a hung socket otherwise hangs forever. */
+const DEFAULT_TIMEOUT_MS = 60_000;
 
 export class AnthropicMessagesModel implements LanguageModel {
   readonly provider = 'anthropic';
@@ -151,6 +157,24 @@ export class AnthropicMessagesModel implements LanguageModel {
               case 'message_stop': {
                 break;
               }
+              case 'error': {
+                // Anthropic sends `event: error` frames mid-stream (e.g.
+                // `overloaded_error`). Previously these were silently dropped
+                // and the stream looked like a clean, empty finish. Surface
+                // them as a real error part so the consumer can react / retry.
+                const e = data.error as { type?: string; message?: string } | undefined;
+                controller.enqueue({
+                  type: 'error',
+                  error: new APICallError({
+                    message: `Anthropic stream error: ${e?.type ?? 'unknown'}${
+                      e?.message ? ` — ${e.message}` : ''
+                    }`,
+                    isRetryable: e?.type === 'overloaded_error' || e?.type === 'api_error',
+                  }),
+                });
+                controller.close();
+                return;
+              }
             }
           }
 
@@ -245,19 +269,14 @@ export class AnthropicMessagesModel implements LanguageModel {
       headers,
       body: JSON.stringify(body),
     };
-    if (options.abortSignal) init.signal = options.abortSignal;
-
-    const res = await this.config.fetcher(url, init);
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new APICallError({
-        message: `Anthropic API error: ${res.status} ${res.statusText}`,
-        url,
-        statusCode: res.status,
-        responseBody: text,
-      });
-    }
-    return res;
+    return providerFetch({
+      fetcher: this.config.fetcher,
+      url,
+      init,
+      providerLabel: 'Anthropic',
+      ...(options.abortSignal ? { abortSignal: options.abortSignal } : {}),
+      timeoutMs: this.config.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    });
   }
 }
 

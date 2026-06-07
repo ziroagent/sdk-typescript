@@ -1,0 +1,63 @@
+---
+title: Sandbox & browser smoke (no API keys)
+description: Stub adapters + agent tools for CI and local smoke tests before E2B or Playwright.
+---
+
+Reference adapters (`@ziro-agent/sandbox-e2b`, `browser-playwright`, …) need vendor API keys.
+For **fast smoke tests**, use core stubs — same tool surface, no outbound network.
+
+```bash
+pnpm add @ziro-agent/core @ziro-agent/tools @ziro-agent/agent
+```
+
+## Code interpreter (stub sandbox)
+
+```ts
+import { createAgent } from '@ziro-agent/agent';
+import { createMockLanguageModel } from '@ziro-agent/core/testing';
+import { createStubSandboxAdapter } from '@ziro-agent/core';
+import { createCodeInterpreterTool } from '@ziro-agent/tools';
+
+const model = createMockLanguageModel({
+  responses: [{ text: 'Done.', finishReason: 'stop' }],
+});
+
+const codeInterpreter = createCodeInterpreterTool({
+  sandbox: createStubSandboxAdapter({ prefix: '[smoke] ' }),
+});
+
+const agent = createAgent({
+  model,
+  tools: { code_interpreter: codeInterpreter },
+});
+```
+
+`createStubSandboxAdapter` echoes code to stdout with a configurable prefix — ideal for unit tests and eval gates.
+
+## Browser goto (stub)
+
+```ts
+import { createStubBrowserAdapter } from '@ziro-agent/core';
+import { createBrowserGotoTool } from '@ziro-agent/tools';
+
+const browserGoto = createBrowserGotoTool({
+  browser: createStubBrowserAdapter(),
+});
+```
+
+## Production adapters (npm)
+
+| Package | When |
+| --- | --- |
+| `@ziro-agent/sandbox-e2b` | `E2B_API_KEY` |
+| `@ziro-agent/sandbox-daytona` | Daytona workspace |
+| `@ziro-agent/sandbox-modal` | Modal account |
+| `@ziro-agent/browser-playwright` | Local or CI Playwright |
+| `@ziro-agent/browser-browserbase` | Browserbase API |
+
+See [Sandbox & browser](../sandbox-browser) for full wiring.
+
+## See also
+
+- [Tools](../tools)
+- [HITL](../hitl) — sandbox/browser tools default to `mutates: true`

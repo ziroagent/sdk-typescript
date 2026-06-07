@@ -17,6 +17,15 @@ export interface BudgetScope {
   readonly startedAt: number;
   /** Track which `warnAt` thresholds have already fired so we only warn once. */
   readonly firedWarnings: Set<string>;
+  /**
+   * The scope this one was nested under (`undefined` for a top-level scope).
+   * Retained so `recordUsage` can write spend deltas back up the chain (C2 /
+   * RFC 0001 §Composition). Without write-back, a child scope seeded from a
+   * snapshot of the parent silently hides its spend from the parent's cap —
+   * e.g. an LLM call made *inside* a budgeted tool never counts against the
+   * agent's outer `maxUsd`.
+   */
+  readonly parent?: BudgetScope;
 }
 
 export function createScope(
@@ -40,6 +49,9 @@ export function createScope(
     used: seed,
     startedAt: Date.now(),
     firedWarnings: new Set<string>(),
+    // A resume scope (presetUsage) starts from carried-forward usage and must
+    // NOT also propagate up to a parent, or that spend would be double-counted.
+    ...(parent && !presetUsage ? { parent } : {}),
   };
 }
 

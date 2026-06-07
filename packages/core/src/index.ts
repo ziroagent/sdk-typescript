@@ -1,4 +1,8 @@
-export { BudgetExceededError, type BudgetExceededKind } from './budget/errors.js';
+export {
+  BudgetExceededError,
+  type BudgetExceededKind,
+  isBudgetExceededError,
+} from './budget/errors.js';
 export { type BudgetObserver, setBudgetObserver } from './budget/observer.js';
 export { applyResolution, resolveOnExceed } from './budget/resolver.js';
 export {
@@ -17,9 +21,37 @@ export type {
   BudgetWarnAt,
   CostEstimate,
 } from './budget/types.js';
-export * from './errors.js';
-export * from './generate-object.js';
-export * from './generate-text.js';
+export {
+  APICallError,
+  brandZiroError,
+  ERROR_DOCS_BASE,
+  InvalidArgumentError,
+  InvalidPromptError,
+  isAPICallError,
+  isTimeoutError,
+  isZiroError,
+  JSONParseError,
+  NoTextGeneratedError,
+  ObjectValidationError,
+  parseRetryAfterMs,
+  TimeoutError,
+  UnsupportedPartError,
+  ZIRO_ERROR_BRAND,
+  ZiroError,
+} from './errors.js';
+export {
+  type GenerateObjectOptions,
+  type GenerateObjectResult,
+  generateObject,
+} from './generate-object.js';
+export {
+  type BudgetScope,
+  computeActualUsd,
+  type GenerateTextOptions,
+  type GenerateTextResult,
+  generateText,
+  resolveEstimate,
+} from './generate-text.js';
 export {
   type ApprovalObserver,
   fireAgentResumed,
@@ -62,21 +94,70 @@ export type {
   SandboxFileArtifact,
   SandboxLanguage,
 } from './sandbox/types.js';
-export * from './stream-text.js';
-export * from './streaming/model-stream-tail.js';
-export * from './streaming/resumable-stream-observer.js';
-export * from './streaming/resumable-stream-store.js';
-export * from './streaming/text-stream.js';
-export * from './types/content.js';
-export * from './types/finish-reason.js';
-export * from './types/messages.js';
-export * from './types/middleware.js';
-export * from './types/model.js';
-export * from './types/usage.js';
+export { type StreamTextOptions, streamText } from './stream-text.js';
+export { tailBlocksContinueUpstream } from './streaming/model-stream-tail.js';
+export {
+  fireResumableStreamEvent,
+  type ResumableStreamEvent,
+  type ResumableStreamObserver,
+  setResumableStreamObserver,
+} from './streaming/resumable-stream-observer.js';
+export {
+  ContinueUpstreamMidToolCallError,
+  InMemoryResumableStreamEventStore,
+  type InMemoryResumableStreamEventStoreOptions,
+  isTerminalModelStreamPart,
+  type ResumableStreamContinueLock,
+  type ResumableStreamContinueLockStore,
+  ResumableStreamError,
+  type ResumableStreamEventStore,
+  type ResumableStreamSessionMeta,
+} from './streaming/resumable-stream-store.js';
+export { buildStreamTextResult, type StreamTextResult } from './streaming/text-stream.js';
+export type {
+  AudioPart,
+  ContentPart,
+  FilePart,
+  ImagePart,
+  TextPart,
+  ToolCallPart,
+  ToolResultPart,
+  VideoPart,
+} from './types/content.js';
+export type { FinishReason } from './types/finish-reason.js';
+export type {
+  AssistantMessage,
+  ChatMessage,
+  NormalizedMessage,
+  Role,
+  SystemMessage,
+  ToolMessage,
+  UserMessage,
+} from './types/messages.js';
+export type {
+  LanguageModelMiddleware,
+  LanguageModelMiddlewareContext,
+  WrapGenerateContext,
+  WrapStreamContext,
+} from './types/middleware.js';
+export type {
+  JSONSchema,
+  LanguageModel,
+  ModelCallOptions,
+  ModelGenerateResult,
+  ModelStreamPart,
+  ToolDefinitionForModel,
+} from './types/model.js';
+export { addUsage, emptyUsage, type TokenUsage } from './types/usage.js';
 export { estimateTokensFromMessages, estimateTokensFromString } from './util/estimate-tokens.js';
 export { type FallbackChainOptions, withFallbackChain } from './util/fallback-model.js';
 export type { InlineMediaBytes, RemoteMediaUrl, ResolvedMedia } from './util/multimodal-encode.js';
 export { resolveMediaInput } from './util/multimodal-encode.js';
-export * from './util/normalize-prompt.js';
+export { normalizePrompt, type PromptInput } from './util/normalize-prompt.js';
+export {
+  type ProviderFetchOptions,
+  providerFetch,
+  redactQueryKey,
+} from './util/provider-fetch.js';
 export { assertProviderMapsUserMultimodalParts } from './util/provider-user-content.js';
 export { wrapModel } from './util/wrap-model.js';

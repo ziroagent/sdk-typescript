@@ -1,5 +1,5 @@
 import { checkAfterCall, checkBeforeCall, recordUsage } from './budget/enforce.js';
-import { BudgetExceededError } from './budget/errors.js';
+import { isBudgetExceededError } from './budget/errors.js';
 import { applyResolution } from './budget/resolver.js';
 import { getCurrentScope, withBudget } from './budget/scope.js';
 import { computeActualUsd, type GenerateTextOptions, resolveEstimate } from './generate-text.js';
@@ -351,7 +351,7 @@ export async function streamText(options: StreamTextOptions): Promise<StreamText
     try {
       return await withBudget(budget, exec);
     } catch (err) {
-      if (err instanceof BudgetExceededError) {
+      if (isBudgetExceededError(err)) {
         const syntheticScope = {
           id: err.scopeId,
           spec: budget,
