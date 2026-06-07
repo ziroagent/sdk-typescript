@@ -5,26 +5,25 @@ name: Sync main -> dev
 # pushed version bumps + tags), back-merge `main` into `dev` so the
 # integration branch never falls behind.
 #
-# Strategy:
-#   1. Try a fast-forward push of `main` onto `dev` (cheap, common case
-#      when no concurrent dev work happened during the release).
-#   2. If fast-forward fails (dev has commits main doesn't), open a
-#      "chore(sync): main -> dev" PR for human review instead of
-#      attempting an auto-merge — merge conflicts during sync should be
-#      resolved by the contributor who introduced the divergence, not
-#      a bot.
+# Strategy (OPS2, 2026-06):
+#   `dev` is a PROTECTED branch — a direct / fast-forward push is rejected
+#   ("GH006: protected branch update failed"), which used to fail this job on
+#   every release. So we NEVER push to `dev`. Instead:
+#     1. Skip if `dev` already contains `main` (in sync, or just extra merge
+#        nodes from prior syncs).
+#     2. Otherwise force `main` onto a stable `chore/sync-main-to-dev` branch,
+#        open (or refresh) a PR into `dev`, and enable GitHub **auto-merge** so
+#        it lands automatically once required checks pass.
 #
-# IMPORTANT — token cascade:
-#   By default GitHub does NOT trigger downstream workflows on commits /
-#   PRs created via `GITHUB_TOKEN`. That means:
-#     - the fast-forward push WILL bypass CI on `dev` (acceptable: the
-#       commits already passed CI on main).
-#     - the fallback PR (if opened) will NOT auto-trigger CI on `dev`.
-#       Reviewer must close + reopen the PR (or push an empty commit)
-#       to kick CI.
-#   To get full CI cascade on the fallback sync PR, set repo secret
-#   `RELEASE_BOT_TOKEN` (same PAT as `release.yml`). Checkout + `gh` then
-#   use it instead of `GITHUB_TOKEN`. See `RELEASING.md` > "Known gotcha".
+# FULLY hands-off requires one repo setting: `dev` currently requires **1
+# approving review**, so the auto-merge PR waits for an approval. To make sync
+# completely automatic, relax `dev`'s review requirement (it's the integration
+# branch; `main` is the real gate) OR have a reviewer/auto-approve rule. See
+# RELEASING.md.
+#
+# Token cascade: set `RELEASE_BOT_TOKEN` (same PAT as `release.yml`) so the
+# sync PR triggers CI on `dev` (a `GITHUB_TOKEN`-opened PR does not). Falls
+# back to `GITHUB_TOKEN` when unset.
 
 on:
   push:
@@ -80,82 +79,61 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
 
-      - name: Try fast-forward main -> dev
-        id: ff
+      - name: Open/refresh sync PR + enable auto-merge
         env:
           GH_TOKEN: ${{ secrets.RELEASE_BOT_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          # Fetch dev so we know its tip locally.
           git fetch origin dev:dev
           MAIN_SHA=$(git rev-parse main)
           DEV_SHA=$(git rev-parse dev)
-          echo "main: ${MAIN_SHA}"
-          echo "dev:  ${DEV_SHA}"
+          echo "main=${MAIN_SHA} dev=${DEV_SHA}"
 
           if [ "${MAIN_SHA}" = "${DEV_SHA}" ]; then
             echo "dev is already at main — nothing to sync."
-            echo "result=noop" >> "$GITHUB_OUTPUT"
+            echo "### Sync: no-op (dev == main)" >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+          # If main is already an ancestor of dev, dev contains all of main's
+          # content (it just has extra merge nodes from prior syncs) — skip.
+          if git merge-base --is-ancestor "${MAIN_SHA}" "${DEV_SHA}"; then
+            echo "dev already contains main — nothing to sync."
+            echo "### Sync: no-op (dev already contains main)" >> "${GITHUB_STEP_SUMMARY}"
             exit 0
           fi
 
-          # Is dev an ancestor of main? If yes, fast-forward is safe.
-          if git merge-base --is-ancestor "${DEV_SHA}" "${MAIN_SHA}"; then
-            echo "dev is behind main — fast-forwarding."
-            git push origin "main:dev"
-            echo "result=fastforward" >> "$GITHUB_OUTPUT"
+          # dev is protected (no direct push). Carry main onto a STABLE sync
+          # branch (force-push keeps its head at the latest main) and open or
+          # refresh one PR into dev.
+          BRANCH="chore/sync-main-to-dev"
+          git push -f origin "main:refs/heads/${BRANCH}"
+
+          if gh pr view "${BRANCH}" --json number >/dev/null 2>&1; then
+            echo "Sync PR already open for ${BRANCH}; force-push refreshed it."
           else
-            echo "dev has commits not on main — fast-forward not possible."
-            echo "result=diverged" >> "$GITHUB_OUTPUT"
+            BODY=$(printf '%s\n' \
+              'Auto-generated back-merge of `main` into `dev` after a push to `main` (release or merge).' \
+              '' \
+              'Auto-merge is enabled — this lands automatically once required checks pass.' \
+              '**`dev` requires 1 approving review**, so approve to complete (or relax dev''s' \
+              'review requirement so sync is fully hands-off; see RELEASING.md).' \
+              '' \
+              'Generated by `.github/workflows/sync-main-to-dev.yml`.')
+            gh pr create \
+              --base dev --head "${BRANCH}" \
+              --title "chore(sync): main -> dev" \
+              --body "${BODY}" \
+              || echo "::notice::Sync PR create skipped (may already exist)."
           fi
 
-      - name: Open back-merge PR (fallback when diverged)
-        if: steps.ff.outputs.result == 'diverged'
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_BOT_TOKEN || secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          BRANCH="chore/sync-main-to-dev-$(date -u +%Y%m%dT%H%M%S)"
-          # Create a branch from current main for the PR.
-          git checkout -b "${BRANCH}" main
-          git push origin "${BRANCH}"
-
-          # Open the PR. `gh` exits non-zero if a PR with the same head
-          # already exists; the `|| true` swallows that idempotently.
-          BODY=$(printf '%s\n' \
-            'Auto-generated back-merge PR.' \
-            '' \
-            '`main` advanced (most likely: a release was published) but `dev` has' \
-            'commits that are not on `main`, so a fast-forward is not possible.' \
-            '' \
-            'Please resolve any conflicts and merge so `dev` stays current with' \
-            'the released version of the SDK.' \
-            '' \
-            'Generated by `.github/workflows/sync-main-to-dev.yml`.')
-
-          gh pr create \
-            --base dev \
-            --head "${BRANCH}" \
-            --title "chore(sync): main -> dev" \
-            --body "${BODY}" \
-            --label "automerge:dev" \
-            || echo "::notice::Sync PR may already exist for this main tip — skipping create."
+          # Queue native auto-merge (idempotent). Completes once required checks
+          # pass AND dev's review requirement is satisfied.
+          gh pr merge "${BRANCH}" --auto --merge \
+            || echo "::notice::auto-merge not enabled yet (needs review / repo settings)."
 
           {
-            echo "### Sync PR opened"
+            echo "### Sync PR queued for auto-merge"
             echo ""
-            echo "main and dev have diverged; opened a back-merge PR for review."
-          } >> "${GITHUB_STEP_SUMMARY}"
-
-      - name: Summary (fast-forward / no-op)
-        if: steps.ff.outputs.result != 'diverged'
-        run: |
-          {
-            echo "### Sync result: ${{ steps.ff.outputs.result }}"
-            echo ""
-            if [ "${{ steps.ff.outputs.result }}" = "fastforward" ]; then
-              echo "\`dev\` was fast-forwarded to the latest \`main\` tip."
-            else
-              echo "\`dev\` is already at \`main\` — no sync needed."
-            fi
+            echo "Opened/refreshed \`chore(sync): main -> dev\` and enabled auto-merge."
+            echo "Completes once required checks pass and \`dev\`'s review requirement is met."
           } >> "${GITHUB_STEP_SUMMARY}"
