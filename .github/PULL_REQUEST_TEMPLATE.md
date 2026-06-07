@@ -15,7 +15,7 @@
 
 ## Checklist
 
-- [ ] PR title follows [Conventional Commits](https://www.conventionalcommits.org/) (e.g. `feat(core): ...`, `fix(agent): ...`, `feat(core)!: ...` for breaking) — enforced by `Changeset gate / Lint commits + PR title`
+- [ ] PR title follows [Conventional Commits](https://www.conventionalcommits.org/) (e.g. `feat(core): ...`, `fix(agent): ...`, `feat(core)!: ...` for breaking) — enforced by `Changeset gate / Lint PR title`
 - [ ] I added a changeset (`pnpm changeset`) with a bump matching my commit type — see [Versioning policy](../CONTRIBUTING.md#versioning-policy):
   - [ ] `feat:` → `minor` changeset
   - [ ] `fix:` / `perf:` → `patch` changeset
