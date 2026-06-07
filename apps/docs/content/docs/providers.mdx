@@ -54,6 +54,31 @@ Provider HTTP is hardened so a flaky network doesn't hang or silently drop a run
   `overloaded_error`) are emitted as a real error part rather than looking like
   a clean, empty finish.
 
+## Prompt caching
+
+**Anthropic** supports opt-in caching of the stable prefix. Pass
+`providerOptions: { cacheControl: true }` (or `{ system?, tools? }` to target one
+part) and the provider stamps `cache_control: { type: 'ephemeral' }` on the
+`system` block and the last tool — so Anthropic caches everything up to there:
+
+```ts
+import { generateText } from '@ziro-agent/core';
+import { anthropic } from '@ziro-agent/anthropic';
+
+const { usage } = await generateText({
+  model: anthropic('claude-sonnet-4-5'),
+  system: longReusableSystemPrompt,
+  prompt: 'First question',
+  providerOptions: { cacheControl: true }, // cache system + tools
+});
+usage.cachedPromptTokens; // cache reads on subsequent calls
+```
+
+The flag never leaks into the wire body; message-level caching is still
+available via a raw `providerOptions.messages` override. **OpenAI** prompt
+caching is automatic server-side — no flag needed — and shows up the same way in
+`usage.cachedPromptTokens`.
+
 ## Error handling
 
 Provider failures throw `APICallError` (a `ZiroError`). Pair it with the

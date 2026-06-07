@@ -229,20 +229,38 @@ export class AnthropicMessagesModel implements LanguageModel {
 
   private buildBody(options: ModelCallOptions, stream: boolean): Record<string, unknown> {
     const { system, messages } = splitSystem(options.messages);
+    // Opt-in prompt caching (RFC: provider depth). `providerOptions.cacheControl`
+    // = `true` (cache system + tools) or `{ system?, tools? }`. We inject
+    // `cache_control: { type: 'ephemeral' }` on the *stable prefix* (system
+    // block + last tool) so the cache covers everything before it. Stripped
+    // from the generic providerOptions passthrough below so it never leaks
+    // into the wire body. Message-level caching stays available via a raw
+    // `providerOptions.messages` override.
+    const cache = normalizeCacheControl(options.providerOptions?.cacheControl);
 
     const body: Record<string, unknown> = {
       model: this.modelId,
       messages: messages.map(toAnthropicMessage),
       max_tokens: options.maxTokens ?? 4096,
     };
-    if (system) body.system = system;
+    if (system) {
+      body.system = cache?.system
+        ? [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }]
+        : system;
+    }
     if (stream) body.stream = true;
     if (options.tools?.length) {
-      body.tools = options.tools.map((t) => ({
+      const tools = options.tools.map((t) => ({
         name: t.name,
         ...(t.description !== undefined ? { description: t.description } : {}),
         input_schema: t.parameters,
-      }));
+      })) as Array<Record<string, unknown>>;
+      // Marking the LAST tool caches the whole tools + system prefix.
+      if (cache?.tools && tools.length > 0) {
+        const last = tools[tools.length - 1] as Record<string, unknown>;
+        last.cache_control = { type: 'ephemeral' };
+      }
+      body.tools = tools;
     }
     if (options.toolChoice !== undefined) {
       if (options.toolChoice === 'required') body.tool_choice = { type: 'any' };
@@ -257,7 +275,11 @@ export class AnthropicMessagesModel implements LanguageModel {
     if (options.topP !== undefined) body.top_p = options.topP;
     if (options.topK !== undefined) body.top_k = options.topK;
     if (options.stopSequences !== undefined) body.stop_sequences = options.stopSequences;
-    if (options.providerOptions) Object.assign(body, options.providerOptions);
+    if (options.providerOptions) {
+      // `cacheControl` is consumed above — don't leak it into the wire body.
+      const { cacheControl: _cacheControl, ...passthrough } = options.providerOptions;
+      Object.assign(body, passthrough);
+    }
     return body;
   }
 
@@ -289,6 +311,24 @@ function asChatMessages(
   messages: NormalizedMessage[],
 ): Parameters<typeof estimateTokensFromMessages>[0] {
   return messages as unknown as Parameters<typeof estimateTokensFromMessages>[0];
+}
+
+/**
+ * Normalise the opt-in `providerOptions.cacheControl` flag into which parts of
+ * the stable prefix to mark `ephemeral`. `true` → cache system + tools (the
+ * usual high-value target); an object opts in per-part. `undefined`/`false`
+ * → no caching (back-compat).
+ */
+function normalizeCacheControl(raw: unknown): { system: boolean; tools: boolean } | undefined {
+  if (raw === undefined || raw === false || raw === null) return undefined;
+  if (raw === true) return { system: true, tools: true };
+  if (typeof raw === 'object') {
+    const o = raw as { system?: unknown; tools?: unknown };
+    const system = o.system === true;
+    const tools = o.tools === true;
+    return system || tools ? { system, tools } : undefined;
+  }
+  return undefined;
 }
 
 function splitSystem(messages: NormalizedMessage[]): {
