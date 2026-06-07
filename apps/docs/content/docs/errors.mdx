@@ -26,8 +26,19 @@ ZiroError                              code: ZiroError.code (string)
 ├── UnsupportedPartError               code: 'unsupported_part'   (multimodal parts)
 └── TimeoutError                       code: 'timeout'
 
-AgentSuspendedError                    [pkg: agent — separate brand __ziro_suspended__]
+# These now extend ZiroError too (isZiroError === true), keeping their own guards:
+AgentSuspendedError                    code: 'agent_suspended'   [pkg: agent — also brand __ziro_suspended__]
+HandoffLoopError                       code: 'handoff_loop'      [pkg: agent]
+ReplayMismatchError                    code: 'replay_mismatch'   [pkg: agent]
+ReplayExhaustedError                   code: 'replay_exhausted'  [pkg: core/testing]
 ```
+
+Every `ZiroError` also carries a **`docsUrl`** — defaults to
+`https://ziroagent.com/docs/errors/<code>` (overridable per class) so a log
+line or trace links straight to its troubleshooting page. `PromptInjectionError`
+(`@ziro-agent/middleware`) and `InngestAgentSuspendedError` (`@ziro-agent/inngest`)
+expose the same `code` + `docsUrl` fields but stay plain `Error` subclasses to
+keep those packages' dependency trees thin.
 
 ## Brand-safe identification
 
@@ -57,6 +68,19 @@ try {
     default:
       throw err;
   }
+}
+```
+
+For specific classes there are realm-safe guards that beat `instanceof` and a
+raw `err.code` check — use these on hot paths that may cross a bundle/realm
+boundary:
+
+```ts
+import { isBudgetExceededError, isAPICallError, isTimeoutError } from '@ziro-agent/core';
+
+if (isBudgetExceededError(err)) {
+  // err.kind, err.limit, err.observed, err.preflight — and the SDK's own
+  // money-safety control flow uses this same guard internally.
 }
 ```
 

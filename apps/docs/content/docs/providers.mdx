@@ -1,0 +1,81 @@
+---
+title: Providers
+description: Configure LLM providers — API keys, base URLs, request timeouts — and the production-grade error handling every provider ships with.
+---
+
+Every provider implements the same `LanguageModel` interface from
+`@ziro-agent/core`, so swapping one for another in `generateText` /
+`streamText` / `createAgent` is a one-line change.
+
+## Available providers
+
+| Package | Factory | Env key | Notes |
+| --- | --- | --- | --- |
+| `@ziro-agent/openai` | `createOpenAI` / `openai` | `OPENAI_API_KEY` | `baseURL` override works for Azure / OpenRouter / proxies |
+| `@ziro-agent/anthropic` | `createAnthropic` / `anthropic` | `ANTHROPIC_API_KEY` | Reads cache-read/-write usage; pass `cache_control` via `providerOptions` |
+| `@ziro-agent/google` | `createGoogle` / `google` | `GOOGLE_GENERATIVE_AI_API_KEY` / `GEMINI_API_KEY` | Header auth (Vertex) or `?key=` query |
+| `@ziro-agent/groq` | `createGroq` / `groq` | `GROQ_API_KEY` | Thin OpenAI-compatible wrapper |
+| `@ziro-agent/ollama` | `createOllama` / `ollama` | — (`OLLAMA_BASE_URL`) | Local / sovereign; native NDJSON API |
+
+```ts
+import { createOpenAI } from '@ziro-agent/openai';
+
+const openai = createOpenAI({
+  apiKey: process.env.OPENAI_API_KEY,   // defaults to the env var
+  baseURL: 'https://api.openai.com/v1', // override for Azure / proxies
+  timeoutMs: 60_000,                     // default 60s (120s for Ollama); 0 disables
+});
+
+const model = openai('gpt-4o-mini');
+```
+
+Common options across providers: `apiKey`, `baseURL`, `headers`, `fetch`
+(inject a custom `fetch` for tests / proxies), and `timeoutMs`. OpenAI also
+takes `organization` / `project`; Anthropic takes `version`; Ollama takes
+`defaultOptions` (native sampling params).
+
+## Production robustness
+
+Provider HTTP is hardened so a flaky network doesn't hang or silently drop a run:
+
+- **Default request timeout.** Each request is bounded by `timeoutMs` (60s
+  default, 120s for Ollama — local models can be slow to load). A hung socket
+  surfaces as `TimeoutError` instead of hanging forever. A caller-supplied
+  `abortSignal` is composed with the timeout.
+- **Network errors are retryable.** A DNS failure / connection reset / TLS error
+  is wrapped as a retryable `APICallError` (not a raw `TypeError`), so the
+  `retry()` middleware actually retries it.
+- **`Retry-After` is honoured.** On `429` / `503` the provider parses the
+  `Retry-After` header into `APICallError.retryAfterMs`, and `retry()` waits
+  that long instead of using blind exponential backoff.
+- **No secret leakage in errors.** The Gemini API key in the `?key=` query
+  string is redacted from `APICallError.url`.
+- **Stream errors surface.** Anthropic mid-stream `error` events (e.g.
+  `overloaded_error`) are emitted as a real error part rather than looking like
+  a clean, empty finish.
+
+## Error handling
+
+Provider failures throw `APICallError` (a `ZiroError`). Pair it with the
+`retry()` middleware, or branch yourself with the realm-safe guard:
+
+```ts
+import { wrapModel, isAPICallError } from '@ziro-agent/core';
+import { retry } from '@ziro-agent/middleware';
+import { openai } from '@ziro-agent/openai';
+
+// Retries retryable failures (incl. wrapped network errors), honouring Retry-After.
+const robust = wrapModel(openai('gpt-4o-mini'), retry({ maxAttempts: 4 }));
+
+try {
+  await robust.generate({ messages: [{ role: 'user', content: 'hi' }] });
+} catch (err) {
+  if (isAPICallError(err)) {
+    // err.statusCode, err.isRetryable, err.retryAfterMs, err.responseBody, err.url
+  }
+}
+```
+
+See [Errors](/docs/errors) for the full hierarchy and [Budget Guard](/docs/budget-guard)
+for the per-model `maxUsd` enforcement caveat (local / unpriced models like
+Ollama need `maxTokens` or a pricing entry for a real USD ceiling).

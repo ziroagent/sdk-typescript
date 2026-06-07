@@ -61,7 +61,7 @@ The 2026 enterprise agent stack has six layers:
 | **Best at** | App/product SDK, React UI streaming, simple agent flows | Production-safe agents, durable workflows, sovereign deployment |
 | **Provider coverage** | Excellent (20+) | Focused (5-6, deep integration) |
 | **Type-safety** | Good | Equivalent (both use Zod) |
-| **Durable execution** | None | First-class (Temporal/Inngest/Restate adapters) |
+| **Durable execution** | None | Inngest adapter + checkpointers (memory/Postgres/Redis); Temporal planned |
 | **Cost guardrails** | Manual | Built-in `BudgetExceededError` |
 | **MCP** | Client only (v6) | Server + Client |
 | **Eval framework** | None | `defineEval` + replay |
@@ -79,7 +79,7 @@ The 2026 enterprise agent stack has six layers:
 | **Best at** | Higher-level batteries-included framework, RAG + memory + workflow | Lower-level production primitives, durable + sovereign |
 | **Funding** | $13M YC W25 | Bootstrapped / community |
 | **Opinionated stack** | Yes (Mastra-way) | No (BYO Temporal, Langfuse, etc.) |
-| **Durable execution** | Basic in-process | Temporal/Inngest/Restate adapters |
+| **Durable execution** | Basic in-process | Inngest adapter + checkpointers (memory/Postgres/Redis); Temporal planned |
 | **Sovereign / on-prem** | Cloud-first | First-class |
 | **MCP server** | Client-focused | Server + Client |
 | **Visual UI** | Mastra Playground (impressive) | Ziro Playground (focused on traces + evals) |
@@ -95,7 +95,7 @@ The 2026 enterprise agent stack has six layers:
 | **Best at** | Explicit graph state machines, stateful long-running agents | TypeScript-native DX, MCP-native, sovereign |
 | **Learning curve** | Steepest in the space | Closer to Vercel AI SDK |
 | **TS ergonomics** | Python-port feel | TS-native, strict types |
-| **Durable execution** | LangGraph Cloud (paid) | Temporal/Inngest/Restate (OSS adapters) |
+| **Durable execution** | LangGraph Cloud (paid) | Inngest adapter + checkpointers (OSS); Temporal planned |
 | **Ecosystem** | Massive (LangChain) | Focused, MCP-first |
 
 **Use LangGraph if**: you need maximum explicit control over a complex graph, you're already in the LangChain ecosystem, you're OK paying for LangGraph Cloud for durability.
