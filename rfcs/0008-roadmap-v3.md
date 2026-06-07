@@ -631,3 +631,40 @@ implementation questions belong in the child RFCs.
 - OpenTelemetry GenAI WG — semantic convention namespace.
 - EU AI Act + ISO/IEC 42001 — compliance template scope.
 - Pinecone / Vespa hybrid retrieval — RRF as default fusion.
+
+---
+
+## SOTA-2026 refresh (appendix, 2026-06-07)
+
+A fresh sweep of the 2026 agentic landscape (interop protocols, memory, multi-agent,
+durability, evals, guardrails, identity) re-assessed where Ziro sits vs. the state of
+the art. Conclusion: Ziro is **at or ahead of SOTA on the production-infrastructure
+axis** (budget/cost governance, durable checkpoint + HITL, MCP both directions, OTel
+GenAI semconv, sovereign mode) but has **net-new gaps on the agent-intelligence /
+coordination axis** and the **emerging enterprise-identity frontier**. These are
+recorded in [`ROADMAP.md` §SOTA refresh (2026-06)](../ROADMAP.md) with tiers.
+
+### Net-new gaps (new work-item IDs)
+
+| ID | Gap | Tier | Why now (SOTA signal) |
+| --- | --- | --- | --- |
+| **A8** | A2A protocol (agent↔agent interop) | **P0** (promoted from P2) | A2A donated to the Linux Foundation (2025-06); ACP merged into it (2025-09); the **Agentic AI Foundation (AAIF)** became the joint home for MCP + A2A (2025-12, 100+ enterprise supporters). The "when standardised" trigger is met. Ziro has only the MCP layer of the consensus 3-layer stack. |
+| **F5** | Structured reflection / self-correction on tool errors | **P0** | 2026 reliability research treats error→repair as a trainable step (diagnose with evidence → propose fixed call); large gains in multi-turn tool-call success. Ziro's `repairToolCall` only repairs *parse* errors. |
+| **E8** | Agentic RAG (multi-hop retrieve-as-tool loop) | **P1** | Agentic RAG is the 2026 *default*, beating vanilla RAG on accuracy. Ziro ships citation RAG + hybrid search (E2–E4) but no iterative retrieval loop. |
+| **E9** | Memory cognition (explicit episodic / procedural scopes) | **P1** | SOTA standardised episodic/semantic/procedural scopes; Ziro has semantic-ish tiers only. |
+| **Q1** | Agent identity & delegated authz (OAuth OBO, scoped/JIT tokens) | **P1** | New enterprise frontier (IETF `draft-klrc-aiagent-auth`, OAuth OBO/token-exchange/DPoP). Likely a thin scoped-token helper + integration doc, not a full IAM (respects the "no gateway daemon" anti-roadmap). |
+| **D5** | Online output-safety / quality scoring | **P1** | OTel GenAI semconv explicitly does **not** cover output evaluation — a differentiation opportunity. Pairs with the planned `samplingEval` and D4. |
+| **E7** | Temporal knowledge-graph memory (Graphiti / Zep) | **P2** | Reference design for E9's long-term tier. |
+
+### Already tracked (no new ID)
+E6 vector adapters (Qdrant/Pinecone), O2 long-context compaction hook, **G5 Temporal**
+(now a market baseline — reconsider promotion), K2 semantic cache.
+
+### Sources (2026 sweep)
+Agent interop protocols (MCP/A2A/ACP convergence, AAIF); agent memory landscape
+(Letta/Zep/Mem0/LangMem; episodic/semantic/procedural); context engineering
+(compaction, sub-agent isolation; arXiv 2510.04618); OTel GenAI semantic conventions
+(client spans stable early 2026); multi-agent orchestration patterns
+(supervisor/orchestrator-worker dominate); durable execution (Temporal as baseline);
+agentic security & guardrails; agentic RAG / GraphRAG; agent IAM (OAuth OBO, IETF
+draft); structured reflection for reliable tool interactions (arXiv 2509.18847).

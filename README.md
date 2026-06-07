@@ -22,7 +22,7 @@
 
 > **Why this exists.** 88% of enterprise AI agent projects never reach production — the median cause is not bad prompts, it's missing infrastructure: no durable execution, no cost guardrails, no audit trail, no replayable traces. Ziro is the agent SDK we wished existed when we got paged at 3am because an agent burned $12,400 in a retry loop.
 
-ZiroAgent SDK is an open-source TypeScript toolkit for building **production-safe** AI agents. It bundles a type-safe LLM core, MCP-native tools, an agent loop with durable execution adapters, cost & policy guardrails, evals-as-code, OpenTelemetry tracing, and an AG-UI streaming layer — designed to run anywhere from Vercel Edge to a fully air-gapped on-prem cluster.
+ZiroAgent SDK is an open-source TypeScript toolkit for building **production-safe** AI agents. It bundles a type-safe LLM core, MCP-native tools, an agent loop with crash-resumable checkpointing (in-memory / Postgres / Redis) and a durable Inngest adapter, cost & policy guardrails, evals-as-code, and OpenTelemetry tracing — designed to run anywhere from Vercel Edge to a fully air-gapped on-prem cluster. (A Temporal adapter and an AG-UI streaming layer are on the [roadmap](ROADMAP.md), not yet shipped.)
 
 ## Who this is for
 
@@ -48,32 +48,33 @@ See [`POSITIONING.md`](POSITIONING.md) for the honest comparison and [`STRATEGY.
 | --- | --- |
 | `generateText` / `streamText` | Per-call **budget enforcement** that throws before you burn cash |
 | A tool-calling loop | A loop that **resumes from crashes** without re-running expensive steps |
-| Provider abstractions | A built-in **AI gateway layer**: routing, fallback, prompt caching, PII redaction |
+| Provider abstractions | Composable **model middleware**: retry (honours `Retry-After`), response cache, model fallback + circuit breaker, PII redaction, prompt-injection blocking |
 | MCP client | MCP **server + client** — your tools auto-expose to Claude Desktop / Cursor |
 | Console logging | OTel traces + **eval-as-code** + replay-driven regression tests |
 | Cloud-only assumptions | A **sovereign mode** that runs 100% on Ollama / vLLM with zero telemetry |
 
 ## Six pillars
 
-1. **Production-safe by default.** Every primitive ships with retry, timeout, budget guard, and circuit breaker. Configurable, never silent.
-2. **Durable-execution-ready.** First-class adapters for Temporal, Inngest, and Restate. Long-running agents resume from crash without re-paying token costs.
+1. **Production-safe by default.** Composable retry, request timeout, budget guard, and circuit-breaker primitives — opt-in per call/agent, configurable, never silent.
+2. **Durable-execution-ready.** Crash-resumable checkpointing (in-memory / Postgres / Redis) plus a durable **Inngest** adapter today; a **Temporal** adapter is on the roadmap. Long-running agents resume from crash without re-paying token costs.
 3. **MCP-native, both directions.** Consume any MCP server as tools; expose any `defineTool` as an MCP server with one line. No glue code.
 4. **Sovereign-ready.** Ollama / vLLM / LM Studio out of the box. No call-home, no telemetry, hash-chained audit logs (tamper-**detection** — pair with signing or WORM storage for regulator-grade tamper-evidence).
 5. **Type-safe end-to-end.** Zod v4 is the single source of truth for tool I/O, message shapes, workflow nodes, and eval criteria.
 6. **Observable & replayable.** OpenTelemetry on every step. Capture a production trace, replay it locally with new code, regression-test before merge.
 
-## Quick start (60 seconds, no copy-paste)
+## Quick start
+
+Scaffold a starter project with the CLI (bin name is `ziroagent`):
 
 ```bash
-npm create ziro@latest my-agent
+npx @ziro-agent/cli init my-agent      # scaffolds the "basic" template
 cd my-agent
-ziro chat                      # interactive REPL, asks for API key, persists to ~/.ziroagent/config.json
 ```
 
 Or use it as a library:
 
 ```bash
-pnpm add @ziro-agent/core @ziro-agent/openai
+pnpm add @ziro-agent/core @ziro-agent/openai @ziro-agent/middleware
 ```
 
 ```ts

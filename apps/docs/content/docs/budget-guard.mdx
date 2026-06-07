@@ -39,6 +39,16 @@ table) exceeds `maxUsd`, the call throws `BudgetExceededError` with
 for the model, the SDK falls back to a `chars / 4` heuristic — see
 [Pricing data](#pricing-data) below.
 
+> **⚠️ `maxUsd` needs pricing to be enforceable.** With no pricing entry for a
+> model (e.g. local Ollama / vLLM), actual USD resolves to `$0`, so a `maxUsd`
+> cap is **not enforced** — neither pre-flight nor post-call. Because this is
+> the most dangerous silent gap, the SDK now **warns once per model** when
+> `maxUsd` is set without pricing, and **throws `InvalidArgumentError`** if the
+> budget is `hard`. Token / LLM-call / duration limits still apply. To get a
+> real USD ceiling on an unpriced model, add a pricing entry, or pass
+> `maxTokens` — with a `hard` budget the SDK derives an output-token cap from
+> the remaining USD so a single call cannot overshoot.
+
 ## Scoped budgets — `withBudget`
 
 Budgets compose. A nested `withBudget` scope runs under the **intersection**
@@ -57,6 +67,12 @@ await withBudget({ maxUsd: 1.0, maxSteps: 50 }, async () => {
   });
 });
 ```
+
+Spend made inside a nested scope is **written back to every ancestor**, so an
+LLM call issued from inside a budgeted tool counts against the outer agent's
+`maxUsd` / `maxTokens`. The parent's next pre-flight refuses further calls once
+the aggregate crosses its cap, and when a parallel tool trips the budget its
+in-flight siblings are signalled to abort.
 
 Scopes propagate via `AsyncLocalStorage`, so they survive `await`
 boundaries without you threading a context object.
