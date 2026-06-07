@@ -1,5 +1,19 @@
 # @ziro-agent/eval
 
+## 0.6.0
+
+### Minor Changes
+
+- [#143](https://github.com/ziroagent/sdk-typescript/pull/143) [`a094936`](https://github.com/ziroagent/sdk-typescript/commit/a094936cde5e192af41eba90abfe80718c1df995) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Declarative eval v1.1: **`llmJudge`** in `*.eval.json` with **`judgeModel.mock`**, **`*.eval.yaml`** loader, and expanded recording-regression tests. CLI loads YAML eval datasets.
+
+### Patch Changes
+
+- [#143](https://github.com/ziroagent/sdk-typescript/pull/143) [`9df944e`](https://github.com/ziroagent/sdk-typescript/commit/9df944ee48ac5e27cd1ff30cd7c040487990a204) Thanks [@vokhoadev](https://github.com/vokhoadev)! - **Declarative `*.eval.json`:** support **`contains`** and **`regex`** graders (with options) alongside **`exactMatch`** for `runKind: "modelText"`. Export **`JsonDatasetDoc`** type from package index.
+
+- Updated dependencies [[`a094936`](https://github.com/ziroagent/sdk-typescript/commit/a094936cde5e192af41eba90abfe80718c1df995), [`a094936`](https://github.com/ziroagent/sdk-typescript/commit/a094936cde5e192af41eba90abfe80718c1df995), [`a094936`](https://github.com/ziroagent/sdk-typescript/commit/a094936cde5e192af41eba90abfe80718c1df995)]:
+  - @ziro-agent/core@0.16.0
+  - @ziro-agent/agent@0.21.0
+
 ## 0.5.0
 
 ### Minor Changes
