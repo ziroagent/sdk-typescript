@@ -2,7 +2,7 @@
 
 - Start date: 2026-06-07
 - Authors: @ziro-agent/maintainers
-- Status: **draft** — design for review (Sprint 4 / SOTA refresh item **F5**)
+- Status: **accepted** (2026-06-07) — cleared for implementation (Sprint 4 / SOTA refresh item **F5**)
 - Affected packages: `@ziro-agent/agent` (primary), `@ziro-agent/tools`
 - Related: [RFC 0008 §SOTA-2026](./0008-roadmap-v3.md), [RFC 0015 — Resilience](./0015-resilience.md), `repairToolCall`
 

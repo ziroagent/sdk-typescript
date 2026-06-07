@@ -2,7 +2,7 @@
 
 - Start date: 2026-06-07
 - Authors: @ziro-agent/maintainers
-- Status: **draft** — design for review (Sprint 4 / SOTA refresh item **A8**, promoted P2→P0)
+- Status: **accepted** (2026-06-07) — cleared for implementation (Sprint 4 / SOTA refresh item **A8**, promoted P2→P0)
 - Affected packages: new **`@ziro-agent/a2a`**
 - Related: [RFC 0008 §SOTA-2026](./0008-roadmap-v3.md), [RFC 0009 — MCP server](./0009-mcp-server.md), [RFC 0007 — Handoffs & router](./0007-handoffs-and-router.md), [RFC 0002 — HITL](./0002-human-in-the-loop.md)
 
