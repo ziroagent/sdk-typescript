@@ -1,5 +1,12 @@
 # @ziro-agent/openapi
 
+## 0.4.1
+
+### Patch Changes
+
+- Updated dependencies [[`a094936`](https://github.com/ziroagent/sdk-typescript/commit/a094936cde5e192af41eba90abfe80718c1df995)]:
+  - @ziro-agent/tools@0.7.0
+
 ## 0.4.0
 
 ### Minor Changes

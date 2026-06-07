@@ -1,5 +1,23 @@
 # @ziro-agent/ollama
 
+## 0.3.0
+
+### Minor Changes
+
+- [#143](https://github.com/ziroagent/sdk-typescript/pull/143) [`a094936`](https://github.com/ziroagent/sdk-typescript/commit/a094936cde5e192af41eba90abfe80718c1df995) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Provider production-readiness hardening:
+
+  - **Default request timeout** on every provider (configurable via `timeoutMs`; 60s default, 120s for Ollama). A hung socket previously hung forever.
+  - **Network errors are wrapped** as a retryable `APICallError`, so `retry()` actually retries dropped connections / DNS failures (a raw `TypeError` previously bypassed the retry predicate).
+  - **`Retry-After` is honoured:** providers capture it into `APICallError.retryAfterMs` and `retry()` uses it instead of blind exponential backoff on 429/503.
+  - **Anthropic mid-stream `error` events** (e.g. `overloaded_error`) now surface as a real error part instead of being silently dropped as a clean, empty finish.
+  - **Google API keys no longer leak** into `APICallError.url` — the `?key=...` query param is redacted.
+  - New shared `providerFetch` / `redactQueryKey` / `parseRetryAfterMs` utilities in `@ziro-agent/core`.
+
+### Patch Changes
+
+- Updated dependencies [[`a094936`](https://github.com/ziroagent/sdk-typescript/commit/a094936cde5e192af41eba90abfe80718c1df995), [`a094936`](https://github.com/ziroagent/sdk-typescript/commit/a094936cde5e192af41eba90abfe80718c1df995), [`a094936`](https://github.com/ziroagent/sdk-typescript/commit/a094936cde5e192af41eba90abfe80718c1df995)]:
+  - @ziro-agent/core@0.16.0
+
 ## 0.2.16
 
 ### Patch Changes
