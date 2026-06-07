@@ -1,5 +1,17 @@
 # @ziro-agent/cli
 
+## 0.5.10
+
+### Patch Changes
+
+- [#143](https://github.com/ziroagent/sdk-typescript/pull/143) [`a094936`](https://github.com/ziroagent/sdk-typescript/commit/a094936cde5e192af41eba90abfe80718c1df995) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Declarative eval v1.1: **`llmJudge`** in `*.eval.json` with **`judgeModel.mock`**, **`*.eval.yaml`** loader, and expanded recording-regression tests. CLI loads YAML eval datasets.
+
+- Updated dependencies [[`a094936`](https://github.com/ziroagent/sdk-typescript/commit/a094936cde5e192af41eba90abfe80718c1df995), [`a094936`](https://github.com/ziroagent/sdk-typescript/commit/a094936cde5e192af41eba90abfe80718c1df995), [`a094936`](https://github.com/ziroagent/sdk-typescript/commit/a094936cde5e192af41eba90abfe80718c1df995), [`a094936`](https://github.com/ziroagent/sdk-typescript/commit/a094936cde5e192af41eba90abfe80718c1df995), [`9df944e`](https://github.com/ziroagent/sdk-typescript/commit/9df944ee48ac5e27cd1ff30cd7c040487990a204)]:
+  - @ziro-agent/audit@0.4.0
+  - @ziro-agent/tools@0.7.0
+  - @ziro-agent/eval@0.6.0
+  - @ziro-agent/mcp-server@0.2.15
+
 ## 0.5.9
 
 ### Patch Changes

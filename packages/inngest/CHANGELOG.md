@@ -1,5 +1,19 @@
 # @ziro-agent/inngest
 
+## 0.3.21
+
+### Patch Changes
+
+- [#143](https://github.com/ziroagent/sdk-typescript/pull/143) [`a094936`](https://github.com/ziroagent/sdk-typescript/commit/a094936cde5e192af41eba90abfe80718c1df995) Thanks [@vokhoadev](https://github.com/vokhoadev)! - RC stabilization (R1): every SDK error now carries a stable `code` and a `docsUrl`.
+
+  - `ZiroError` gained a `docsUrl` (defaults to `${ERROR_DOCS_BASE}/${code}`, overridable). New `ERROR_DOCS_BASE` export.
+  - The previously plain-`Error` classes now extend `ZiroError` with a `code` + `docsUrl` and are `isZiroError`-detectable: `AgentSuspendedError` (`agent_suspended`), `HandoffLoopError` (`handoff_loop`), `ReplayMismatchError` (`replay_mismatch`), `ReplayExhaustedError` (`replay_exhausted`), `ResumableStreamError` / `ContinueUpstreamMidToolCallError`. `instanceof` and existing brands keep working.
+  - `PromptInjectionError` (`@ziro-agent/middleware`) and `InngestAgentSuspendedError` (`@ziro-agent/inngest`) gained `docsUrl` (kept as plain `Error` to preserve their thin dependency trees).
+  - `@ziro-agent/core`'s public surface is now declared with explicit named exports instead of 14 `export *` wildcards — same surface, but new internal helpers no longer leak into the public API automatically.
+
+- Updated dependencies [[`a094936`](https://github.com/ziroagent/sdk-typescript/commit/a094936cde5e192af41eba90abfe80718c1df995), [`a094936`](https://github.com/ziroagent/sdk-typescript/commit/a094936cde5e192af41eba90abfe80718c1df995)]:
+  - @ziro-agent/agent@0.21.0
+
 ## 0.3.20
 
 ### Patch Changes

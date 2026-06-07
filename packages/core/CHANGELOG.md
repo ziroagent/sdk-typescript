@@ -1,5 +1,32 @@
 # @ziro-agent/core
 
+## 0.16.0
+
+### Minor Changes
+
+- [#143](https://github.com/ziroagent/sdk-typescript/pull/143) [`a094936`](https://github.com/ziroagent/sdk-typescript/commit/a094936cde5e192af41eba90abfe80718c1df995) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Budget Guard money-safety hardening (RFC 0001):
+
+  - **Nested write-back (C2):** spend made inside a budgeted tool (or any nested `withBudget`) now counts against the outer cap. Previously a child scope was seeded from a parent snapshot and never wrote back, so LLM calls made inside a tool were invisible to the agent's `maxUsd`/`maxTokens`. When a parallel tool trips the budget it now also signals its siblings to abort.
+  - **Unenforceable `maxUsd` is no longer silent (C1):** when `maxUsd` is set but the SDK has no pricing for the model (e.g. local Ollama/vLLM), USD resolved to `$0` and the cap was a silent no-op. It now warns once per model, or throws `InvalidArgumentError` under a `hard` budget.
+  - **Hard budgets cap output (C3):** a `hard` budget with `maxUsd` and no caller `maxTokens` now derives an output-token ceiling from the remaining USD, so a single output-heavy call can no longer overshoot the cap before the post-call check.
+  - **Realm-safe budget detection:** new `isBudgetExceededError()` (plus `isAPICallError` / `isTimeoutError`); the money-safety control flow no longer relies on `instanceof`, so a budget error crossing a realm/bundle boundary cannot silently degrade into a generic error and let a run keep spending.
+
+- [#143](https://github.com/ziroagent/sdk-typescript/pull/143) [`a094936`](https://github.com/ziroagent/sdk-typescript/commit/a094936cde5e192af41eba90abfe80718c1df995) Thanks [@vokhoadev](https://github.com/vokhoadev)! - RC stabilization (R1): every SDK error now carries a stable `code` and a `docsUrl`.
+
+  - `ZiroError` gained a `docsUrl` (defaults to `${ERROR_DOCS_BASE}/${code}`, overridable). New `ERROR_DOCS_BASE` export.
+  - The previously plain-`Error` classes now extend `ZiroError` with a `code` + `docsUrl` and are `isZiroError`-detectable: `AgentSuspendedError` (`agent_suspended`), `HandoffLoopError` (`handoff_loop`), `ReplayMismatchError` (`replay_mismatch`), `ReplayExhaustedError` (`replay_exhausted`), `ResumableStreamError` / `ContinueUpstreamMidToolCallError`. `instanceof` and existing brands keep working.
+  - `PromptInjectionError` (`@ziro-agent/middleware`) and `InngestAgentSuspendedError` (`@ziro-agent/inngest`) gained `docsUrl` (kept as plain `Error` to preserve their thin dependency trees).
+  - `@ziro-agent/core`'s public surface is now declared with explicit named exports instead of 14 `export *` wildcards — same surface, but new internal helpers no longer leak into the public API automatically.
+
+- [#143](https://github.com/ziroagent/sdk-typescript/pull/143) [`a094936`](https://github.com/ziroagent/sdk-typescript/commit/a094936cde5e192af41eba90abfe80718c1df995) Thanks [@vokhoadev](https://github.com/vokhoadev)! - Provider production-readiness hardening:
+
+  - **Default request timeout** on every provider (configurable via `timeoutMs`; 60s default, 120s for Ollama). A hung socket previously hung forever.
+  - **Network errors are wrapped** as a retryable `APICallError`, so `retry()` actually retries dropped connections / DNS failures (a raw `TypeError` previously bypassed the retry predicate).
+  - **`Retry-After` is honoured:** providers capture it into `APICallError.retryAfterMs` and `retry()` uses it instead of blind exponential backoff on 429/503.
+  - **Anthropic mid-stream `error` events** (e.g. `overloaded_error`) now surface as a real error part instead of being silently dropped as a clean, empty finish.
+  - **Google API keys no longer leak** into `APICallError.url` — the `?key=...` query param is redacted.
+  - New shared `providerFetch` / `redactQueryKey` / `parseRetryAfterMs` utilities in `@ziro-agent/core`.
+
 ## 0.15.0
 
 ### Minor Changes

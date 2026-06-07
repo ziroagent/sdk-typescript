@@ -1,5 +1,12 @@
 # @ziro-agent/groq
 
+## 0.3.1
+
+### Patch Changes
+
+- Updated dependencies [[`a094936`](https://github.com/ziroagent/sdk-typescript/commit/a094936cde5e192af41eba90abfe80718c1df995)]:
+  - @ziro-agent/openai@0.3.0
+
 ## 0.3.0
 
 ### Minor Changes

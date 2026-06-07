@@ -1,5 +1,12 @@
 # @ziro-agent/memory
 
+## 0.5.9
+
+### Patch Changes
+
+- Updated dependencies [[`a094936`](https://github.com/ziroagent/sdk-typescript/commit/a094936cde5e192af41eba90abfe80718c1df995), [`a094936`](https://github.com/ziroagent/sdk-typescript/commit/a094936cde5e192af41eba90abfe80718c1df995), [`a094936`](https://github.com/ziroagent/sdk-typescript/commit/a094936cde5e192af41eba90abfe80718c1df995)]:
+  - @ziro-agent/core@0.16.0
+
 ## 0.5.8
 
 ### Patch Changes

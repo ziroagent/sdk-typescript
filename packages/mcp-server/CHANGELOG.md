@@ -1,5 +1,12 @@
 # @ziro-agent/mcp-server
 
+## 0.2.15
+
+### Patch Changes
+
+- Updated dependencies [[`a094936`](https://github.com/ziroagent/sdk-typescript/commit/a094936cde5e192af41eba90abfe80718c1df995)]:
+  - @ziro-agent/tools@0.7.0
+
 ## 0.2.14
 
 ### Patch Changes
