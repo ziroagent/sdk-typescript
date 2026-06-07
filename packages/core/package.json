@@ -79,6 +79,7 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",
+    "ai": "^6.0.197",
     "publint": "^0.3.18",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
