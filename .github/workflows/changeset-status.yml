@@ -2,8 +2,12 @@ name: Changeset gate
 
 # Hard gate on every PR to `main`. Two checks, both blocking:
 #
-#   1. commitlint  — every commit + the PR title must match Conventional
-#      Commits as defined in `commitlint.config.cjs`.
+#   1. commitlint  — the PR TITLE must match Conventional Commits as defined
+#      in `commitlint.config.cjs`. We lint the title only (not every commit)
+#      because PRs are squash-merged: the PR title becomes the single commit
+#      on `main` and is what changesets/changelog parses. Linting individual
+#      commits added churn and broke on long-lived release-train PRs that
+#      carry already-merged history.
 #
 #   2. validate-changeset — for `feat`/`fix`/`perf` PRs, a changeset MUST
 #      exist with a bump type that matches the conventional-commit type:
@@ -36,11 +40,13 @@ env:
 
 jobs:
   # --------------------------------------------------------------------------
-  # Lint commit messages + PR title against Conventional Commits.
-  # Action handles install, parsing, and PR-title-as-squash-commit checking.
+  # Lint the PR TITLE against Conventional Commits (commitlint.config.cjs).
+  # Title-only because PRs are squash-merged — the title is the commit that
+  # lands on `main`. Warnings (e.g. missing Signed-off-by, which a title never
+  # has) do not fail; commitlint exits non-zero only on rule errors.
   # --------------------------------------------------------------------------
   commitlint:
-    name: Lint commits + PR title
+    name: Lint PR title
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -54,21 +60,14 @@ jobs:
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
-          # Need PR's full commit history so commitlint can check every
-          # commit (not just the merge SHA which is bot-generated).
-          fetch-depth: 0
           persist-credentials: false
 
-      - name: Run commitlint
-        uses: wagoid/commitlint-github-action@b948419dd99f3fd78a6548d48f94e3df7f6bf3ed # v6.2.1
-        with:
-          # Validate the PR title too — important because we use squash-
-          # merge, so the PR title BECOMES the commit on `main` and is
-          # what changesets/changelog parses.
-          configFile: commitlint.config.cjs
-          failOnWarnings: false
-          failOnErrors: true
-          helpURL: https://github.com/${{ github.repository }}/blob/main/CONTRIBUTING.md#conventional-commits
+      - uses: ./.github/actions/setup-pnpm-node
+
+      - name: Lint PR title (Conventional Commits)
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: printf '%s\n' "$PR_TITLE" | pnpm exec commitlint --config commitlint.config.cjs --verbose
 
   # --------------------------------------------------------------------------
   # Verify the changeset matches the PR's conventional-commit type.

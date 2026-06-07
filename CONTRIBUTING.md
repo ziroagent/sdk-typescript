@@ -68,7 +68,7 @@ After a release wave, back-merge `main` into `dev` (open a `chore(sync): main ->
 `main` is **release-only**: merges trigger Changesets + npm per [`RELEASING.md`](RELEASING.md).
 
 - **Reviews:** branch protection typically requires **at least one approving review from a maintainer who is not the PR author**. You **cannot** self-approve your own PR; ask a teammate or use the team review rotation.
-- **Long integration branches:** if a PR contains **many commits** with mixed commitlint history, prefer a **single squashed branch** off `main` (one conventional commit + one changeset) so the **Lint commits + PR title** gate passes — see recent `release/squash-*` integration PRs.
+- **Commit messages vs. PR title:** the **Lint PR title** gate lints only the **PR title** (PRs are squash-merged, so the title becomes the commit on `main`). Individual commit messages are not gated, so long integration / release-train branches no longer need squashing just to satisfy commitlint — only make the **PR title** a valid Conventional Commit.
 - **Version packages PR** (`chore(release): version packages`): same review rules; merging it completes the publish wave to npm.
 - **`gh pr merge --admin`:** only for maintainers with admin rights, when CI is green but review quorum cannot be met in time — **use sparingly** and note the reason in the PR thread.
 
