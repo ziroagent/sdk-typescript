@@ -1,0 +1,78 @@
+---
+title: Audit log
+description: Append-only, hash-chained JSONL audit trail — with optional HMAC signing for cryptographic tamper-evidence.
+---
+
+`@ziro-agent/audit` is an append-only JSONL audit sink with a per-record hash
+chain (RFC 0016). Use it to record the who / what / when of agent decisions —
+tool calls, approvals, data access — in a form a regulator or your own ops team
+can verify later. Each record links to the previous one via `prevHash`, so any
+edit, reorder, or deletion breaks the chain.
+
+## Quick start
+
+```ts
+import { JsonlAuditLog, verifyJsonlAuditLogFile } from '@ziro-agent/audit';
+
+const log = new JsonlAuditLog('./audit.jsonl');
+
+await log.append({
+  action: 'tool.refundOrder',
+  actor: 'agent:support',
+  subjectId: 'order_4231',
+  payload: { amountUsd: 42 },
+});
+
+// Later — verify the whole chain recomputes and links correctly.
+const result = await verifyJsonlAuditLogFile('./audit.jsonl');
+// { ok: true, lineCount: 1 }  — or { ok: false, error, errorLine } on a break.
+```
+
+Each appended `AuditRecord` is `{ v, ts, prevHash, action, actor?, subjectId?,
+payload?, alg?, hash }`. Hashing uses a deterministic (sorted-key) JSON
+encoding so the chain is stable across runtimes.
+
+## Tamper-detection vs. tamper-evidence (read this before relying on it)
+
+The default chain uses **unkeyed SHA-256**. Every input to the hash lives in the
+file and the hash function is public, so an attacker with write access can edit
+a record **and recompute the whole downstream chain**. The default therefore
+gives you tamper-**detection** — you catch edits *if* you retain the tip hash
+out-of-band or compare against an external copy — **not** cryptographic
+tamper-**evidence** against a malicious writer.
+
+For tamper-evidence, construct with an `hmacKey` (keep it in a KMS / secret
+manager, never beside the log):
+
+```ts
+import { JsonlAuditLog, verifyJsonlAuditLogChain } from '@ziro-agent/audit';
+import { readFile } from 'node:fs/promises';
+
+const key = process.env.AUDIT_HMAC_KEY!; // from your KMS / secret manager
+const log = new JsonlAuditLog('./audit.jsonl', { hmacKey: key });
+await log.append({ action: 'login', actor: 'u1' }); // record carries alg: 'hmac-sha256'
+
+// Verification REQUIRES the key and fails closed without it.
+const raw = await readFile('./audit.jsonl', 'utf8');
+verifyJsonlAuditLogChain(raw, { hmacKey: key }).ok; // true
+verifyJsonlAuditLogChain(raw).ok;                    // false — 'hmac key required ...'
+```
+
+A writer who can edit the file but does **not** hold the key cannot forge a
+valid HMAC, so tampering is detected even if they recompute the chain. Signing
+is backward compatible: existing unkeyed logs still verify, and a per-record
+`alg` field lets mixed/legacy logs validate line-by-line.
+
+For the strongest trails (EU AI Act, SOC 2) also **anchor** the tip hash to an
+external notary / timestamp, or store on WORM media — HMAC proves integrity but
+not "this log existed at time T".
+
+## What it deliberately doesn't do
+
+- **No database.** It writes a local JSONL file; ship it to your log store /
+  object storage like any other append-only log.
+- **No revision or deletion API.** Append-only is the point — and it's why
+  [`@ziro-agent/compliance`](https://github.com/ziroagent/sdk-typescript/blob/main/rfcs/0016-compliance-pack.md)'s
+  `deleteUserDataInOrder` deletes from other stores but never rewrites the audit
+  chain.
+- **No signing by default.** Opt in with `hmacKey` when you need tamper-evidence.
