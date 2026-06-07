@@ -1,339 +1,205 @@
 # Kế hoạch Sprint — ZiroAgent SDK
 
-Tài liệu này bám [`ROADMAP.md`](./ROADMAP.md), [`README.md`](./README.md), và [`BENCHMARKS.md`](./BENCHMARKS.md).  
-**Giả định:** 1 sprint ≈ **2 tuần** (Sprint 4, 6, 9 ≈ 3 tuần), một squad, ưu tiên **publish npm + partner-ready** trước greenfield.
+Tài liệu này bám [`ROADMAP.md`](./ROADMAP.md), [`README.md`](./README.md), và [`BENCHMARKS.md`](./BENCHMARKS.md).
+**Giả định:** 1 sprint ≈ **2 tuần** (sprint nặng ≈ 3 tuần), một squad, ưu tiên **publish npm + partner-ready** trước greenfield.
 
-**Cập nhật trạng thái (2026-05-28):** `@ziro-agent/eval@0.5.0` (JSON eval `exactMatch` / `contains` / `regex`), release CI auth (OIDC fallback + `workflow_dispatch`) đã ship.
-
-**Cập nhật SOTA (2026-06-07):** rà soát SOTA agentic 2026 → bổ sung **mục J** (gap net-new). Tóm tắt: Ziro mạnh trục *production infra* (budget/durable/HITL/MCP/OTel/sovereign) nhưng hụt trục *agent intelligence/coordination*. Đồng bộ với [`ROADMAP.md` §SOTA refresh (2026-06)](./ROADMAP.md). Thay đổi lớn: **A2A đã chuẩn hoá (AAIF/Linux Foundation)** → chuyển từ anti-roadmap sang **P0**.
+**Cập nhật trạng thái:**
+- **2026-05-28:** `@ziro-agent/eval@0.5.0` (JSON eval text graders), release CI auth (OIDC fallback) ship.
+- **2026-06-07 (re-plan):** **Sprint 2 + một phần Sprint 3/9 đã ship trong một đợt release lớn** (core 0.16 / agent 0.21 / eval 0.6 / audit 0.4 / middleware 0.6 / providers 0.3.x–0.4). README/POSITIONING đã sửa đúng sự thật; thêm doc `audit` + `providers`; RFC 0008 §SOTA-2026 appendix. File này được **plan lại toàn bộ** bên dưới: ✅ đã ship · 🔄 đang dở / nợ kỹ thuật · 📋 to-do (re-sequenced).
 
 ---
 
-## Đã ship gần đây (không đưa vào backlog sprint)
+## ✅ Đã ship (cập nhật 2026-06-07)
 
+### Đợt release 2026-06-07 (PR #143 → npm) — money-safety + provider + RC stabilization
+| Hạng mục | Map backlog | npm |
+|----------|-------------|-----|
+| **Budget money-safety**: write-back nested scope (C2), sibling-abort, warn/throw khi `maxUsd` thiếu pricing (C1), hard-budget output cap (C3), `isBudgetExceededError`/`isAPICallError`/`isTimeoutError` | **R5/F3** (sub-agent budget) ✅ | `core@0.16` `tools@0.7` `agent@0.21` |
+| **Provider robustness**: default timeout, network-error→retryable APICallError, honour `Retry-After`, Anthropic mid-stream error frames, redact Google key | (mới — production-readiness) | `openai/anthropic/google/ollama@0.3.x` `middleware@0.6` |
+| **Error `code` + `docsUrl`** mọi class (agent/middleware/inngest/streaming/testing extend ZiroError) | **R1/B3** ✅ | `core@0.16` `agent@0.21` |
+| **Public surface khoá** (`core/index.ts` named exports, bỏ `export *`) | **A3** (phần surface) ✅ | `core@0.16` |
+| **Audit HMAC signing** (tamper-evidence, fail-closed verify) | **C** (audit publish+doc) ✅ | `audit@0.4` |
+| **Eval v1.1**: `llmJudge` trong `*.eval.json` (`judgeModel.mock`), `*.eval.yaml` loader, recording-regression | **T5/R10** ✅ | `eval@0.6` `cli@0.5.10` |
+
+### Theo sau (PR #147/#150 — docs/CI, không publish)
 | Hạng mục | Trạng thái |
 |----------|------------|
-| JSON eval v1 (`exactMatch`, `contains`, `regex`) | npm `@ziro-agent/eval@0.5.0` |
-| `@ziro-agent/groq`, OpenAPI POST/PUT/PATCH, recording regression | `main` + npm |
-| CI Release: `setup-npm-publish-auth`, `workflow_dispatch`, rotate script | PR #137, #139 |
+| commitlint gate → **lint chỉ PR title** (hết đỏ vì commit lịch sử) | merged main+dev |
+| README/POSITIONING **sửa đúng sự thật** (bỏ create-ziro/ziro chat/gateway/Restate/AG-UI overclaim) | merged |
+| Docs: trang `audit` + `providers` mới; `budget-guard`/`errors` cập nhật caveat C1/C2 + docsUrl | merged |
+| ROADMAP + sprint **SOTA refresh**; RFC 0008 §SOTA-2026 appendix | merged |
+
+### Trước đó
+JSON eval v1 text graders (`eval@0.5`), `@ziro-agent/groq`, OpenAPI POST/PUT/PATCH, recording-regression slice, compliance/audit/sandbox-*/browser-* đã publish, CI release auth (PR #137/#139).
 
 ---
 
-## Feature / hạng mục chưa release (theo roadmap)
+## 🔄 Đang dở / nợ kỹ thuật (WIP & ops debt)
 
-### A. Marketing & chất lượng phát hành (v0.1 còn mở)
-
-| ID | Mục | Ghi chú |
-|----|-----|---------|
-| L1 | **v0.1.0 launch** chính thức | HN / Reddit / X, provenance narrative, GitHub Release đầy đủ |
-| L2 | **Benchmark công khai vs đối thủ** | Vercel AI SDK / Mastra — `BENCHMARKS.md` mới có mock + Groq **TBD** |
-| L3 | **1000★ / 3 design partners** | Tiêu chí v0.1, chưa đóng |
-
-### B. v0.2 follow-up (P0 đóng, còn việc)
-
-| ID | Mục | Trạng thái code |
-|----|-----|-----------------|
-| T1 | `@ziro-agent/temporal` (G5) | Chưa có package — defer v0.6 |
-| T2 | **Replay-from-trace** đầy đủ (RFC 0015) | Slice `createReplayLanguageModel` có; JSONL pipeline **chưa** |
-| T3 | `samplingEval({ rate })` — trace → eval store | Chưa (P1 / post-v1.0) |
-| T4 | Anthropic `cache_control` / OpenAI prompt-cache parity | v0.9 stabilisation |
-| T5 | **Eval JSON:** `llmJudge` trong `*.eval.json`, **YAML** datasets | TS + graders có `llmJudge`; JSON schema / YAML chưa |
-| T6 | Replay-from-trace trong CLI eval | Gắn RFC 0015 |
-
-### C. Có trong monorepo, chưa npm / README “shipped”
-
-| Package | Roadmap | Việc còn lại |
-|---------|---------|--------------|
-| `@ziro-agent/compliance` | v0.5 slice | Publish + docs + changeset |
-| `@ziro-agent/audit` | v0.5 / v0.8 | README vẫn `planned` — publish & doc |
-| `@ziro-agent/sandbox-e2b` / `-daytona` / `-modal` | v0.7 slice | Publish + example E2E |
-| `@ziro-agent/browser-playwright` / `-browserbase` | v0.7 slice | Publish + cookbook |
-| `@ziro-agent/gateway` | planned v0.2 | **Chưa có source** |
-| `@ziro-agent/agui` / `react` / `nestjs` | planned v0.3+ | **Chưa có source** |
-| `@ziro-agent/vllm` / `tgi` / `lmstudio` | v0.8 | **Chưa có source** |
-
-### D. v0.4–v0.5 follow-up (P0 code xong, polish)
-
-| ID | Mục |
-|----|-----|
-| M1 | `loadDocument`: OCR ảnh, registry URI đầy đủ (E5) |
-| M2 | Memory: durable backends + `MemoryProcessor` tracing (E1 follow-up) |
-| M3 | Governance npm: C1 / C2 / C4 in-repo — release train + eval safety story |
-
-### E. v0.8 Sovereign & compliance
-
-| ID | Mục |
-|----|-----|
-| S1 | `@ziro-agent/vllm` + `@ziro-agent/tgi` |
-| S2 | Preset tokenizer VN (PhoGPT, VinAI, …) |
-| S3 | Air-gapped install bundle (tarball, zero network) |
-| S4 | Compliance pack sâu (RFC 0016 templates) |
-
-### F. v0.9 RC stabilisation
-
-| ID | Mục |
-|----|-----|
-| R1 | Error `code` + `docsUrl` mọi class (B3) |
-| R2 | `@ziro-agent/codemod` v0→v1 (B5) |
-| R3 | Zero-dep core audit (A3) |
-| R4 | Loop-guard defaults + tests (F2) |
-| R5 | Sub-agent budget propagation (F3) |
-| R6 | Goal lock / task persistence (F4, Hermes `/goal`) |
-| R7 | Idempotency-key trên `defineTool` (G1) |
-| R8 | Auto-checkpoint cadence (G2) |
-| R9 | Docs 3-layer pass 2, `CONTRIBUTING-ADAPTERS`, `SUPPORT-MATRIX`, release cadence |
-| R10 | JSON/YAML eval hoàn chỉnh (JSON v1 text graders có; thiếu YAML + `llmJudge` trong JSON) |
-
-### G. v1.0 GA
-
-API freeze, bảng deprecation, migration + codemod 100%, benchmark v1, governance BDFL→vote, **Ziro Cloud GA** (free tier + pricing; không lock-in OSS).
-
-### H. Post-v1.0 P1 (rolling, ~6 tháng sau GA)
-
-`samplingEval`, `@ziro-agent/eval/safety`, trace→Playground, eval-on-trace drift, vector adapters (Qdrant / Pinecone / …), semantic cache, AG-UI + `@ziro-agent/react`, NestJS, edge recipes, `agentskills.io` loader, transcript search FTS, cron cookbook, …
-
-### I. P2 / Anti-roadmap (không sprint sớm)
-
-~~A2A~~ (→ **mục J**, đã chuẩn hoá → P0), tool marketplace, speculative execution, Kanban multi-agent, voice agents, `ziro-engine`, gateway daemon, …
-
-### J. SOTA refresh 2026-06 — gap net-new (đồng bộ ROADMAP §SOTA refresh)
-
-Khoảng trống mới so với SOTA agentic 2026, **chưa** nằm rõ trong backlog cũ. Đầy đủ căn cứ + tier trong [`ROADMAP.md` §SOTA refresh (2026-06)](./ROADMAP.md#sota-refresh-2026-06--net-new-gap-analysis).
-
-| ID | Gap | Tier | Nhà ở (package) | Cần |
-|----|-----|------|-----------------|-----|
-| **A8** | **A2A** (agent↔agent interop, chuẩn AAIF) | **P0** | `@ziro-agent/a2a` (mới) | RFC + server/client. Ziro mới có lớp MCP của "stack 3 lớp"; thiếu lớp A2A |
-| **F5** | **Reflection / self-correction** trên tool-error (diagnose→fix) | **P0** | `@ziro-agent/agent` | Hook `reflect`/`critic`; `repairToolCall` hiện chỉ sửa *parse* |
-| **E8** | **Agentic RAG** (retrieve-as-tool đa bước) | **P1** | `@ziro-agent/memory` | `createRetrievalTool()` lặp; dựa trên E2–E4 đã ship |
-| **E9** | **Memory cognition** (episodic/procedural scope) | **P1** | extends RFC 0011 | Bổ sung scope cho memory tiers |
-| **Q1** | **Agent identity & authz** (OAuth OBO, scoped/JIT token) | **P1** | `@ziro-agent/auth`? hoặc doc app-layer | Frontier doanh nghiệp 2026 (IETF draft) |
-| **D5** | **Online output-safety / quality scoring** | **P1** | `@ziro-agent/eval` | OTel semconv *không* phủ output-eval — cơ hội khác biệt |
-| **E7** | KG memory (Graphiti/Zep temporal graph) | P2 | future | Cặp với E9 |
-
-**Đã có ID, chỉ chưa ship (không cần ID mới):** E6 vector adapters (Qdrant/Pinecone), O2 long-context compaction hook, G5 Temporal (nay là baseline thị trường — cân nhắc nâng), K2 semantic cache.
-
-**Anti-roadmap giữ nguyên:** gateway daemon, LLM-routing agent, self-editing memory, full Letta-tier memory, no-code builder. F5 (hook) và A8 (adapter) là primitive ghép được, không phải god-object.
-
-**Đề xuất chèn sprint:** A8 + F5 (P0) nên thành **một sprint "Interop & Reasoning"** ngay sau S3 (provider/benchmarks), trước S4 durable. E8/E9/Q1/D5 rải vào S5–S7.
+| ID | Việc | Trạng thái | Ghi chú |
+|----|------|-----------|---------|
+| OPS1 | **Trusted Publishers + bật lại provenance** | runbook có (RELEASING.md §Enabling provenance), **chưa thực thi** | Cần admin npmjs.com bind workflow + 1 release kiểm chứng → gỡ token fallback + retry 4h |
+| OPS2 | **`sync-main-to-dev.yml` fail** trên protected `dev` (FF-push declined) | đang **sync tay** mỗi lần merge main | Sửa workflow: mở PR sync thay vì FF-push (hoặc nới protection cho release bot) |
+| T2/T6 | **Replay-from-trace** đầy đủ (RFC 0015) | slice `createReplayLanguageModel` + agent-recording JSONL có; **pipeline `recordRun`→replay + CLI eval chưa** | Sprint "Durable & replay" |
+| T4 | Anthropic `cache_control` auto-inject / OpenAI prompt-cache parity | hiện **chỉ đọc usage + passthrough `providerOptions`** (đã ghi đúng trong README) | Sprint "Provider depth" |
+| A3 | Zero-dep core **đầy đủ** | surface đã khoá; core **vẫn dep `zod`** | RC stabilization |
+| L2 | Benchmark công khai vs đối thủ | `BENCHMARKS.md` mới có mock + Groq | Cần harness vs AI SDK/Mastra |
 
 ---
 
-## Timeline (Gantt)
+## 📋 To-do — backlog theo nhóm
+
+### A. Marketing & phát hành (v0.1 còn mở)
+- **L1** v0.1.0 launch chính thức (HN/Reddit/X, provenance narrative, GitHub Release).
+- **L2** Benchmark công khai vs Vercel AI SDK / Mastra (harness reproducible).
+- **L3** 1000★ / 3 design partners.
+
+### B. Net-new SOTA 2026 (đồng bộ [ROADMAP §SOTA refresh](./ROADMAP.md#sota-refresh-2026-06--net-new-gap-analysis) + RFC 0008 §SOTA-2026)
+| ID | Mục | Tier | Nhà ở |
+|----|-----|------|-------|
+| **A8** | **A2A** protocol (agent↔agent interop, chuẩn AAIF) | **P0** | `@ziro-agent/a2a` (mới) + RFC |
+| **F5** | **Reflection / self-correction** trên tool-error (diagnose→fix hook) | **P0** | `@ziro-agent/agent` |
+| **E8** | **Agentic RAG** (`createRetrievalTool` retrieve-as-tool đa bước) | **P1** | `@ziro-agent/memory` |
+| **E9** | **Memory cognition** (episodic/procedural scope) | **P1** | extends RFC 0011 |
+| **Q1** | **Agent identity & authz** (OAuth OBO, scoped/JIT token) | **P1** | `@ziro-agent/auth`? hoặc doc app-layer |
+| **D5** | **Online output-safety / quality scoring** | **P1** | `@ziro-agent/eval` |
+| **E7** | KG memory (Graphiti/Zep temporal graph) | **P2** | future |
+
+### C. RC stabilization (v0.9) — còn lại sau khi R1/R5 đã xong
+- **R2** `@ziro-agent/codemod` v0→v1.
+- **R4** Loop-guard defaults + tests (F2).
+- **R6** Goal lock / task persistence (F4).
+- **R7** Idempotency-key trên `defineTool` (G1).
+- **R8** Auto-checkpoint cadence (G2).
+- **R9** Docs 3-layer pass 2, `CONTRIBUTING-ADAPTERS`, `SUPPORT-MATRIX`, release cadence.
+- **A3** zero-dep core đầy đủ (xem WIP).
+
+### D. Durable & resilience
+- **T1/G5** `@ziro-agent/temporal` — *nay là baseline thị trường, cân nhắc nâng từ defer*.
+- **T2/T6** Replay-from-trace pipeline + CLI eval (xem WIP).
+
+### E. Provider depth & multimodal
+- **T4** Anthropic `cache_control` / OpenAI prompt-cache parity (xem WIP).
+- **M1** `loadDocument` OCR ảnh + registry URI (E5).
+- **M2** Memory durable backends + `MemoryProcessor` tracing.
+- **E6** Vector adapters (Qdrant / Pinecone / Weaviate).
+- **O2** Long-context auto-compaction hook. **K2** Semantic cache.
+
+### F. Sovereign & compliance (v0.8)
+- **S1** `@ziro-agent/vllm` + `@ziro-agent/tgi`. **S2** Preset tokenizer VN. **S3** Air-gapped bundle. **S4** Compliance pack templates sâu (RFC 0016).
+
+### G. Chưa có source (planned)
+`@ziro-agent/gateway`, `agui`, `react`, `nestjs`, `lmstudio`.
+
+### H. v1.0 GA
+API freeze, deprecation table, migration + codemod 100%, benchmark v1, governance BDFL→vote, Ziro Cloud GA.
+
+### I. Anti-roadmap (KHÔNG xây)
+gateway daemon, LLM-routing agent, self-editing memory, full Letta-tier memory, no-code builder, tool marketplace, Kanban multi-agent, voice agents. (A8 *adapter* + F5 *hook* là primitive ghép được — không vi phạm.)
+
+---
+
+## Timeline (Gantt) — re-sequenced từ 2026-06-07
 
 ```mermaid
 gantt
-  title ZiroAgent SDK — Sprint plan (2026)
+  title ZiroAgent SDK — Sprint plan (re-plan 2026-06-07)
   dateFormat YYYY-MM-DD
-  section Foundation
-  S1 Trust và npm parity     :s1, 2026-06-02, 14d
-  S2 Eval v1.2                :s2, after s1, 14d
+  section Done
+  S1 Trust & npm parity       :done, s1, 2026-06-02, 5d
+  S2 Eval v1.1 + hardening     :done, s2, after s1, 9d
   section Production
-  S3 Provider và benchmarks   :s3, after s2, 14d
-  S4 Durable và replay        :s4, after s3, 21d
-  S5 Multimodal publish       :s5, after s4, 14d
-  section Sovereign
-  S6 v0.8 sovereign slice     :s6, after s5, 21d
-  section RC
-  S7 v0.9 RC (1/2)            :s7, after s6, 14d
-  S8 v0.9 RC (2/2)            :s8, after s7, 14d
-  S9 v1.0 GA prep             :s9, after s8, 21d
+  S3 Provider depth & bench    :active, s3, 2026-06-09, 14d
+  S4 Interop & Reasoning (A2A+reflection) :s4, after s3, 21d
+  S5 Durable & replay          :s5, after s4, 21d
+  section Cognition
+  S6 Agentic RAG & memory      :s6, after s5, 14d
+  S7 Identity & online-eval    :s7, after s6, 14d
+  section Sovereign / RC / GA
+  S8 v0.8 sovereign slice      :s8, after s7, 21d
+  S9 v0.9 RC                   :s9, after s8, 21d
+  S10 v1.0 GA prep             :s10, after s9, 21d
 ```
 
 ---
 
-## Sprint 1 — Trust, docs, npm parity (2 tuần) ✅
+## Sprint 1 — Trust, docs, npm parity ✅ (đóng)
+README packages-table, publish compliance/audit/sandbox/browser, cookbooks, CONTRIBUTING.
 
-**Mục tiêu:** Đồng bộ marketing ↔ npm; đóng khoảng “có code chưa publish”.
+## Sprint 2 — Eval v1.1 + production hardening ✅ (đóng 2026-06-07)
+`llmJudge`+YAML eval, **budget money-safety C1/C2/C3**, **provider robustness**, **error code+docsUrl**, **audit HMAC**, public-surface khoá, commitlint title-only, README accuracy. *(Mở rộng ngoài kế hoạch gốc — gộp một phần Sprint 3/9.)*
 
-| Deliverable | Map roadmap | Trạng thái |
-|-------------|-------------|------------|
-| Cập nhật README bảng packages (compliance, audit, sandbox, browser) | v0.1.9 / v0.5 / v0.7 | ✅ 2026-05-28 |
-| Publish npm: `compliance`, `audit`, `sandbox-*`, `browser-*` | v0.5, v0.7 | ✅ đã trên npm (verify `npm view`) |
-| Cookbook: compliance offline + sandbox + browser smoke | v0.5, v0.7 | ✅ `compliance-offline`, `sandbox-browser-smoke` |
-| `CONTRIBUTING.md` + sync `dev` ← `main` | Ops | ✅ CONTRIBUTING; sync `dev` khi merge PR |
-| Điền 1 dòng Groq bench vào `BENCHMARKS.md` | v0.2 Track 3 | ✅ template + hướng dẫn (số điền khi có `GROQ_API_KEY`) |
-
-**Exit criteria**
-
-- [x] Mọi package P0 slice trong repo đều `pnpm add` được.
-- [x] README không còn `planned` sai cho package đã publish.
-
----
-
-## Sprint 2 — Eval v1.2 & CI (2 tuần) ✅
-
-**Mục tiêu:** Hoàn thiện declarative eval trước v0.9.
-
+## Sprint 3 — Provider depth & benchmarks (2 tuần) — ĐANG TỚI
 | Deliverable | Map | Trạng thái |
 |-------------|-----|------------|
-| `llmJudge` trong `*.eval.json` (schema + CLI) | v0.2 Track 5 / v0.9 | ✅ `judgeModel.mock` + CLI |
-| YAML dataset loader | v0.9 | ✅ `*.eval.yaml` / `*.eval.yml` |
-| Example + docs `evals.mdx` | v0.1.9 | ✅ example + cookbooks |
-| Recording JSONL → regression: thêm case CI gate | v0.2 Track 5 | ✅ test + `recording-smoke.mjs` |
+| Anthropic `cache_control` auto-inject + OpenAI prompt-cache parity | T4 | 📋 (robustness đã xong) |
+| Harness benchmark vs AI SDK/Mastra (methodology doc) | L2 | 📋 |
+| `pnpm bench` CI artifact ổn định | L2 | 📋 |
+| **OPS1** Trusted Publishers + provenance; **OPS2** sửa sync-main-to-dev | ops debt | 🔄 |
 
-**Exit criteria**
+**Exit:** `BENCHMARKS.md` có ≥1 bảng so sánh reproducible; release pipeline hết firefighting.
 
-- [x] `ziroagent eval` chạy JSON đủ text graders + `llmJudge` (mock).
-- [x] CI gate trên PR với dataset mẫu (`example-eval-json-dataset` smoke + unit tests).
-
----
-
-## Sprint 3 — Provider depth & benchmarks (2 tuần)
-
-**Mục tiêu:** Inference wedge + số liệu công khai.
-
+## Sprint 4 — Interop & Reasoning (3 tuần) — **MỚI (net-new SOTA P0)**
 | Deliverable | Map |
 |-------------|-----|
-| Anthropic `cache_control` blocks surfaced | v0.2 / v0.9 |
-| OpenAI prompt-cache parity | v0.2 / v0.9 |
-| Harness benchmark vs AI SDK (methodology doc) | v0.1, v1.0 |
-| `pnpm bench` CI artifact / workflow ổn định | v0.1 |
+| RFC `@ziro-agent/a2a` + server/client tối thiểu (AAIF A2A) | A8 |
+| Reflection/self-correction hook trong agent loop (diagnose tool-error → fixed call) | F5 |
+| Example: agent Ziro hợp tác qua A2A + cookbook reflection | A8/F5 |
 
-**Exit criteria**
+**Exit:** một agent Ziro phát/nhận task A2A; vòng reflection giảm lỗi tool multi-turn (đo bằng eval).
 
-- `BENCHMARKS.md` có ít nhất một bảng so sánh reproducible (không chỉ mock).
-
----
-
-## Sprint 4 — Resilience & durable (3 tuần)
-
-**Mục tiêu:** Production outage story.
-
+## Sprint 5 — Durable & replay (3 tuần)
 | Deliverable | Map |
 |-------------|-----|
-| JSONL `recordRun` → `createReplayLanguageModel` pipeline | v0.6 L1, v0.2 T2 |
-| CLI/docs: replay eval từ trace | RFC 0015 |
-| `@ziro-agent/temporal` **hoặc** RFC spike + defer doc nếu không có partner | v0.6 G5 |
-| Circuit-breaker tuning trong publish retry (nếu còn pain) | Ops |
+| `recordRun` JSONL → `createReplayLanguageModel` pipeline đầy đủ + CLI eval replay | T2/T6 |
+| Quyết định **Temporal** ship vs defer (nay là baseline) → ghi ROADMAP | T1/G5 |
 
-**Exit criteria**
+**Exit:** replay E2E test; quyết định Temporal có văn bản.
 
-- Replay E2E test.
-- Quyết định Temporal ship vs defer ghi vào `ROADMAP.md`.
-
----
-
-## Sprint 5 — Multimodal & adapters GA (2 tuần)
-
-**Mục tiêu:** v0.7 “demo cycle” — sandbox + browser từ npm.
-
+## Sprint 6 — Agentic RAG & memory cognition (2 tuần)
 | Deliverable | Map |
 |-------------|-----|
-| `loadDocument` OCR + URI registry (E5) | v0.4 |
-| Example: code-interpreter + browser trong một agent | v0.7 |
-| Docs multimodal (audio/file) provider matrix | v0.7 I2/I3 |
+| `createRetrievalTool()` multi-hop (agentic RAG) trên `@ziro-agent/memory` | E8 |
+| Episodic/procedural scope (extends RFC 0011) | E9 |
+| Vector adapter Qdrant/Pinecone (≥1) | E6 |
 
-**Exit criteria**
-
-- Partner chạy sandbox + browser từ npm, không cần clone monorepo.
-
----
-
-## Sprint 6 — Sovereign & compliance v0.8 slice (3 tuần)
-
-**Mục tiêu:** VN/SEA banking wedge.
-
+## Sprint 7 — Identity & online eval (2 tuần)
 | Deliverable | Map |
 |-------------|-----|
-| `@ziro-agent/vllm` (MVP) | v0.8 O4 |
-| `@ziro-agent/tgi` (MVP) hoặc spike | v0.8 O4 |
-| Compliance pack templates (RFC 0016) | v0.8, v1.0 |
-| `agent.deleteUserData` propagation doc + test | v0.8 GDPR |
-| Air-gapped bundle script (alpha) | v0.8 |
+| Agent identity/authz: scoped/JIT token helper hoặc doc app-layer (OAuth OBO) | Q1 |
+| Online output-safety / quality scoring | D5 |
+| `loadDocument` OCR + URI registry | M1 |
 
-**Exit criteria**
+## Sprint 8 — Sovereign & compliance v0.8 (3 tuần)
+`@ziro-agent/vllm` (MVP), tokenizer VN, air-gapped bundle, compliance pack templates (S1–S4).
 
-- Ollama + vLLM path documented.
-- Compliance pack downloadable offline.
+## Sprint 9 — v0.9 RC stabilization (2–3 tuần)
+codemod (R2), loop-guard (R4), goal lock (R6), idempotency-key (R7), auto-checkpoint (R8), zero-dep core đầy đủ (A3), `SUPPORT-MATRIX`/`CONTRIBUTING-ADAPTERS` (R9).
 
----
-
-## Sprint 7 — v0.9 RC (phần 1) (2 tuần)
-
-| Deliverable | Map |
-|-------------|-----|
-| Error `code` + `docsUrl` (B3) — ~80% error classes | v0.9 |
-| Loop-guard + sub-agent budget (F2, F3) | v0.9 |
-| `SUPPORT-MATRIX.md`, `CONTRIBUTING-ADAPTERS.md` | v0.9 N1, J3 |
-
-**Exit criteria**
-
-- Errors có `code` + link docs trong playground trace.
+## Sprint 10 — v1.0 GA prep (3 tuần)
+API freeze, migration + codemod coverage, benchmark v1, launch (L1), Ziro Cloud private beta spec.
 
 ---
 
-## Sprint 8 — v0.9 RC (phần 2) (2 tuần)
-
-| Deliverable | Map |
-|-------------|-----|
-| Goal lock API hoặc `prepareStep` pattern certified (F4) | v0.9 |
-| Idempotency + auto-checkpoint (G1, G2) | v0.9 |
-| `@ziro-agent/codemod` skeleton + 3 transform quan trọng | v0.9 B5 |
-| Zero-dep core audit (A3) | v0.9 |
-
-**Exit criteria**
-
-- Codemod chạy được trên example migration.
-- Goal lock có test + cookbook.
-
----
-
-## Sprint 9 — v1.0 GA prep (3 tuần)
-
-| Deliverable | Map |
-|-------------|-----|
-| API freeze announcement + compatibility table | v1.0 |
-| `migration.mdx` + codemod coverage audit | v1.0 |
-| Benchmark v1.0 republication | v1.0 |
-| Launch post + npm provenance narrative | v0.1 L1 |
-| Ziro Cloud private beta spec (không block OSS) | v1.0 |
-
-**Exit criteria**
-
-- Tag **v1.0.0**, semver strict.
-- Release train ổn định (`RELEASING.md` + `NPM_TOKEN` / Trusted Publishers).
-
----
-
-## Sprint 10+ — Post-v1.0 (rolling)
-
-Ưu tiên theo partner pull:
-
-1. `samplingEval` + trace drift (D4)
-2. `@ziro-agent/eval/safety` (C5)
-3. AG-UI + `@ziro-agent/react`
-4. Vector adapters (E6)
-5. NestJS + edge recipes
-6. `agentskills.io` loader
-
----
-
-## Ma trận ưu tiên P0 (3 sprint đầu)
-
+## Ma trận ưu tiên P0 (3 sprint tới)
 | P0 | Sprint | Lý do |
 |----|--------|-------|
-| Publish compliance / sandbox / browser | S1 | Trust + README accuracy |
-| Eval `llmJudge` + YAML | S2 | Roadmap + vừa ship JSON text graders |
-| Benchmarks + cache providers | S3 | Production + marketing |
-| Replay JSONL | S4 | Eval + resilience |
-| vLLM | S6 | Sovereign pillar |
+| Provider cache parity + benchmarks + ops debt | S3 | Marketing + production + hết firefighting release |
+| **A2A (A8) + Reflection (F5)** | S4 | Gap SOTA lớn nhất — interop 3-lớp + reliability |
+| Replay-from-trace + quyết định Temporal | S5 | Resilience + eval |
 
-**Defer rõ:** `gateway`, `agui`, `react`, `nestjs`, Kanban, A2A → sau v1.0 hoặc hợp đồng partner.
+**Defer rõ:** gateway, agui, react, nestjs → sau v1.0 / partner-pull.
 
 ---
 
-## Định nghĩa “done” (mọi sprint)
-
-- Code + test (Vitest) pass CI.
+## Định nghĩa "done" (mọi sprint)
+- Code + test (Vitest) pass CI (lint + matrix + publint/attw + docs build).
 - Docs: `apps/docs` page hoặc cookbook.
 - Example trong `examples/` nếu là user-facing API.
-- Changeset + merge `dev` → `main` → Release workflow (npm).
-- Cập nhật checkbox trong `ROADMAP.md` khi milestone đóng.
-
----
+- Changeset + merge `dev` → PR `main` → Release workflow (npm). **Lưu ý:** sync `main`→`dev` đang phải làm tay (OPS2).
+- Cập nhật checkbox `ROADMAP.md` khi milestone đóng.
 
 ## Theo dõi
-
 - **GitHub Project:** một cột / sprint, label `sprint-N`.
-- **RFC tham chiếu:** [0003](./rfcs/0003-evals-as-first-class.md), [0015](./rfcs/0015-resilience.md), [0016](./rfcs/0016-compliance-pack.md), [0008](./rfcs/0008-roadmap-v3.md).
-- **Release:** [`RELEASING.md`](./RELEASING.md), `./scripts/rotate-npm-token-for-ci.sh`, Trusted Publisher `release.yml` trên npmjs.com.
+- **RFC:** [0003](./rfcs/0003-evals-as-first-class.md), [0008 §SOTA-2026](./rfcs/0008-roadmap-v3.md), [0015](./rfcs/0015-resilience.md), [0016](./rfcs/0016-compliance-pack.md); RFC mới cần viết: **A2A (A8)**, **reflection (F5)**.
+- **Release:** [`RELEASING.md`](./RELEASING.md), Trusted Publisher `release.yml` (OPS1 chưa xong).

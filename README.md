@@ -163,7 +163,7 @@ ziro eval ./evals/*.ts --gate 0.95     # CI gate: fail merge if score < 95%
 | --- | --- | --- |
 | [`@ziro-agent/core`](packages/core) | shipped (v0.1.x) | Model interface, `generateText`, `streamText`, budget & cache primitives |
 | [`@ziro-agent/openai`](packages/providers-openai) | shipped (v0.1.x) | OpenAI provider |
-| [`@ziro-agent/anthropic`](packages/providers-anthropic) | shipped (v0.1.x) | Anthropic provider; surfaces cache-read/-write usage. Pass `cache_control` blocks via `providerOptions` (auto-injection on the roadmap) |
+| [`@ziro-agent/anthropic`](packages/providers-anthropic) | shipped (v0.1.x) | Anthropic provider; surfaces cache-read/-write usage + opt-in `cache_control` auto-injection on the stable prefix via `providerOptions: { cacheControl: true }` |
 | [`@ziro-agent/ollama`](packages/providers-ollama) | shipped (v0.1.9) | Local-first provider (sovereign mode) — first Sovereign-pillar package |
 | [`@ziro-agent/google`](packages/providers-google) | shipped (v0.2) | Google Gemini provider |
 | [`@ziro-agent/groq`](packages/providers-groq) | shipped (v0.2, Track 3) | Groq Cloud — OpenAI-compatible chat API (`GROQ_API_KEY`) |

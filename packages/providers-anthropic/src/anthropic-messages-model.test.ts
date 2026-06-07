@@ -231,6 +231,88 @@ describe('Anthropic messages model — estimateCost', () => {
   });
 });
 
+describe('Anthropic prompt caching — cache_control', () => {
+  const okResponse = () =>
+    new Response(
+      JSON.stringify({
+        content: [{ type: 'text', text: 'ok' }],
+        stop_reason: 'end_turn',
+        usage: { input_tokens: 1, output_tokens: 1 },
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+
+  const captureBody = () => {
+    const ref: { body?: Record<string, unknown> } = {};
+    const fetch = (async (_url: string, init?: RequestInit) => {
+      ref.body = JSON.parse(init?.body as string);
+      return okResponse();
+    }) as unknown as typeof fetch;
+    return { ref, fetch };
+  };
+
+  const tools = [
+    { name: 'a', parameters: { type: 'object' as const } },
+    { name: 'b', parameters: { type: 'object' as const } },
+  ];
+
+  it('injects cache_control on system + last tool when opted in, and strips the flag', async () => {
+    const { ref, fetch } = captureBody();
+    const anthropic = createAnthropic({ apiKey: 'test', fetch });
+    await generateText({
+      model: anthropic('claude-sonnet-4-5'),
+      system: 'rules',
+      prompt: 'hi',
+      tools,
+      providerOptions: { cacheControl: true },
+    });
+    const body = ref.body as {
+      system: Array<{ type: string; cache_control?: unknown }>;
+      tools: Array<{ name: string; cache_control?: unknown }>;
+      cacheControl?: unknown;
+    };
+    expect(Array.isArray(body.system)).toBe(true);
+    expect(body.system[0]?.cache_control).toEqual({ type: 'ephemeral' });
+    // Marking the LAST tool caches the whole tools+system prefix.
+    expect(body.tools[1]?.cache_control).toEqual({ type: 'ephemeral' });
+    expect(body.tools[0]?.cache_control).toBeUndefined();
+    // The opt-in flag must not leak into the wire body.
+    expect(body.cacheControl).toBeUndefined();
+  });
+
+  it('opts in per-part with { system: true } only', async () => {
+    const { ref, fetch } = captureBody();
+    const anthropic = createAnthropic({ apiKey: 'test', fetch });
+    await generateText({
+      model: anthropic('claude-sonnet-4-5'),
+      system: 'rules',
+      prompt: 'hi',
+      tools,
+      providerOptions: { cacheControl: { system: true } },
+    });
+    const body = ref.body as {
+      system: Array<{ cache_control?: unknown }>;
+      tools: Array<{ cache_control?: unknown }>;
+    };
+    expect(body.system[0]?.cache_control).toEqual({ type: 'ephemeral' });
+    expect(body.tools[1]?.cache_control).toBeUndefined();
+  });
+
+  it('does not cache by default (system stays a string, tools unmarked)', async () => {
+    const { ref, fetch } = captureBody();
+    const anthropic = createAnthropic({ apiKey: 'test', fetch });
+    await generateText({
+      model: anthropic('claude-sonnet-4-5'),
+      system: 'rules',
+      prompt: 'hi',
+      tools,
+    });
+    const body = ref.body as { system: unknown; tools: Array<{ cache_control?: unknown }> };
+    expect(typeof body.system).toBe('string');
+    expect(body.tools[1]?.cache_control).toBeUndefined();
+  });
+});
+
 function sseBody(events: Array<[string, string]>): ReadableStream<Uint8Array> {
   const enc = new TextEncoder();
   return new ReadableStream({
