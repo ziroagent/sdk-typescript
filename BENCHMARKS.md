@@ -1,6 +1,6 @@
 # Benchmarks
 
-Reproducible latency comparisons versus other SDKs remain on the [v0.1 roadmap](./ROADMAP.md) (“Transparent benchmarks every release”). This file starts with **incremental, in-repo numbers**: SDK overhead on a fixed mock model with **no network**, so anyone can reproduce locally before we publish multi-provider harnesses.
+This file holds **incremental, in-repo numbers**: SDK overhead on a fixed mock model with **no network**, so anyone can reproduce locally. A first head-to-head **competitor** harness (Ziro vs the Vercel AI SDK) ships here under [Competitor comparison](#competitor-comparison--vs-vercel-ai-sdk); broader multi-provider / Mastra / LangGraph harnesses remain on the [roadmap](./ROADMAP.md) (“Transparent benchmarks every release”).
 
 ## How to run
 
@@ -14,6 +14,7 @@ This runs Vitest’s benchmark mode on everything under [`packages/core/src/benc
 
 - **Tier 1 (sync mock):** [`core-overhead.bench.ts`](packages/core/src/benchmarks/core-overhead.bench.ts) — `generateText` vs `streamText` + `text()` on an in-memory `LanguageModel` with a synchronous stream pump.
 - **Tier 2 (async boundaries):** [`core-async-boundary.bench.ts`](packages/core/src/benchmarks/core-async-boundary.bench.ts) — same short completion, but **one `await Promise.resolve()` before each** streamed chunk (microtasks), approximating adapters that yield between tokens **without** measuring HTTP.
+- **Tier 3 (competitor):** [`vs-vercel-ai-sdk.bench.ts`](packages/core/src/benchmarks/vs-vercel-ai-sdk.bench.ts) — Ziro `generateText` vs the Vercel AI SDK's `generateText`, plus a no-SDK baseline, all on a zero-latency mock. See [Competitor comparison](#competitor-comparison--vs-vercel-ai-sdk).
 
 ## Capture (single machine)
 
@@ -47,6 +48,28 @@ Same output; stream pump awaits `Promise.resolve()` before enqueueing each part.
 | `streamText` + `text()` + microtasks | ~0.0119 ms | ~84,000 | ~13× slower (Vitest summary for this run) |
 
 Interpretation: streaming carries higher per-call overhead than one-shot `generateText`, especially when each chunk crosses an async boundary; **network I/O still dominates** real deployments.
+
+## Competitor comparison — vs Vercel AI SDK
+
+**Methodology (fair + reproducible).** We measure **pure SDK overhead**, not provider latency: both frameworks run their `generateText` against a **zero-latency in-memory mock model** returning identical content/usage, so the only difference is each framework's per-call machinery. No API keys, no network. A no-SDK baseline (`model.generate` directly) anchors the floor. Run:
+
+```bash
+pnpm --filter @ziro-agent/core exec vitest bench --run src/benchmarks/vs-vercel-ai-sdk.bench.ts
+```
+
+> **What this is / isn't.** This isolates framework call overhead on a trivial completion — it is **not** a claim about real-world latency (where the LLM round-trip dwarfs SDK time), feature parity, or quality. The AI SDK does more per call (multi-step orchestration, schema plumbing) which is exactly what this micro-benchmark strips away. Treat it as a *startup/overhead* signal, not a verdict.
+
+### Results (representative local run, `ai@6.0.197`)
+
+Same machine/Node as the capture table above. Scenario: single text completion (`"Hello"`).
+
+| Benchmark | ops/s (hz) | Mean | vs baseline |
+| --------- | ---------- | ---- | ----------- |
+| baseline: `model.generate` (no SDK) | ~2,660,000 | ~0.0004 ms | 1× |
+| ziro: `generateText` | ~1,340,000 | ~0.0007 ms | ~2× slower |
+| vercel-ai-sdk: `generateText` | ~10,800 | ~0.092 ms | ~245× slower |
+
+Interpretation: on this mock-overhead micro-benchmark Ziro's `generateText` adds ~0.3 µs over a raw model call and runs **~120× more calls/sec than the Vercel AI SDK's** `generateText`. Numbers vary by machine and AI SDK version; re-capture locally after bumping `ai`.
 
 ## Optional — Groq Cloud latency (network)
 
