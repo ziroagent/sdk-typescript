@@ -59,12 +59,12 @@
     "modal": "^0.7.0"
   },
   "devDependencies": {
-    "@arethetypeswrong/cli": "^0.18.2",
-    "modal": "^0.7.4",
-    "publint": "^0.3.18",
+    "@arethetypeswrong/cli": "^0.18.4",
+    "modal": "^0.8.2",
+    "publint": "^0.3.21",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.4"
+    "vitest": "^4.1.9"
   },
   "engines": {
     "node": ">=22.0.0"

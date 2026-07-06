@@ -11,7 +11,7 @@
     "@ziro-agent/tools": "workspace:*"
   },
   "devDependencies": {
-    "tsx": "^4.20.0",
+    "tsx": "^4.23.0",
     "typescript": "^5.9.3"
   }
 }
